@@ -1,7 +1,7 @@
 {
-    "name": "express-mongo-boilerplate",
+    "name": "stallalert-backend",
     "version": "1.0.0",
-    "description": "Sample Express + Mongo CRUD boilerplate",
+    "description": "StallAlert API: CSV import, stall detection, ranked follow-up queue, AI drafts with template fallback",
     "main": "app.ts",
     "scripts": {
         "dev": "nodemon",

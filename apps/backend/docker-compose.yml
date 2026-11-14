@@ -1,43 +1,59 @@
-version: "3"
 services:
-    web:
-        container_name: mysqlBoilerplateService
+    # StallAlert API (development)
+    api:
+        container_name: stallalert-api
         build:
             dockerfile: Dockerfile.dev
             context: .
         depends_on:
-            - db
+            db:
+                condition: service_healthy
         ports:
-            - "3000:3000"
+            - "${APPLICATION_SERVER_PORT:-4000}:${APPLICATION_SERVER_PORT:-4000}"
         volumes:
             - .:/server
         environment:
-            - MONGO_HOST=mongodb://db:27017
-            - MONGO_DB=sample-app
-            - SOCKET_CORS=http://localhost:3001
-            - APPLICATION_SERVER_PORT=3001
-            - APP_FORCE_SHUTDOWN_SECOND=30
+            - APPLICATION_SERVER_PORT=${APPLICATION_SERVER_PORT:-4000}
+            - APP_FORCE_SHUTDOWN_SECOND=${APP_FORCE_SHUTDOWN_SECOND:-30}
+            - MYSQL_HOST=db
+            - MYSQL_PORT=3306
+            - MYSQL_DATABASE=${MYSQL_DATABASE:-stallalert}
+            - MYSQL_USER=${MYSQL_USER:-stallalert}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD:-stallalert}
 
-    # Database
+    # Database (local development only; fictional data)
     db:
+        container_name: stallalert-mysql
         image: mysql:8.0
+        command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
         ports:
-        - "3306:3306"
+            - "${MYSQL_PORT:-3306}:3306"
         restart: always
         environment:
-            MYSQL_ROOT_PASSWORD: admin
-            MYSQL_DATABASE: testdb
-            MYSQL_USER: root
-            MYSQL_PASSWORD: root
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+            MYSQL_DATABASE: ${MYSQL_DATABASE:-stallalert}
+            MYSQL_USER: ${MYSQL_USER:-stallalert}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stallalert}
+        volumes:
+            - stallalert-mysql-data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+            interval: 5s
+            timeout: 5s
+            retries: 20
 
-    # phpmyadmin
+    # phpMyAdmin (http://localhost:8080)
     phpmyadmin:
-        depends_on:
-        - db
+        container_name: stallalert-phpmyadmin
         image: phpmyadmin/phpmyadmin
+        depends_on:
+            - db
         restart: always
         ports:
-        - "8080:80"
+            - "8080:80"
         environment:
             PMA_HOST: db
-            MYSQL_ROOT_PASSWORD: root
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+
+volumes:
+    stallalert-mysql-data:

@@ -8,6 +8,7 @@ interface SequelizeConfig {
 
 interface SequelizeOptions {
 	host: string;
+	port: number;
 	dialect: Dialect;
 	pool: {
 		max: number;
@@ -15,10 +16,10 @@ interface SequelizeOptions {
 		idle: number;
 	};
 	define: {
-		timestamps: boolean
+		timestamps: boolean;
+		charset: string;
+		collate: string;
 	},
-	charset: string;
-	collate: string;
 	logging: boolean;
 	log: any;
 }
@@ -32,12 +33,13 @@ interface Config {
 
 const config: Config = {
 	SEQUELIZE: {
-		USERNAME: process.env.MYSQL_USER || "root",
-		PASSWORD: process.env.MYSQL_PASSWORD || "root",
-		MYSQL_DATABASE: process.env.MYSQL_DATABASE || "test1"
+		USERNAME: process.env.MYSQL_USER || "stallalert",
+		PASSWORD: process.env.MYSQL_PASSWORD || "stallalert",
+		MYSQL_DATABASE: process.env.MYSQL_DATABASE || "stallalert"
 	},
 	SEQUELIZEOPTIONS: {
-		host: process.env.MYSQL_HOST || "0.0.0.0",
+		host: process.env.MYSQL_HOST || "127.0.0.1",
+		port: Number(process.env.MYSQL_PORT) || 3306,
 		dialect: "mysql",
 		pool: {
 			max: 20,
@@ -45,14 +47,14 @@ const config: Config = {
 			idle: 10000
 		},
 		define: {
-			timestamps: false
+			timestamps: false,
+			charset: "utf8mb4",
+			collate: "utf8mb4_0900_ai_ci"
 		},
-		charset: "utf8",
-		collate: "utf8_general_ci",
 		logging: false,
 		log: console.log
 	},
-	APPLICATION_SERVER_PORT: Number(process.env.APPLICATION_SERVER_PORT) || 3000,
+	APPLICATION_SERVER_PORT: Number(process.env.APPLICATION_SERVER_PORT) || 4000,
 	APP_FORCE_SHUTDOWN_SECOND: Number(process.env.APP_FORCE_SHUTDOWN_SECOND) || 30
 };
 

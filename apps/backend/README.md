@@ -1,40 +1,34 @@
-# MySQL Backend API
+# StallAlert backend (`apps/backend`)
 
-## Description
+Node.js + TypeScript + Express API with MySQL 8 (Sequelize). It started from my own Express/MySQL boilerplate
+(baseline commit `e90ed03`). Everything after that commit is quest work.
 
-## Installation with Docker
+## Run with Docker (API + MySQL + phpMyAdmin)
 
-1. Clone from git
 ```bash
-git clone https://github.com/shahabuddin-ahmed/node-typescript-mysql-mongodb-boilerplate.git
-```
-
-2. Navigate into the project directory
-```bash
-cd node-typescript-mysql-mongodb-boilerplate/mysql
-```
-
-3. Install all dependencies
-```bash
+cd apps/backend
+cp .env.example .env        # optional: change ports or passwords
 yarn install
+docker compose up
 ```
 
-4. Run the application using Docker Compose
+- API: http://localhost:4000/api/v1 (health: `/api/v1/health`)
+- phpMyAdmin: http://localhost:8080
+- MySQL: localhost:3306, database `stallalert` (utf8mb4)
+
+## Run the API locally (MySQL in Docker)
+
 ```bash
-docker-compose up
+docker compose up db -d
+yarn dev
 ```
 
-5. Run all test
+## Tests
+
 ```bash
-yarn test
+yarn test         # all
+yarn test-unit    # unit only
+yarn test-integ   # integration only
 ```
 
-6. Run unit test
-```bash
-yarn test-unit
-```
-
-7. Run integ test
-```bash
-yarn test-integ
-```
+Local development only. The credentials in `docker-compose.yml` and `.env.example` are placeholders for fictional data.
