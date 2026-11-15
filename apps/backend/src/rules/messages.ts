@@ -1,4 +1,6 @@
 import { ActionCode, RecipientType, TimerSource } from "../constant/stage";
+import { BoardAnalysis, Bottleneck } from "./types";
+import { BottleneckType } from "../constant/board";
 
 interface ActionDetails {
     label: string; // shown in the queue
@@ -102,3 +104,38 @@ export const templateMessage = (actionCode: ActionCode, facts: MessageFacts): st
         .replace(/\{name\}/g, facts.name)
         .replace(/\{role\}/g, facts.role)
         .replace(/\{recruiter\}/g, facts.recruiter);
+
+// Fills the AI's placeholders with this candidate's details (done on the server, never by the AI).
+export const fillPlaceholders = (text: string, facts: MessageFacts): string =>
+    text
+        .replace(/\{\{first_name\}\}/g, facts.firstName)
+        .replace(/\{\{name\}\}/g, facts.name)
+        .replace(/\{\{role\}\}/g, facts.role)
+        .replace(/\{\{recruiter\}\}/g, facts.recruiter);
+
+// The briefing written by code, used whenever AI text is not (spec E: template fallback).
+export const templateBriefing = (analysis: BoardAnalysis): string => {
+    const { counts, queue, bottlenecks } = analysis;
+    if (queue.length === 0) {
+        return `Nobody is past their stage threshold. ${counts.valid} valid ${counts.valid === 1 ? "candidate was" : "candidates were"} checked.`;
+    }
+    const first = queue[0];
+    const firstStatus = first.overdueDays > 0 ? `${days(first.overdueDays)} overdue` : "due today";
+    const parts = [
+        `${counts.stalled} of ${counts.valid} valid candidates are past their stage threshold.`,
+        `Start with ${first.name} (${first.stage}, ${firstStatus}).`,
+    ];
+    for (const bottleneck of bottlenecks) {
+        parts.push(
+            bottleneck.type === BottleneckType.STAGE
+                ? `Most stalled candidates are in ${bottleneck.key} (${bottleneck.stalled}).`
+                : `${bottleneck.key} has the most follow-ups (${bottleneck.stalled}).`
+        );
+    }
+    return parts.join(" ");
+};
+
+export const templateBottleneckNote = (bottleneck: Bottleneck): string =>
+    bottleneck.type === BottleneckType.STAGE
+        ? `${bottleneck.key} has ${bottleneck.stalled} stalled candidates. Clear these follow-ups first.`
+        : `${bottleneck.key} owns ${bottleneck.stalled} stalled follow-ups. Consider sharing some of them.`;

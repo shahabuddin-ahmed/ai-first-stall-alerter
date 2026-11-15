@@ -1,6 +1,8 @@
 import "dotenv/config";
 import Joi from "joi";
 import { Dialect } from "sequelize";
+import { AiMode, ReasoningEffort } from "../constant/ai";
+import { NodeEnv } from "../constant/env";
 
 interface SequelizeConfig {
 	USERNAME: string;
@@ -35,13 +37,19 @@ interface Config {
 	AI: {
 		API_KEY: string;
 		MODEL: string;
+		BASE_URL: string;
+		TOP_N: number;
+		TIMEOUT_MS: number;
+		MAX_OUTPUT_TOKENS: number;
+		MODE: AiMode;
+		REASONING_EFFORT: ReasoningEffort;
 	};
 }
 
 // Every setting the API reads from the environment (.env locally, docker-compose in Docker).
 // Checked once at startup so a wrong value fails fast with a clear message.
 const envSchema = Joi.object({
-	NODE_ENV: Joi.string().valid("development", "test", "production").default("development"),
+	NODE_ENV: Joi.string().valid(...Object.values(NodeEnv)).default(NodeEnv.DEVELOPMENT),
 	APPLICATION_SERVER_PORT: Joi.number().port().default(4000),
 	APP_FORCE_SHUTDOWN_SECOND: Joi.number().integer().min(1).default(30),
 	MYSQL_HOST: Joi.string().default("127.0.0.1"),
@@ -52,8 +60,17 @@ const envSchema = Joi.object({
 	// AI drafts run only when both are set (and the team setting is on). Never sent to the browser.
 	AI_API_KEY: Joi.string().allow("").default(""),
 	AI_MODEL: Joi.string().allow("").default(""),
+	AI_BASE_URL: Joi.string().uri({ scheme: ["https", "http"] }).default("https://openrouter.ai/api/v1"),
+	AI_TOP_N: Joi.number().integer().min(1).max(20).default(5),
+	AI_TIMEOUT_MS: Joi.number().integer().min(1000).max(60000).default(15000),
+	AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(1500),
+	// fake = a built-in AI stand-in with no network calls (tests, demos without a key)
+	AI_MODE: Joi.string().valid(...Object.values(AiMode)).default(AiMode.LIVE),
+	// How much "thinking" a reasoning model may do: off = no thinking (fastest), low/medium/high,
+	// none = do not send the setting (for models without thinking).
+	AI_REASONING_EFFORT: Joi.string().valid(...Object.values(ReasoningEffort)).default(ReasoningEffort.LOW),
 	MYSQL_PASSWORD: Joi.string().allow("").when("NODE_ENV", {
-		is: "production",
+		is: NodeEnv.PRODUCTION,
 		then: Joi.required(),
 		otherwise: Joi.string().allow("").default("root"),
 	}),
@@ -71,7 +88,7 @@ const config: Config = {
 		USERNAME: env.MYSQL_USER,
 		PASSWORD: env.MYSQL_PASSWORD,
 		// Tests always use their own database, never the development one.
-		MYSQL_DATABASE: env.NODE_ENV === "test" ? env.MYSQL_TEST_DATABASE : env.MYSQL_DATABASE
+		MYSQL_DATABASE: env.NODE_ENV === NodeEnv.TEST ? env.MYSQL_TEST_DATABASE : env.MYSQL_DATABASE
 	},
 	SEQUELIZEOPTIONS: {
 		host: env.MYSQL_HOST,
@@ -95,6 +112,12 @@ const config: Config = {
 	AI: {
 		API_KEY: env.AI_API_KEY,
 		MODEL: env.AI_MODEL,
+		BASE_URL: env.AI_BASE_URL.replace(/\/+$/, ""),
+		TOP_N: env.AI_TOP_N,
+		TIMEOUT_MS: env.AI_TIMEOUT_MS,
+		MAX_OUTPUT_TOKENS: env.AI_MAX_OUTPUT_TOKENS,
+		MODE: env.AI_MODE,
+		REASONING_EFFORT: env.AI_REASONING_EFFORT,
 	},
 };
 

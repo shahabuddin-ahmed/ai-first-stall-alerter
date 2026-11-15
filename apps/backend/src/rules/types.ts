@@ -1,4 +1,4 @@
-import { BoardColumn, FileErrorCode, RowErrorCode } from "../constant/board";
+import { BoardColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../constant/board";
 import { ActionCode, RecipientType, StageType, TimerSource } from "../constant/stage";
 
 // A hiring stage as configured by the team (the `stages` table).
@@ -75,7 +75,7 @@ export interface QueueItem {
 }
 
 export interface Bottleneck {
-    type: "stage" | "recruiter";
+    type: BottleneckType;
     key: string;
     stalled: number;
 }
