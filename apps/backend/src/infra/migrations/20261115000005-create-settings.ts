@@ -7,9 +7,20 @@ export const up: Migration = async ({ context: queryInterface }) => {
     await queryInterface.createTable(
         "settings",
         {
-            id: { type: DataTypes.TINYINT.UNSIGNED, primaryKey: true },
-            use_ai_drafts: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
-            stages_version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+            id: {
+                type: DataTypes.TINYINT.UNSIGNED,
+                primaryKey: true,
+            },
+            use_ai_drafts: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: true,
+            },
+            stages_version: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                allowNull: false,
+                defaultValue: 1,
+            },
             updated_at: {
                 type: DataTypes.DATE(3),
                 allowNull: false,

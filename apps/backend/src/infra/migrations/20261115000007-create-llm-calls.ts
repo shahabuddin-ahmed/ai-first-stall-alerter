@@ -7,24 +7,63 @@ export const up: Migration = async ({ context: queryInterface }) => {
     await queryInterface.createTable(
         "llm_calls",
         {
-            id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+            id: {
+                type: DataTypes.BIGINT.UNSIGNED,
+                autoIncrement: true,
+                primaryKey: true,
+            },
             import_id: {
                 type: DataTypes.INTEGER.UNSIGNED,
                 allowNull: true,
-                references: { model: "imports", key: "id" },
+                references: {
+                    model: "imports",
+                    key: "id",
+                },
                 onDelete: "SET NULL",
                 onUpdate: "CASCADE",
             },
-            cache_key: { type: DataTypes.CHAR(64), allowNull: false },
-            requested_model: { type: DataTypes.STRING(100), allowNull: false },
-            served_model: { type: DataTypes.STRING(100), allowNull: true },
-            input_tokens: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
-            output_tokens: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
-            cost_usd: { type: DataTypes.DECIMAL(12, 6), allowNull: true },
-            latency_ms: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-            status: { type: DataTypes.ENUM("success", "failed"), allowNull: false },
-            error_code: { type: DataTypes.STRING(40), allowNull: true, comment: "e.g. TIMEOUT, RATE_LIMITED, INVALID_OUTPUT" },
-            created_at: { type: DataTypes.DATE(3), allowNull: false, defaultValue: literal("CURRENT_TIMESTAMP(3)") },
+            cache_key: {
+                type: DataTypes.CHAR(64),
+                allowNull: false,
+            },
+            requested_model: {
+                type: DataTypes.STRING(100),
+                allowNull: false,
+            },
+            served_model: {
+                type: DataTypes.STRING(100),
+                allowNull: true,
+            },
+            input_tokens: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                allowNull: true,
+            },
+            output_tokens: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                allowNull: true,
+            },
+            cost_usd: {
+                type: DataTypes.DECIMAL(12, 6),
+                allowNull: true,
+            },
+            latency_ms: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                allowNull: false,
+            },
+            status: {
+                type: DataTypes.ENUM("success", "failed"),
+                allowNull: false,
+            },
+            error_code: {
+                type: DataTypes.STRING(40),
+                allowNull: true,
+                comment: "e.g. TIMEOUT, RATE_LIMITED, INVALID_OUTPUT",
+            },
+            created_at: {
+                type: DataTypes.DATE(3),
+                allowNull: false,
+                defaultValue: literal("CURRENT_TIMESTAMP(3)"),
+            },
         },
         { charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" }
     );
