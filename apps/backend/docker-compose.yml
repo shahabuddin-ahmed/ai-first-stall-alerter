@@ -12,12 +12,15 @@ services:
             - "${APPLICATION_SERVER_PORT:-4000}:${APPLICATION_SERVER_PORT:-4000}"
         volumes:
             - .:/server
+        # Update the tables and default data first, then start the API
+        command: sh -c "yarn db:migrate && yarn db:seed && yarn dev"
         environment:
             - APPLICATION_SERVER_PORT=${APPLICATION_SERVER_PORT:-4000}
             - APP_FORCE_SHUTDOWN_SECOND=${APP_FORCE_SHUTDOWN_SECOND:-30}
             - MYSQL_HOST=db
             - MYSQL_PORT=3306
             - MYSQL_DATABASE=${MYSQL_DATABASE:-stallalert}
+            - MYSQL_TEST_DATABASE=${MYSQL_TEST_DATABASE:-stallalert_test}
             - MYSQL_USER=${MYSQL_USER:-stallalert}
             - MYSQL_PASSWORD=${MYSQL_PASSWORD:-stallalert}
 
@@ -34,8 +37,11 @@ services:
             MYSQL_DATABASE: ${MYSQL_DATABASE:-stallalert}
             MYSQL_USER: ${MYSQL_USER:-stallalert}
             MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stallalert}
+            MYSQL_TEST_DATABASE: ${MYSQL_TEST_DATABASE:-stallalert_test}
         volumes:
             - stallalert-mysql-data:/var/lib/mysql
+            # Creates the test database on the first start
+            - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
         healthcheck:
             test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
             interval: 5s
