@@ -4,6 +4,18 @@ export enum ERROR_CODES {
     E_INTERNAL_SERVER_ERROR = "E_INTERNAL_SERVER_ERROR",
     E_SERVICE_UNAVAILABLE = "E_SERVICE_UNAVAILABLE",
     E_CONFLICT = "E_CONFLICT",
+    E_NOT_FOUND = "E_NOT_FOUND",
+    // File errors (spec C7): the whole upload is rejected and nothing is stored.
+    // Same values as FileErrorCode in constant/board.ts.
+    FILE_TOO_LARGE = "FILE_TOO_LARGE",
+    UNSUPPORTED_FILE = "UNSUPPORTED_FILE",
+    INVALID_ENCODING = "INVALID_ENCODING",
+    EMPTY_FILE = "EMPTY_FILE",
+    TOO_MANY_ROWS = "TOO_MANY_ROWS",
+    MISSING_HEADERS = "MISSING_HEADERS",
+    DUPLICATE_HEADERS = "DUPLICATE_HEADERS",
+    INVALID_CSV = "INVALID_CSV",
+    VALUE_TOO_LONG = "VALUE_TOO_LONG",
 }
 
 export const errorMessages: Record<ERROR_CODES, { message: string }> = {
@@ -22,6 +34,36 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
     },
     E_CONFLICT: {
         message: "The data changed since you loaded it. Reload and try again.",
+    },
+    E_NOT_FOUND: {
+        message: "Not found",
+    },
+    FILE_TOO_LARGE: {
+        message: "The file is larger than 5 MB.",
+    },
+    UNSUPPORTED_FILE: {
+        message: "Upload a .csv file.",
+    },
+    INVALID_ENCODING: {
+        message: "The file is not UTF-8 text.",
+    },
+    EMPTY_FILE: {
+        message: "The file is empty.",
+    },
+    TOO_MANY_ROWS: {
+        message: "The file has more than 10,000 candidates.",
+    },
+    MISSING_HEADERS: {
+        message: "Required columns are missing.",
+    },
+    DUPLICATE_HEADERS: {
+        message: "Some column names appear more than once.",
+    },
+    INVALID_CSV: {
+        message: "The file is not valid CSV.",
+    },
+    VALUE_TOO_LONG: {
+        message: "Some values are longer than 255 characters.",
     },
 };
 

@@ -24,3 +24,15 @@ export const parseIsoDate = (value: string): number | null => {
 };
 
 export const daysBetween = (fromDay: number, toDay: number): number => toDay - fromDay;
+
+// Day number → "YYYY-MM-DD" (years 1-9999).
+export const toIsoDate = (dayNumber: number): string => {
+    const date = new Date(dayNumber * MS_PER_DAY);
+    const year = String(date.getUTCFullYear()).padStart(4, "0");
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+// The UTC calendar day of a moment in time (milliseconds since 1970).
+export const dayNumberOf = (epochMs: number): number => Math.floor(epochMs / MS_PER_DAY);

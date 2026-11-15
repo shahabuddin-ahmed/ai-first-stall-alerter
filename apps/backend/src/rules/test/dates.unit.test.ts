@@ -1,4 +1,4 @@
-import { daysBetween, parseIsoDate } from "../dates";
+import { dayNumberOf, daysBetween, parseIsoDate, toIsoDate } from "../dates";
 
 describe("parseIsoDate", () => {
     it.each(["2026-11-13", "2024-02-29", "0001-01-01", "9999-12-31"])("accepts the real date %s", (value) => {
@@ -40,5 +40,17 @@ describe("daysBetween", () => {
     it("works across leap days and years", () => {
         expect(days("2024-02-28", "2024-03-01")).toBe(2);
         expect(days("2025-12-31", "2026-01-01")).toBe(1);
+    });
+});
+
+describe("toIsoDate and dayNumberOf", () => {
+    it("turns a day number back into the same date", () => {
+        for (const value of ["2026-11-13", "2024-02-29", "0001-01-01", "1969-12-31"]) {
+            expect(toIsoDate(parseIsoDate(value)!)).toBe(value);
+        }
+    });
+
+    it("gives the UTC day of a moment", () => {
+        expect(toIsoDate(dayNumberOf(Date.UTC(2026, 10, 13, 23, 59)))).toBe("2026-11-13");
     });
 });
