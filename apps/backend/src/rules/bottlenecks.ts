@@ -1,4 +1,5 @@
 import { Bottleneck, QueueItem } from "./types";
+import { BottleneckType } from "../constant/board";
 
 const MIN_STALLED = 2;
 
@@ -18,14 +19,14 @@ export const findBottlenecks = (queue: QueueItem[]): Bottleneck[] => {
         ([stageA, countA], [stageB, countB]) => countB - countA || positions.get(stageB)! - positions.get(stageA)!
     ); // ties → the later stage
     if (topStage && topStage[1] >= MIN_STALLED) {
-        bottlenecks.push({ type: "stage", key: topStage[0], stalled: topStage[1] });
+        bottlenecks.push({ type: BottleneckType.STAGE, key: topStage[0], stalled: topStage[1] });
     }
 
     const [topRecruiter] = [...countBy(queue, (item) => item.recruiter)].sort(
         ([nameA, countA], [nameB, countB]) => countB - countA || (nameA < nameB ? -1 : nameA > nameB ? 1 : 0)
     ); // ties → name A-Z
     if (topRecruiter && topRecruiter[1] >= MIN_STALLED) {
-        bottlenecks.push({ type: "recruiter", key: topRecruiter[0], stalled: topRecruiter[1] });
+        bottlenecks.push({ type: BottleneckType.RECRUITER, key: topRecruiter[0], stalled: topRecruiter[1] });
     }
 
     return bottlenecks;

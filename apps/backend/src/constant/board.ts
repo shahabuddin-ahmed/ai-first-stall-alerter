@@ -57,5 +57,11 @@ export enum RowErrorCode {
     DUPLICATE_ID = "DUPLICATE_ID",
 }
 
+// Where follow-ups pile up: a stage or a recruiter.
+export enum BottleneckType {
+    STAGE = "stage",
+    RECRUITER = "recruiter",
+}
+
 // Used as the field name when the whole record is wrong (field count).
 export const RECORD_FIELD = "(record)";
