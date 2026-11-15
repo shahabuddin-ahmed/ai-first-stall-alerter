@@ -12,6 +12,8 @@ services:
             - "${APPLICATION_SERVER_PORT:-4000}:${APPLICATION_SERVER_PORT:-4000}"
         volumes:
             - .:/server
+            # Keep the container's own node_modules (Linux), not the host's
+            - /server/node_modules
         # Update the tables and default data first, then start the API
         command: sh -c "yarn db:migrate && yarn db:seed && yarn dev"
         environment:

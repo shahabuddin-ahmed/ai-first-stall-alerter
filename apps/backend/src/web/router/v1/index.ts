@@ -39,7 +39,7 @@ export const newV1Router = async ({
     v1.use("/imports/:id/export", await newExportRouter(exportController));
     v1.use("/imports", await newImportRouter(importController));
 
-    v1.use("*", (_req, res) => {
+    v1.use("*", (_req, _res) => {
         console.log(`not_found_for_v1`, _req.method, _req.baseUrl);
         throw new NotFoundException(ERROR_CODES.E_PAGE_NOT_FOUND, "", [
             `Cannot ${_req.method} ${_req.baseUrl}`,

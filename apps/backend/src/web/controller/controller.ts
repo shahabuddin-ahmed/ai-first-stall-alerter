@@ -18,7 +18,7 @@ export abstract class Controller {
             message: requestedData.message ? requestedData.message : statusCode >= 500 ? errorMessages.E_INTERNAL_SERVER_ERROR.message : "Success",
             response: requestedData.response ? requestedData.response : null,
             errors: requestedData.errors && requestedData.errors.length ? requestedData.errors : statusCode >= 500 ? [`${requestedData.message}`] : []
-        } as ResponseType)
+        } as ResponseType);
     }
 
     async validateRequest(schema: ObjectSchema, data: any): Promise<{ value?: any; }> {
@@ -27,7 +27,7 @@ export abstract class Controller {
         if (error) {
             const errorMessages = error.details.map((detail) => detail.message);
 
-            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "",  errorMessages)
+            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "",  errorMessages);
         }
     
         return { value };
