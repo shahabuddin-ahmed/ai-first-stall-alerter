@@ -64,7 +64,7 @@ calls, chat, message queues, Redis, microservices, real candidate data.
 | Part | Choice | Reason |
 |---|---|---|
 | Backend | My Express + TypeScript boilerplate (`apps/backend`), clean layers | Known and proven; baseline commit `e90ed03` |
-| Rules engine | Pure TypeScript domain module, no framework, DB, network or clock | Deterministic, unit-testable |
+| Rules engine | Pure TypeScript rules module (`src/rules`), no framework, DB, network or clock | Deterministic, unit-testable |
 | Database | **MySQL 8** + Sequelize (from the boilerplate), utf8mb4; `candidate_id` uses `utf8mb4_bin` | Already set up; relational data with unique keys and cascades |
 | Validation | Joi (the boilerplate's request validation) | Already in place |
 | AI | One `fetch` adapter to an OpenAI-compatible endpoint (OpenRouter by default), JSON-schema response format, schema validation | One prompt, one JSON; no SDK to keep compatible |
@@ -78,7 +78,7 @@ Redis would only be needed if the API ran as several copies (README "next steps"
 ```
 web/        routes + controllers (Joi validation, error mapping)          ← presentation
 service/    use cases: import board, get queue, export, insights, stages, settings  ← application
-domain/     pure rules: csv · validate · dates · stages · rank · explain · templates · bottlenecks · facts · export
+rules/      pure rules: csv-reader · row-checks · dates · stage-matcher · analyse-board · messages · bottlenecks · facts · export
 repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) ← infrastructure
 ai/         HTTP insights generator · fake generator · guardrails · prompt         ← infrastructure
 infra/      MySQL connection, config cache
@@ -180,7 +180,7 @@ ascending), each shown only if its count ≥ 2.
 ### C7. Validation
 **File errors** reject the whole file; nothing is stored; the previous queue and AI text are cleared:
 `FILE_TOO_LARGE` (413, > 5 MB) · `UNSUPPORTED_FILE` (415) · `INVALID_ENCODING` · `EMPTY_FILE` · `TOO_MANY_ROWS`
-(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) — 422 unless noted.
+(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) · `VALUE_TOO_LONG` (a known column over 255 characters, with the record and column) — 422 unless noted.
 
 **Row errors** exclude the record; the rest still rank; the excluded count is shown. A record lists every error but
 counts once as invalid: field count differs · required value missing · date not a real `YYYY-MM-DD` · date after the
