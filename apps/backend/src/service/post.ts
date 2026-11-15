@@ -60,10 +60,7 @@ export class PostService implements PostServiceInterface {
         return { data, offset, limit, total };
     }
 
-    async update(
-        id: number,
-        update: Partial<PostInterface>
-    ): Promise<PostInterface> {
+    async update(id: number, update: Partial<PostInterface>): Promise<PostInterface> {
         const payload = {
             ...update,
             updatedAt: update.updatedAt ?? new Date(),
@@ -84,8 +81,6 @@ export class PostService implements PostServiceInterface {
     }
 }
 
-export const newPostService = async (
-    repo: PostRepoInterface
-): Promise<PostService> => {
+export const newPostService = async (repo: PostRepoInterface): Promise<PostService> => {
     return new PostService(repo);
 };

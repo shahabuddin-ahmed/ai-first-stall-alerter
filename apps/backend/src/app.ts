@@ -26,9 +26,7 @@ import { requestId } from "./web/middleware/request-id";
 import { requestLogger } from "./web/middleware/request-logger";
 import { newCors, securityHeaders } from "./web/middleware/security";
 import { newRateLimit } from "./web/middleware/rate-limit";
-
-// JSON bodies are small (stage lists, settings). CSV files come in as multipart, limited to 5 MB by the upload middleware.
-const JSON_BODY_LIMIT = "100kb";
+import { API_PREFIX, JSON_BODY_LIMIT } from "./constant/api";
 
 const app = express();
 
@@ -37,11 +35,10 @@ app.use(requestId);
 app.use(requestLogger);
 app.use(newCors(config.SECURITY.WEB_ORIGINS));
 app.use(bodyParser.json({ limit: JSON_BODY_LIMIT }));
-app.use(bodyParser.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 
 // Rate limits on the expensive endpoints (checked before the routes run).
-app.post("/api/v1/imports", newRateLimit(config.SECURITY.UPLOADS_PER_MINUTE));
-app.post("/api/v1/imports/:id/insights", newRateLimit(config.SECURITY.INSIGHTS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports`, newRateLimit(config.SECURITY.UPLOADS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.INSIGHTS_PER_MINUTE));
 
 // Connects to MySQL, loads the stages and settings, then adds the routes.
 // server.ts waits for this before it accepts any request.
@@ -95,7 +92,7 @@ export const appReady: Promise<void> = (async () => {
         exportController: exportV1Controller,
     });
 
-    app.use("/api/v1", v1Router);
+    app.use(API_PREFIX, v1Router);
     app.use(globalErrorHandler);
 })();
 

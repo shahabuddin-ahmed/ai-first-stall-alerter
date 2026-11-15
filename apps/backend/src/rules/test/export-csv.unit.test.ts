@@ -29,7 +29,7 @@ describe("buildExportCsv", () => {
         expect(csv.startsWith("\uFEFF")).toBe(true);
         expect(lines(csv)[0]).toBe(
             "rank,candidate_id,name,role,stage,recruiter,reference_date,stage_threshold,timer_from,days_in_stage," +
-            "overdue_days,reason,action,message_to,message_draft,message_source,ai_note_status"
+                "overdue_days,reason,action,message_to,message_draft,message_source,ai_note_status"
         );
         expect(csv.endsWith("\r\n")).toBe(true);
     });
@@ -39,7 +39,9 @@ describe("buildExportCsv", () => {
     });
 
     it("quotes values with commas, quotes or line breaks (RFC 4180)", () => {
-        const csv = buildExportCsv([row({ [ExportColumn.NAME]: "Lopes, Ana", [ExportColumn.REASON]: 'She said "soon"\nthen nothing' })]);
+        const csv = buildExportCsv([
+            row({ [ExportColumn.NAME]: "Lopes, Ana", [ExportColumn.REASON]: 'She said "soon"\nthen nothing' }),
+        ]);
 
         expect(csv).toContain('"Lopes, Ana"');
         expect(csv).toContain('"She said ""soon""\nthen nothing"');

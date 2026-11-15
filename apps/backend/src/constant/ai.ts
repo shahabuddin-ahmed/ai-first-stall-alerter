@@ -79,5 +79,18 @@ export const AI_LIMITS = {
     TOP_RECRUITERS: 5,
 } as const;
 
+// The AI sees recruiters as "R1", "R2"... never their names.
+export const RECRUITER_KEY_PREFIX = "R";
+export const RECRUITER_KEY_PATTERN = /\bR\d+\b/g;
+
+// The one chat request StallAlert sends (OpenAI-compatible API).
+export const AI_REQUEST = {
+    CHAT_PATH: "/chat/completions",
+    TEMPERATURE: 0.2,
+    APP_TITLE: "StallAlert", // OpenRouter shows this name in its usage list
+    RESPONSE_FORMAT: "json_schema",
+    SCHEMA_NAME: "stall_insights",
+} as const;
+
 // Bump when the prompt or the facts change, so old cached answers are not reused.
 export const PROMPT_VERSION = "v1";

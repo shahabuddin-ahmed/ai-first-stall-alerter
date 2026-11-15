@@ -1,9 +1,6 @@
-import { EXPORT_COLUMNS, ExportColumn, FORMULA_START } from "../constant/export";
+import { CSV_BOM, CSV_LINE_END, EXPORT_COLUMNS, ExportColumn, FORMULA_START } from "../constant/export";
 
 export type ExportRow = Record<ExportColumn, string | number | null>;
-
-const BOM = "﻿"; // lets Excel read the file as UTF-8 (names with accents)
-const LINE_END = "\r\n"; // RFC 4180
 
 // A value that would start a spreadsheet formula gets a ' in front, so it shows as text.
 export const guardFormula = (value: string): string => (FORMULA_START.test(value) ? `'${value}` : value);
@@ -23,5 +20,5 @@ const toCell = (value: string | number | null): string => {
 export const buildExportCsv = (rows: ExportRow[]): string => {
     const header = EXPORT_COLUMNS.join(",");
     const body = rows.map((row) => EXPORT_COLUMNS.map((column) => toCell(row[column])).join(","));
-    return BOM + [header, ...body].join(LINE_END) + LINE_END;
+    return CSV_BOM + [header, ...body].join(CSV_LINE_END) + CSV_LINE_END;
 };

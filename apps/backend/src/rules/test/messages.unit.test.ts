@@ -17,21 +17,26 @@ describe("ACTIONS", () => {
 
 describe("explainReason", () => {
     const base = {
-        name: "Hana Novak", stage: "Applied", recruiter: "Recruiter C", actionCode: ActionCode.REVIEW_APPLICATION,
-        stageThreshold: 5, timerFrom: "2026-10-10", timerSource: TimerSource.STAGE_ENTERED,
+        name: "Hana Novak",
+        stage: "Applied",
+        recruiter: "Recruiter C",
+        actionCode: ActionCode.REVIEW_APPLICATION,
+        stageThreshold: 5,
+        timerFrom: "2026-10-10",
+        timerSource: TimerSource.STAGE_ENTERED,
     };
 
     it("explains a stall from the stage start", () => {
         expect(explainReason({ ...base, daysInStage: 34, overdueDays: 29 })).toBe(
             "Hana Novak has been in Applied for 34 days with no recorded activity. The Applied threshold is 5 days, " +
-            "so the application is 29 days overdue. Recruiter C should review the application."
+                "so the application is 29 days overdue. Recruiter C should review the application."
         );
     });
 
     it("explains a stall from the last activity", () => {
         expect(explainReason({ ...base, timerSource: TimerSource.LAST_ACTIVITY, daysInStage: 6, overdueDays: 1 })).toBe(
             "Hana Novak has had no activity in Applied since 2026-10-10 (6 days). The Applied threshold is 5 days, " +
-            "so the application is 1 day overdue. Recruiter C should review the application."
+                "so the application is 1 day overdue. Recruiter C should review the application."
         );
     });
 
@@ -48,14 +53,14 @@ describe("templateMessage", () => {
     it("addresses the candidate by first name", () => {
         expect(templateMessage(ActionCode.CONFIRM_OFFER, facts)).toBe(
             "Hi Amara, I am following up on the offer for the Backend Engineer position. " +
-            "Please let me know your decision or any questions you have. Best regards, Recruiter A"
+                "Please let me know your decision or any questions you have. Best regards, Recruiter A"
         );
     });
 
     it("addresses the hiring manager about the candidate", () => {
         expect(templateMessage(ActionCode.REVIEW_APPLICATION, facts)).toBe(
             "Hi, could you review Amara Okafor's application for the Backend Engineer role? " +
-            "It is waiting in Applied and needs a decision on the next step. Thanks, Recruiter A"
+                "It is waiting in Applied and needs a decision on the next step. Thanks, Recruiter A"
         );
     });
 

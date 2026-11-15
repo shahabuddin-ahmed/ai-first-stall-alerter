@@ -12,8 +12,7 @@ const toStageConfig = (stage: StageInterface): StageConfig => ({
     type: stage.type,
     thresholdDays: stage.thresholdDays,
     position: stage.position,
-    // mysql2 usually parses JSON columns; some setups return a string
-    aliases: typeof stage.aliases === "string" ? JSON.parse(stage.aliases) : stage.aliases,
+    aliases: stage.aliases, // a JSON column: mysql2 returns it as an array
     actionCode: stage.actionCode,
 });
 

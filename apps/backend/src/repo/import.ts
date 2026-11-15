@@ -17,7 +17,11 @@ export interface ImportRepoInterface {
 }
 
 export class ImportRepo implements ImportRepoInterface {
-    public async create(details: ImportInterface, records: BoardRecord[], transaction: Transaction): Promise<ImportInterface> {
+    public async create(
+        details: ImportInterface,
+        records: BoardRecord[],
+        transaction: Transaction
+    ): Promise<ImportInterface> {
         const created = await Import.create(details, { transaction });
         const importId = created.get("id") as number;
 
@@ -44,7 +48,10 @@ export class ImportRepo implements ImportRepoInterface {
         const imports = await Import.findAll({
             offset,
             limit,
-            order: [["createdAt", "DESC"], ["id", "DESC"]],
+            order: [
+                ["createdAt", "DESC"],
+                ["id", "DESC"],
+            ],
         });
         return imports.map((found) => found.get({ plain: true }) as ImportInterface);
     }
@@ -61,18 +68,7 @@ export class ImportRepo implements ImportRepoInterface {
             attributes: { exclude: ["importId"] },
             raw: true,
         });
-        return records.map((record) => ({
-            ...(record as unknown as BoardRecord),
-            // empty text is stored as "" but be safe with NULLs from manual edits
-            candidateId: record.candidateId ?? "",
-            name: record.name ?? "",
-            role: record.role ?? "",
-            stage: record.stage ?? "",
-            stageEnteredAt: record.stageEnteredAt ?? "",
-            recruiter: record.recruiter ?? "",
-            lastActivityAt: record.lastActivityAt ?? "",
-            lastContactedAt: record.lastContactedAt ?? "",
-        }));
+        return records as unknown as BoardRecord[]; // empty values are stored as "", never NULL
     }
 
     // Rows and cached AI results are deleted by the database (ON DELETE CASCADE).

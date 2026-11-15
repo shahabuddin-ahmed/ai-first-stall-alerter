@@ -72,10 +72,7 @@ export class PostController extends Controller implements PostControllerInterfac
             updatedAt: Joi.date().iso().optional(),
         }).min(1);
 
-        const { value: params } = await this.validateRequest(
-            paramSchema,
-            req.params
-        );
+        const { value: params } = await this.validateRequest(paramSchema, req.params);
         const { value: body } = await this.validateRequest(bodySchema, req.body);
 
         const data = await this.postService.update(params.id, body);
@@ -93,8 +90,6 @@ export class PostController extends Controller implements PostControllerInterfac
     }
 }
 
-export const newPostV1Controller = async (
-    postService: PostServiceInterface
-): Promise<PostController> => {
+export const newPostV1Controller = async (postService: PostServiceInterface): Promise<PostController> => {
     return new PostController(postService);
 };

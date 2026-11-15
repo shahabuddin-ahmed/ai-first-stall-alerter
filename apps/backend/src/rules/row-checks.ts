@@ -50,11 +50,13 @@ export const validateRecords = (
             rowErrors.push({
                 recordNumber: record.recordNumber,
                 candidateId: record.candidateId,
-                errors: [{
-                    field: RECORD_FIELD,
-                    code: RowErrorCode.FIELD_COUNT,
-                    problem: PROBLEMS.fieldCount(record.fieldCount, board.headerCount),
-                }],
+                errors: [
+                    {
+                        field: RECORD_FIELD,
+                        code: RowErrorCode.FIELD_COUNT,
+                        problem: PROBLEMS.fieldCount(record.fieldCount, board.headerCount),
+                    },
+                ],
             });
             continue; // the values are in the wrong columns, so nothing else can be checked
         }
@@ -66,9 +68,13 @@ export const validateRecords = (
             }
         }
 
-        const stage = record.stage === "" ? undefined : stageLookup.get(normaliseStageName(record.stage));
+        const stage = stageLookup.get(normaliseStageName(record.stage));
         if (record.stage !== "" && !stage) {
-            errors.push({ field: BoardColumn.STAGE, code: RowErrorCode.UNKNOWN_STAGE, problem: PROBLEMS.unknownStage(record.stage) });
+            errors.push({
+                field: BoardColumn.STAGE,
+                code: RowErrorCode.UNKNOWN_STAGE,
+                problem: PROBLEMS.unknownStage(record.stage),
+            });
         }
 
         const enteredDay = checkDate(BoardColumn.STAGE_ENTERED_AT, record.stageEnteredAt, referenceDay, errors);
@@ -76,7 +82,11 @@ export const validateRecords = (
             checkDate(column, record[COLUMN_FIELDS[column]] as string, referenceDay, errors)
         );
 
-        checked.push({ record, errors, candidate: { stage: stage as StageConfig, enteredDay: enteredDay as number, activityDay, contactDay } });
+        checked.push({
+            record,
+            errors,
+            candidate: { stage: stage as StageConfig, enteredDay: enteredDay as number, activityDay, contactDay },
+        });
     }
 
     // Duplicate IDs: every copy is an error. IDs are exact text (case-sensitive, leading zeros kept).
@@ -92,7 +102,11 @@ export const validateRecords = (
         const copies = recordsById.get(record.candidateId) ?? [];
         if (copies.length > 1) {
             const others = copies.filter((number) => number !== record.recordNumber);
-            errors.push({ field: BoardColumn.CANDIDATE_ID, code: RowErrorCode.DUPLICATE_ID, problem: PROBLEMS.duplicate(others) });
+            errors.push({
+                field: BoardColumn.CANDIDATE_ID,
+                code: RowErrorCode.DUPLICATE_ID,
+                problem: PROBLEMS.duplicate(others),
+            });
         }
         if (errors.length > 0) {
             rowErrors.push({ recordNumber: record.recordNumber, candidateId: record.candidateId, errors });

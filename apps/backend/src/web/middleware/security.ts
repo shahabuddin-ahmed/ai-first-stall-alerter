@@ -1,6 +1,7 @@
 import cors from "cors";
 import { RequestHandler } from "express";
 import helmet from "helmet";
+import { CORS_MAX_AGE_SECONDS, CORS_METHODS } from "../../constant/api";
 import { REQUEST_ID_HEADER } from "./request-id";
 
 // Security headers (no "X-Powered-By", no sniffing, no framing). The API only serves JSON and CSV.
@@ -10,7 +11,7 @@ export const securityHeaders: RequestHandler = helmet();
 export const newCors = (allowedOrigins: string[]): RequestHandler =>
     cors({
         origin: allowedOrigins,
-        methods: ["GET", "POST", "PUT", "DELETE"],
+        methods: CORS_METHODS,
         exposedHeaders: [REQUEST_ID_HEADER, "Content-Disposition"],
-        maxAge: 600,
+        maxAge: CORS_MAX_AGE_SECONDS,
     });

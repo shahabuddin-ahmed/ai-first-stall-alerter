@@ -10,16 +10,13 @@ const gracefulShutdown = (server: http.Server, forcedTimeout: number) => {
         logger.info("Received SIGINT or SIGTERM. Shutting down gracefully...");
         server.close(async () => {
             logger.info("Closed out remaining connections.");
-
-            try {
-                await newSequelize().close();
-                console.log("Database connection closed.");
-                process.exit();
-            } catch (err) {
-                process.exit();
-            }
+            await newSequelize()
+                .close()
+                .then(() => logger.info("Database connection closed."))
+                .catch(() => logger.error("Could not close the database connection."));
+            process.exit();
         });
-        
+
         setTimeout(() => {
             logger.error("Could not close connections in time, forcefully shutting down");
             process.exit();
@@ -33,12 +30,11 @@ const forcedShutdownMs = config.APP_FORCE_SHUTDOWN_SECOND * 1000;
 process.on("SIGTERM", gracefulShutdown(server, forcedShutdownMs));
 process.on("SIGINT", gracefulShutdown(server, forcedShutdownMs));
 
-
 // Accept requests only when the database, stages and settings are ready.
 appReady
     .then(() => {
         server.listen(config.APPLICATION_SERVER_PORT, () => {
-            logger.log("StallAlert API is running on port: " + config.APPLICATION_SERVER_PORT);
+            logger.info(`StallAlert API is running on port: ${config.APPLICATION_SERVER_PORT}`);
         });
     })
     .catch((err) => {

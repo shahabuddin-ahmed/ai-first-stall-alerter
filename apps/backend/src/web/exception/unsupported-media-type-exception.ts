@@ -1,16 +1,9 @@
 import { ERROR_CODES } from "../../constant/error";
-import { retrieveErrorMessage } from "../../utils/utility";
+import { HttpStatus } from "../../constant/http";
+import { HttpException } from "./http-exception";
 
-export class UnsupportedMediaTypeException extends Error {
-
-    private statusCode;
-
-    constructor(private code: ERROR_CODES, private customMessage?: string, private errors?: string[]) {
-        const message = customMessage || retrieveErrorMessage(code);
-        super(message);
-        this.code = code;
-        this.customMessage = customMessage;
-        this.errors = errors;
-        this.statusCode = 415;
+export class UnsupportedMediaTypeException extends HttpException {
+    constructor(code: ERROR_CODES, customMessage?: string, errors?: string[]) {
+        super(HttpStatus.UNSUPPORTED_MEDIA_TYPE, code, customMessage, errors);
     }
 }

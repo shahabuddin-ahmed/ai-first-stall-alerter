@@ -29,10 +29,7 @@ export class PostRepo implements PostRepoInterface {
         return posts.map((post) => post.get({ plain: true }) as PostInterface);
     }
 
-    public async update(
-        id: number,
-        update: Partial<PostInterface>
-    ): Promise<PostInterface | null> {
+    public async update(id: number, update: Partial<PostInterface>): Promise<PostInterface | null> {
         const post = await Post.findByPk(id);
         if (!post) {
             return null;
@@ -54,8 +51,7 @@ export class PostRepo implements PostRepoInterface {
     }
 }
 
-export const newPostRepo = async (
-): Promise<PostRepoInterface> => {
+export const newPostRepo = async (): Promise<PostRepoInterface> => {
     return new PostRepo();
 };
 

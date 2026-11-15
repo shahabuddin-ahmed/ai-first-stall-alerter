@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import { Controller } from "../controller";
+import { PAGINATION } from "../../../constant/api";
 import { HttpStatus } from "../../../constant/http";
 import { ImportServiceInterface } from "../../../service/import";
+import { idParamsSchema, pageFields, queueFilterFields, referenceDateField } from "./common-schema";
 
 export interface ImportControllerInterface {
     upload(req: Request, res: Response): any;
@@ -12,36 +14,20 @@ export interface ImportControllerInterface {
     remove(req: Request, res: Response): any;
 }
 
-// Format only; the service checks that it is a real date and not in the future.
-const referenceDate = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
-    "string.pattern.base": "{{#label}} must be a YYYY-MM-DD date",
-});
-
-const idSchema = Joi.object({
-    id: Joi.number().integer().positive().required(),
-});
-
-const pageFields = {
-    page: Joi.number().integer().min(1).default(1),
-    pageSize: Joi.number().integer().min(1).max(200).default(50),
-};
-
 const boardSchema = Joi.object({
-    referenceDate,
-    stage: Joi.string().trim().max(255),
-    recruiter: Joi.string().trim().max(255),
-    search: Joi.string().trim().max(100).allow(""),
+    referenceDate: referenceDateField,
+    ...queueFilterFields,
     ...pageFields,
 });
 
 const rowErrorsSchema = Joi.object({
-    referenceDate,
+    referenceDate: referenceDateField,
     ...pageFields,
 });
 
 const listSchema = Joi.object({
     offset: Joi.number().integer().min(0).default(0),
-    limit: Joi.number().integer().min(1).max(100).default(25),
+    limit: Joi.number().integer().min(1).max(PAGINATION.MAX_LIST_LIMIT).default(PAGINATION.DEFAULT_LIST_LIMIT),
 });
 
 export class ImportController extends Controller implements ImportControllerInterface {
@@ -69,21 +55,21 @@ export class ImportController extends Controller implements ImportControllerInte
     }
 
     async getBoard(req: Request, res: Response): Promise<any> {
-        const { value: params } = await this.validateRequest(idSchema, req.params);
+        const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(boardSchema, req.query);
         const data = await this.importService.getBoard(params.id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     }
 
     async getRowErrors(req: Request, res: Response): Promise<any> {
-        const { value: params } = await this.validateRequest(idSchema, req.params);
+        const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(rowErrorsSchema, req.query);
         const data = await this.importService.getRowErrors(params.id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     }
 
     async remove(req: Request, res: Response): Promise<any> {
-        const { value } = await this.validateRequest(idSchema, req.params);
+        const { value } = await this.validateRequest(idParamsSchema, req.params);
         await this.importService.remove(value.id);
         return this.sendResponse({ response: { deleted: true } }, HttpStatus.OK, res);
     }

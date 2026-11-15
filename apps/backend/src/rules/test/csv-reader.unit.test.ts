@@ -28,9 +28,16 @@ describe("parseBoardCsv: reading records", () => {
         expect(board.headerCount).toBe(6);
         expect(board.records).toEqual([
             {
-                recordNumber: 2, fieldCount: 6, candidateId: "001", name: "Ana Ruiz", role: "QA Engineer",
-                stage: "Applied", stageEnteredAt: "2026-11-01", recruiter: "Recruiter A",
-                lastActivityAt: "", lastContactedAt: "",
+                recordNumber: 2,
+                fieldCount: 6,
+                candidateId: "001",
+                name: "Ana Ruiz",
+                role: "QA Engineer",
+                stage: "Applied",
+                stageEnteredAt: "2026-11-01",
+                recruiter: "Recruiter A",
+                lastActivityAt: "",
+                lastContactedAt: "",
             },
         ]);
     });
@@ -54,12 +61,15 @@ describe("parseBoardCsv: reading records", () => {
     it("trims headers and values, accepts any column order and ignores extra columns", () => {
         const board = parse(
             " recruiter , notes ,stage,candidate_id,name,role,stage_entered_at,last_activity_at\n" +
-            " Recruiter A ,private note, Offer , 0142 ,Wei Zhang,Data Analyst,2026-11-05,2026-11-06"
+                " Recruiter A ,private note, Offer , 0142 ,Wei Zhang,Data Analyst,2026-11-05,2026-11-06"
         );
 
         expect(board.headerCount).toBe(8);
         expect(board.records[0]).toMatchObject({
-            candidateId: "0142", recruiter: "Recruiter A", stage: "Offer", lastActivityAt: "2026-11-06",
+            candidateId: "0142",
+            recruiter: "Recruiter A",
+            stage: "Offer",
+            lastActivityAt: "2026-11-06",
         });
         expect(JSON.stringify(board.records[0])).not.toContain("private note");
     });
@@ -96,7 +106,9 @@ describe("parseBoardCsv: file errors", () => {
     });
 
     it("does not match headers with different capitals", () => {
-        expect(fileError(`Candidate_ID,name,role,stage,stage_entered_at,recruiter\n${ROW}`).details).toEqual(["candidate_id"]);
+        expect(fileError(`Candidate_ID,name,role,stage,stage_entered_at,recruiter\n${ROW}`).details).toEqual([
+            "candidate_id",
+        ]);
     });
 
     it("rejects duplicate headers", () => {

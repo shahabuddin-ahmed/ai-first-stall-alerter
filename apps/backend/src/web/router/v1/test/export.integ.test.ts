@@ -34,7 +34,8 @@ import { newSettingRouter } from "../setting";
 const sequelize = newSequelize();
 const DATA_DIR = path.resolve(__dirname, "../../../../../../../data");
 const SAMPLE_B = fs.readFileSync(path.join(DATA_DIR, "sample-b.csv"));
-const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "sample-b.json"), "utf8")).scenarios.default_stages;
+const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "sample-b.json"), "utf8")).scenarios
+    .default_stages;
 const REFERENCE_DATE = "2026-11-13";
 
 class CountingGenerator implements AiGenerator {
@@ -55,7 +56,12 @@ const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
     });
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
-        importService, configService, await newAiInsightRepo(), await newLlmCallRepo(), generator, 5
+        importService,
+        configService,
+        await newAiInsightRepo(),
+        await newLlmCallRepo(),
+        generator,
+        5
     );
     const exportService = await newExportService(importService, insightService);
     const app = express();
@@ -77,11 +83,14 @@ const upload = async (app: Express, bytes: Buffer = SAMPLE_B): Promise<number> =
 };
 
 const download = (app: Express, importId: number, query = "") =>
-    request(app).get(`/api/v1/imports/${importId}/export?referenceDate=${REFERENCE_DATE}${query}`).buffer(true).parse((res, done) => {
-        let text = "";
-        res.on("data", (chunk) => (text += chunk));
-        res.on("end", () => done(null, text));
-    });
+    request(app)
+        .get(`/api/v1/imports/${importId}/export?referenceDate=${REFERENCE_DATE}${query}`)
+        .buffer(true)
+        .parse((res, done) => {
+            let text = "";
+            res.on("data", (chunk) => (text += chunk));
+            res.on("end", () => done(null, text));
+        });
 
 // Reads the downloaded file the way a spreadsheet would.
 const readCsv = (text: string): Record<string, string>[] => parse(text, { bom: true, columns: true });
@@ -111,15 +120,25 @@ describe("GET /api/v1/imports/:id/export", () => {
 
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.headers["content-type"]).toBe("text/csv; charset=utf-8");
-        expect(res.headers["content-disposition"]).toBe(`attachment; filename="stallalert-${REFERENCE_DATE}-import-${importId}.csv"`);
+        expect(res.headers["content-disposition"]).toBe(
+            `attachment; filename="stallalert-${REFERENCE_DATE}-import-${importId}.csv"`
+        );
 
         const rows = readCsv(res.body);
         expect(Object.keys(rows[0])).toEqual([...EXPORT_COLUMNS]);
         expect(rows.map((row) => row.candidate_id)).toEqual(EXPECTED_B.queue.map((item: any) => item.candidate_id));
         expect(rows[0]).toMatchObject({
-            rank: "1", candidate_id: "127", name: "Hana Novak", stage: "Applied", reference_date: REFERENCE_DATE,
-            stage_threshold: "5", timer_from: "2026-10-10", days_in_stage: "34", overdue_days: "29",
-            action: "Review the application", message_to: "Hiring manager",
+            rank: "1",
+            candidate_id: "127",
+            name: "Hana Novak",
+            stage: "Applied",
+            reference_date: REFERENCE_DATE,
+            stage_threshold: "5",
+            timer_from: "2026-10-10",
+            days_in_stage: "34",
+            overdue_days: "29",
+            action: "Review the application",
+            message_to: "Hiring manager",
         });
         expect(rows.find((row) => row.candidate_id === "0142")).toBeDefined(); // leading zero kept
     });
@@ -135,7 +154,9 @@ describe("GET /api/v1/imports/:id/export", () => {
         const rows = readCsv((await download(app, importId)).body);
 
         expect(rows.slice(0, 5).map((row) => row.ai_note_status)).toEqual(Array(5).fill(AiNoteStatus.PENDING));
-        expect(new Set(rows.slice(5).map((row) => row.ai_note_status))).toEqual(new Set([AiNoteStatus.OUTSIDE_AI_SCOPE]));
+        expect(new Set(rows.slice(5).map((row) => row.ai_note_status))).toEqual(
+            new Set([AiNoteStatus.OUTSIDE_AI_SCOPE])
+        );
         rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
@@ -149,7 +170,10 @@ describe("GET /api/v1/imports/:id/export", () => {
         );
         expect(rows[0].message_draft).toContain("Hana Novak"); // names filled in
         expect(rows[0].message_draft).not.toContain("{{");
-        expect(rows[5]).toMatchObject({ ai_note_status: AiNoteStatus.OUTSIDE_AI_SCOPE, message_source: MessageSource.TEMPLATE });
+        expect(rows[5]).toMatchObject({
+            ai_note_status: AiNoteStatus.OUTSIDE_AI_SCOPE,
+            message_source: MessageSource.TEMPLATE,
+        });
         expect(generator.calls).toBe(1); // only the insights request
     });
 
@@ -191,12 +215,12 @@ describe("GET /api/v1/imports/:id/export", () => {
     it("stops spreadsheet formulas from running", async () => {
         const board = Buffer.from(
             "candidate_id,name,role,stage,stage_entered_at,recruiter\n" +
-            '901,"=HYPERLINK(""http://evil.test"",""click"")",+Analyst,Offer,2026-11-01,@Recruiter\n'
+                '901,"=HYPERLINK(""http://evil.test"",""click"")",+Analyst,Offer,2026-11-01,@Recruiter\n'
         );
         const rows = readCsv((await download(app, await upload(app, board))).body);
 
         expect(rows[0]).toMatchObject({
-            name: "'=HYPERLINK(\"http://evil.test\",\"click\")",
+            name: '\'=HYPERLINK("http://evil.test","click")',
             role: "'+Analyst",
             recruiter: "'@Recruiter",
         });

@@ -19,7 +19,6 @@ const newRunner = (sequelize: Sequelize, folder: string, tableName: string): Umz
 export const newMigrator = (sequelize: Sequelize): Umzug<QueryInterface> =>
     newRunner(sequelize, "migrations", MIGRATION_TABLE);
 
-export const newSeeder = (sequelize: Sequelize): Umzug<QueryInterface> =>
-    newRunner(sequelize, "seeders", SEEDER_TABLE);
+export const newSeeder = (sequelize: Sequelize): Umzug<QueryInterface> => newRunner(sequelize, "seeders", SEEDER_TABLE);
 
 export type Migration = (params: { context: QueryInterface }) => Promise<void>;

@@ -31,7 +31,9 @@ const countRows = async (sql: string, replacements: unknown[]): Promise<number> 
 beforeAll(async () => {
     // Safety: never drop tables in a real database.
     if (!config.SEQUELIZE.MYSQL_DATABASE.endsWith("_test")) {
-        throw new Error(`Refusing to run migration tests on "${config.SEQUELIZE.MYSQL_DATABASE}" (name must end with _test)`);
+        throw new Error(
+            `Refusing to run migration tests on "${config.SEQUELIZE.MYSQL_DATABASE}" (name must end with _test)`
+        );
     }
     // Start from an empty database.
     await seeder.down({ to: 0 });
@@ -69,8 +71,12 @@ describe("database migrations", () => {
         await seeder.up();
 
         const stages = await sequelize.query<{
-            name: string; type: string; threshold_days: number | null; position: number;
-            aliases: string[] | string; action_code: string | null;
+            name: string;
+            type: string;
+            threshold_days: number | null;
+            position: number;
+            aliases: string[];
+            action_code: string | null;
         }>("SELECT name, type, threshold_days, position, aliases, action_code FROM stages ORDER BY position", {
             type: QueryTypes.SELECT,
         });
@@ -87,9 +93,8 @@ describe("database migrations", () => {
             [9, "Rejected", "final", null, null],
             [10, "Withdrawn", "final", null, null],
         ]);
-        const aliases = (value: string[] | string) => (typeof value === "string" ? JSON.parse(value) : value);
-        expect(aliases(stages[0].aliases)).toEqual(["New", "Sourced"]);
-        expect(aliases(stages[9].aliases)).toEqual(["Declined"]);
+        expect(stages[0].aliases).toEqual(["New", "Sourced"]);
+        expect(stages[9].aliases).toEqual(["Declined"]);
 
         const settings = await sequelize.query<{ id: number; use_ai_drafts: number; stages_version: number }>(
             "SELECT id, use_ai_drafts, stages_version FROM settings",

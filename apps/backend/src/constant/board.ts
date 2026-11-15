@@ -30,8 +30,12 @@ export const KNOWN_COLUMNS: readonly BoardColumn[] = [...REQUIRED_COLUMNS, ...OP
 export const BOARD_LIMITS = {
     MAX_FILE_BYTES: 5 * 1024 * 1024,
     MAX_RECORDS: 10_000,
-    // Matches the VARCHAR(255) columns in import_records
+    // Matches the VARCHAR(255) columns in import_records (and imports.file_name)
     MAX_VALUE_LENGTH: 255,
+    // How many examples a file error lists (e.g. the first 10 values that are too long)
+    MAX_ERROR_DETAILS: 10,
+    // A stage or recruiter is a bottleneck from this many stalled candidates
+    MIN_BOTTLENECK_STALLED: 2,
 } as const;
 
 // Problems that reject the whole file. Nothing is stored.

@@ -1,16 +1,15 @@
 import { RequestHandler } from "express";
 import { rateLimit } from "express-rate-limit";
+import { RATE_LIMIT_WINDOW_MS } from "../../constant/api";
 import { ERROR_CODES, errorMessages } from "../../constant/error";
 import { HttpStatus } from "../../constant/http";
 import { ResponseType } from "../controller/controller";
-
-const ONE_MINUTE_MS = 60 * 1000;
 
 // Limits how often one IP address can call an expensive endpoint (uploads, AI insights).
 // Counts are kept in memory: fine for one API process (several would need a shared store, see README).
 export const newRateLimit = (perMinute: number): RequestHandler =>
     rateLimit({
-        windowMs: ONE_MINUTE_MS,
+        windowMs: RATE_LIMIT_WINDOW_MS,
         limit: perMinute,
         standardHeaders: "draft-7",
         legacyHeaders: false,

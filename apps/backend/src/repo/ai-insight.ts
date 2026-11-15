@@ -10,11 +10,7 @@ export interface AiInsightRepoInterface {
 export class AiInsightRepo implements AiInsightRepoInterface {
     public async findByKey(cacheKey: string): Promise<AiOutput | null> {
         const found = await AiInsight.findOne({ where: { cacheKey } });
-        if (!found) {
-            return null;
-        }
-        const output = found.get("output") as AiOutput | string;
-        return typeof output === "string" ? (JSON.parse(output) as AiOutput) : output;
+        return found ? (found.get("output") as AiOutput) : null; // a JSON column: mysql2 returns the object
     }
 
     // Only checked answers are saved. If the same answer is saved twice at once, the first one stays.

@@ -1,7 +1,15 @@
 import crypto from "crypto";
-import { AiErrorCode, AiNoteStatus, AiStatus, LlmCallStatus, MessageSource, PROMPT_VERSION } from "../constant/ai";
+import {
+    AiErrorCode,
+    AiNoteStatus,
+    AiStatus,
+    LlmCallStatus,
+    MessageSource,
+    PROMPT_VERSION,
+    RECRUITER_KEY_PATTERN,
+} from "../constant/ai";
 import { ActionCode, RecipientType } from "../constant/stage";
-import { AiError, AiGenerator } from "../ai/generator";
+import { AiError, AiGenerator, GenerationResult } from "../ai/generator";
 import { AiOutput, checkAiOutput } from "../ai/guardrails";
 import { AiInsightRepoInterface } from "../repo/ai-insight";
 import { LlmCallRepoInterface } from "../repo/llm-call";
@@ -68,9 +76,8 @@ export class InsightService implements InsightServiceInterface {
     async getInsights(importId: number, referenceDate?: string): Promise<InsightsView> {
         const { analysis } = await this.importService.analyse(importId, referenceDate);
         const { useAiDrafts, stagesVersion } = this.configService.getSnapshot();
-        const model = this.generator?.model ?? null;
         const templates = (aiStatus: AiStatus, errorCode: AiErrorCode | null = null) =>
-            this.templateView(importId, analysis, aiStatus, errorCode, model);
+            this.templateView(importId, analysis, aiStatus, errorCode);
 
         if (analysis.queue.length === 0) {
             return templates(AiStatus.NOTHING_STALLED);
@@ -91,7 +98,9 @@ export class InsightService implements InsightServiceInterface {
         }
 
         const attempt = await this.callOnce(cacheKey, importId, facts);
-        return attempt.ok ? this.aiView(importId, analysis, attempt.output, false) : templates(AiStatus.FAILED, attempt.code);
+        return attempt.ok
+            ? this.aiView(importId, analysis, attempt.output, false)
+            : templates(AiStatus.FAILED, attempt.code);
     }
 
     // Reads the cache and the call log only. Never calls the AI.
@@ -127,8 +136,12 @@ export class InsightService implements InsightServiceInterface {
 
     // One report = one import, reference date, stages version, top N, prompt version and model.
     cacheKey(importId: number, referenceDate: string, stagesVersion: number): string {
-        const parts = [importId, referenceDate, stagesVersion, this.topN, PROMPT_VERSION, this.generator?.model ?? ""];
+        const parts = [importId, referenceDate, stagesVersion, this.topN, PROMPT_VERSION, this.model ?? ""];
         return crypto.createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+    }
+
+    private get model(): string | null {
+        return this.generator?.model ?? null;
     }
 
     private callOnce(cacheKey: string, importId: number, facts: InsightFacts): Promise<Attempt> {
@@ -145,8 +158,11 @@ export class InsightService implements InsightServiceInterface {
         const generator = this.generator as AiGenerator;
         const startedAt = Date.now();
         let result: Attempt;
-        let usage: { servedModel: string | null; inputTokens: number | null; outputTokens: number | null; costUsd: number | null } = {
-            servedModel: null, inputTokens: null, outputTokens: null, costUsd: null,
+        let usage: Omit<GenerationResult, "output"> = {
+            servedModel: null,
+            inputTokens: null,
+            outputTokens: null,
+            costUsd: null,
         };
 
         try {
@@ -180,9 +196,15 @@ export class InsightService implements InsightServiceInterface {
         );
         if (result.ok) {
             // Only checked answers are cached, with placeholders (no names). Failures are never cached.
-            const output = result.output;
+            const { output } = result;
             await this.safely("cache the AI answer", () =>
-                this.aiInsightRepo.save({ importId, cacheKey, model: generator.model, promptVersion: PROMPT_VERSION, output })
+                this.aiInsightRepo.save({
+                    importId,
+                    cacheKey,
+                    model: generator.model,
+                    promptVersion: PROMPT_VERSION,
+                    output,
+                })
             );
         }
         return result;
@@ -200,7 +222,7 @@ export class InsightService implements InsightServiceInterface {
     private aiView(importId: number, analysis: BoardAnalysis, output: AiOutput, cached: boolean): InsightsView {
         // Turn "R1" back into the recruiter's name for people reading the text.
         const names = new Map([...recruiterKeysOf(analysis.queue)].map(([name, key]) => [key, name]));
-        const withNames = (text: string) => text.replace(/\bR(\d+)\b/g, (key) => names.get(key) ?? key);
+        const withNames = (text: string) => text.replace(RECRUITER_KEY_PATTERN, (key) => names.get(key) ?? key);
         const draftByRank = new Map(output.drafts.map((draft) => [draft.rank, draft.text]));
 
         return {
@@ -208,7 +230,7 @@ export class InsightService implements InsightServiceInterface {
             referenceDate: analysis.referenceDate,
             aiStatus: AiStatus.AI_DRAFT,
             errorCode: null,
-            model: this.generator?.model ?? null,
+            model: this.model,
             cached,
             topN: this.topN,
             briefing: { text: withNames(output.briefing), source: MessageSource.AI_DRAFT },
@@ -233,15 +255,14 @@ export class InsightService implements InsightServiceInterface {
         importId: number,
         analysis: BoardAnalysis,
         aiStatus: AiStatus,
-        errorCode: AiErrorCode | null,
-        model: string | null
+        errorCode: AiErrorCode | null
     ): InsightsView {
         return {
             importId,
             referenceDate: analysis.referenceDate,
             aiStatus,
             errorCode,
-            model,
+            model: this.model,
             cached: false,
             topN: this.topN,
             briefing: { text: templateBriefing(analysis), source: MessageSource.TEMPLATE },

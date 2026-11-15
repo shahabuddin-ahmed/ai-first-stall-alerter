@@ -8,12 +8,7 @@ export const initializeDBConnection = async (): Promise<Sequelize> => {
         await sequelize.authenticate();
         console.log("Connected successfully to the database server");
     } catch (err) {
-        console.log("Failed to connect the database server");
-        if (err instanceof Error) {
-            console.log(err.stack);
-        } else {
-            console.log(err);
-        }
+        console.error("Failed to connect the database server:", err instanceof Error ? err.message : err);
         process.exit(1);
     }
 
@@ -21,7 +16,9 @@ export const initializeDBConnection = async (): Promise<Sequelize> => {
     // Starting with an out-of-date schema would fail later in confusing ways, so stop here instead.
     const pending = await newMigrator(sequelize).pending();
     if (pending.length > 0) {
-        console.log(`The database has ${pending.length} pending migration(s): ${pending.map((m) => m.name).join(", ")}`);
+        console.log(
+            `The database has ${pending.length} pending migration(s): ${pending.map((m) => m.name).join(", ")}`
+        );
         console.log("Run `yarn db:migrate` (and `yarn db:seed` on a new database), then start the API again.");
         process.exit(1);
     }

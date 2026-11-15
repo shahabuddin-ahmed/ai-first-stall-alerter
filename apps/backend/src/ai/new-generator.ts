@@ -1,20 +1,11 @@
 import { AiGenerator } from "./generator";
 import { FakeAiGenerator } from "./fake-generator";
 import { HttpAiGenerator } from "./http-generator";
-import { AiMode, ReasoningEffort } from "../constant/ai";
-
-export interface AiConfig {
-    API_KEY: string;
-    MODEL: string;
-    BASE_URL: string;
-    TIMEOUT_MS: number;
-    MAX_OUTPUT_TOKENS: number;
-    MODE: AiMode;
-    REASONING_EFFORT: ReasoningEffort;
-}
+import { AiMode } from "../constant/ai";
+import type { AiConfig } from "../config/config";
 
 // Picks the AI from the server settings. null = AI is not set up, so templates are always used.
-export const newAiGenerator = (ai: AiConfig): AiGenerator | null => {
+export const newAiGenerator = (ai: Omit<AiConfig, "TOP_N">): AiGenerator | null => {
     if (ai.MODE === AiMode.FAKE) {
         return new FakeAiGenerator();
     }

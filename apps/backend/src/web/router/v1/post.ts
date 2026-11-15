@@ -2,9 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/async-hander";
 import { PostControllerInterface } from "../../controller/v1/post";
 
-export const newPostRouter = async (
-    postController: PostControllerInterface
-): Promise<Router> => {
+export const newPostRouter = async (postController: PostControllerInterface): Promise<Router> => {
     const router = Router();
 
     router.post("/", asyncHandler(postController.create));

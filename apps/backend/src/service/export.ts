@@ -1,5 +1,5 @@
 import { AiNoteStatus, MessageSource } from "../constant/ai";
-import { ExportColumn } from "../constant/export";
+import { EXPORT_FILE_PREFIX, ExportColumn } from "../constant/export";
 import { buildExportCsv, ExportRow } from "../rules/export-csv";
 import { RECIPIENT_LABELS } from "../rules/messages";
 import { filterQueue, QueueFilter } from "../rules/queue-filter";
@@ -72,7 +72,7 @@ export class ExportService implements ExportServiceInterface {
         });
 
         return {
-            fileName: `stallalert-${analysis.referenceDate}-import-${importId}.csv`,
+            fileName: `${EXPORT_FILE_PREFIX}-${analysis.referenceDate}-import-${importId}.csv`,
             csv: buildExportCsv(rows),
             rowCount: rows.length,
         };

@@ -39,7 +39,10 @@ afterEach(() => errorLog.mockRestore());
 
 describe("CORS", () => {
     it("lets the web app call the API", async () => {
-        const res = await request(makeApp()).options("/ok").set("Origin", WEB_APP).set("Access-Control-Request-Method", "PUT");
+        const res = await request(makeApp())
+            .options("/ok")
+            .set("Origin", WEB_APP)
+            .set("Access-Control-Request-Method", "PUT");
 
         expect(res.headers["access-control-allow-origin"]).toBe(WEB_APP);
         expect(res.headers["access-control-allow-methods"]).toContain("PUT");
@@ -100,7 +103,9 @@ describe("globalErrorHandler", () => {
     });
 
     it("answers 413 for a body that is too large", async () => {
-        const res = await request(makeApp()).post("/echo").send({ text: "x".repeat(2000) });
+        const res = await request(makeApp())
+            .post("/echo")
+            .send({ text: "x".repeat(2000) });
 
         expect(res.status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
         expect(res.body.code).toBe(ERROR_CODES.E_PAYLOAD_TOO_LARGE);

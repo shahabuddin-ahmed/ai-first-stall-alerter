@@ -18,7 +18,10 @@ export interface AiGenerator {
 
 // A failed call, with a short code that is safe to store and show (never the provider's message).
 export class AiError extends Error {
-    constructor(public readonly code: AiErrorCode, message?: string) {
+    constructor(
+        public readonly code: AiErrorCode,
+        message?: string
+    ) {
         super(message ?? code);
         this.name = "AiError";
     }

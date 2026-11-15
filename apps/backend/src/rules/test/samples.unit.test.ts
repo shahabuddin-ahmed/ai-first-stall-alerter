@@ -74,11 +74,33 @@ describe("headline results (spec Part D)", () => {
         const result = analyseSample("sample-b", DEFAULT_STAGES);
 
         expect(result.counts).toEqual({
-            total: 43, valid: 32, invalid: 11, terminal: 5, onHold: 0, stalled: 18, notStalled: 9,
+            total: 43,
+            valid: 32,
+            invalid: 11,
+            terminal: 5,
+            onHold: 0,
+            stalled: 18,
+            notStalled: 9,
         });
         expect(result.queue.map((item) => item.candidateId)).toEqual([
-            "127", "104", "108", "101", "125", "0142", "122", "137", "110",
-            "135", "105", "114", "124", "131", "121", "111", "103", "139",
+            "127",
+            "104",
+            "108",
+            "101",
+            "125",
+            "0142",
+            "122",
+            "137",
+            "110",
+            "135",
+            "105",
+            "114",
+            "124",
+            "131",
+            "121",
+            "111",
+            "103",
+            "139",
         ]);
         expect(result.rowErrors.map((row) => row.recordNumber)).toEqual([3, 16, 17, 19, 20, 21, 27, 29, 30, 37, 42]);
         expect(result.bottlenecks).toEqual([

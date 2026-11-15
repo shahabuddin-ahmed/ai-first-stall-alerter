@@ -42,7 +42,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
                 allowNull: false,
             },
         },
-        { charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" },
+        { charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" }
     );
 };
 

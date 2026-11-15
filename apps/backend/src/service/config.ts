@@ -48,7 +48,8 @@ export interface ConfigServiceInterface {
 // Write-through memory cache: every save goes to MySQL first, then the memory copy is reloaded from MySQL.
 // Fine for one API process. Several processes would need a shared cache (see README).
 export class ConfigService implements ConfigServiceInterface {
-    private snapshot: ConfigSnapshot | null = null;
+    // Set by load(), which newConfigService runs before the API handles requests.
+    private snapshot!: ConfigSnapshot;
     // Saves run one after another, so the memory copy always ends with the last saved version.
     private saving: Promise<unknown> = Promise.resolve();
 
@@ -67,21 +68,22 @@ export class ConfigService implements ConfigServiceInterface {
     }
 
     getSnapshot(): ConfigSnapshot {
-        if (!this.snapshot) {
-            throw new Error("ConfigService.load() must run before the API handles requests");
-        }
         return this.snapshot;
     }
 
+    // Names and aliases arrive trimmed and checked (request schema). Only watched stages keep a threshold and an action.
     async saveStages(input: StageInput[], expectedVersion: number): Promise<ConfigSnapshot> {
-        const stages: StageConfig[] = input.map((stage, index) => ({
-            name: stage.name.trim(),
-            type: stage.type,
-            thresholdDays: stage.type === StageType.WATCHED ? stage.thresholdDays : null,
-            position: index + 1,
-            aliases: [...new Set(stage.aliases.map((alias) => alias.trim()).filter(Boolean))],
-            actionCode: stage.type === StageType.WATCHED ? stage.actionCode : null,
-        }));
+        const stages: StageConfig[] = input.map((stage, index) => {
+            const watched = stage.type === StageType.WATCHED;
+            return {
+                name: stage.name,
+                type: stage.type,
+                thresholdDays: watched ? stage.thresholdDays : null,
+                position: index + 1,
+                aliases: stage.aliases,
+                actionCode: watched ? stage.actionCode : null,
+            };
+        });
 
         const problems = findStageListProblems(stages);
         if (problems.length > 0) {

@@ -8,7 +8,7 @@ export interface QueueFilter {
 
 // The same filter for the screen and the export. Ranks are given before filtering, so they never change.
 export const filterQueue = (queue: QueueItem[], filter: QueueFilter): QueueItem[] => {
-    const search = filter.search?.trim().toLowerCase();
+    const search = filter.search?.toLowerCase(); // already trimmed by the request check
     return queue.filter(
         (item) =>
             (!filter.stage || item.stage === filter.stage) &&

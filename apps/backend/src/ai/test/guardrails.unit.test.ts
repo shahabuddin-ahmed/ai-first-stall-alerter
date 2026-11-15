@@ -5,15 +5,27 @@ import { BottleneckType } from "../../constant/board";
 
 const FACTS: InsightFacts = {
     board: {
-        total: 43, valid: 32, invalid: 11, terminal: 5, on_hold: 0, stalled: 18, not_stalled: 9,
+        total: 43,
+        valid: 32,
+        invalid: 11,
+        terminal: 5,
+        on_hold: 0,
+        stalled: 18,
+        not_stalled: 9,
         stalled_by_action: { REVIEW_APPLICATION: 5, CONFIRM_OFFER: 5 },
         stalled_by_recruiter: [{ recruiter_key: "R1", stalled: 7 }],
         stalled_by_other_recruiters: 11,
     },
     bottlenecks: [{ type: BottleneckType.STAGE, action_code: ActionCode.CONFIRM_OFFER, stalled: 5 }],
     alerts: [1, 2].map((rank) => ({
-        rank, action_code: ActionCode.CONFIRM_OFFER, recipient_type: RecipientType.CANDIDATE, stage_threshold: 3,
-        days_in_stage: 10, overdue_days: 7, days_since_contact: null, recruiter_key: "R1",
+        rank,
+        action_code: ActionCode.CONFIRM_OFFER,
+        recipient_type: RecipientType.CANDIDATE,
+        stage_threshold: 3,
+        days_in_stage: 10,
+        overdue_days: 7,
+        days_since_contact: null,
+        recruiter_key: "R1",
     })),
 };
 
@@ -21,7 +33,10 @@ const VALID: AiOutput = {
     briefing: "18 candidates are stalled. Start with rank 1 and rank 2; R1 owns 7 follow-ups.",
     bottleneck_notes: ["Offers are piling up: 5 are waiting for a decision. Confirm them first."],
     drafts: [
-        { rank: 1, text: "Hi {{first_name}}, I am following up on the offer for the {{role}} position. Best regards, {{recruiter}}" },
+        {
+            rank: 1,
+            text: "Hi {{first_name}}, I am following up on the offer for the {{role}} position. Best regards, {{recruiter}}",
+        },
         { rank: 2, text: "Hi {{first_name}}, could you share your decision on the offer? Best regards, {{recruiter}}" },
     ],
 };
@@ -54,7 +69,9 @@ describe("checkAiOutput", () => {
     });
 
     it("rejects text that is too long", () => {
-        expect(problemsOf(withChange({ briefing: "a".repeat(451) }))).toEqual(["briefing is longer than 450 characters"]);
+        expect(problemsOf(withChange({ briefing: "a".repeat(451) }))).toEqual([
+            "briefing is longer than 450 characters",
+        ]);
         expect(problemsOf(withChange({ drafts: [VALID.drafts[0], { rank: 2, text: "a".repeat(601) }] }))).toEqual([
             "draft for rank 2 is longer than 600 characters",
         ]);
@@ -62,7 +79,9 @@ describe("checkAiOutput", () => {
 
     it("rejects digits in drafts (no dates or day counts)", () => {
         const drafts = [VALID.drafts[0], { rank: 2, text: "Hi {{first_name}}, please reply by 20 November." }];
-        expect(problemsOf(withChange({ drafts }))).toEqual(["draft for rank 2 contains a digit (no dates or day counts in messages)"]);
+        expect(problemsOf(withChange({ drafts }))).toEqual([
+            "draft for rank 2 contains a digit (no dates or day counts in messages)",
+        ]);
     });
 
     it("rejects numbers in the briefing that are not in the facts", () => {
@@ -80,7 +99,10 @@ describe("checkAiOutput", () => {
     });
 
     it("rejects unknown or broken placeholders", () => {
-        const drafts = [{ rank: 1, text: "Hi {{last_name}}, thanks." }, { rank: 2, text: "Hi {first_name}, thanks." }];
+        const drafts = [
+            { rank: 1, text: "Hi {{last_name}}, thanks." },
+            { rank: 2, text: "Hi {first_name}, thanks." },
+        ];
         expect(problemsOf(withChange({ drafts }))).toEqual([
             "draft for rank 1 uses an unknown placeholder {{last_name}}",
             "draft for rank 2 has a broken placeholder",

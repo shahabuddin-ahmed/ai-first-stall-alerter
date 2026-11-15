@@ -4,23 +4,16 @@ import { Controller } from "../controller";
 import { CSV_CONTENT_TYPE } from "../../../constant/export";
 import { HttpStatus } from "../../../constant/http";
 import { ExportServiceInterface } from "../../../service/export";
+import { idParamsSchema, queueFilterFields, referenceDateField } from "./common-schema";
 
 export interface ExportControllerInterface {
     download(req: Request, res: Response): any;
 }
 
-const paramsSchema = Joi.object({
-    id: Joi.number().integer().positive().required(),
-});
-
 // The same filters as the queue screen (no pages: the file has every matching row).
 const querySchema = Joi.object({
-    referenceDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).messages({
-        "string.pattern.base": "{{#label}} must be a YYYY-MM-DD date",
-    }),
-    stage: Joi.string().trim().max(255),
-    recruiter: Joi.string().trim().max(255),
-    search: Joi.string().trim().max(100).allow(""),
+    referenceDate: referenceDateField,
+    ...queueFilterFields,
 });
 
 export class ExportController extends Controller implements ExportControllerInterface {
@@ -31,7 +24,7 @@ export class ExportController extends Controller implements ExportControllerInte
 
     // GET /imports/:id/export — a CSV file download, not JSON. Errors are still JSON.
     async download(req: Request, res: Response): Promise<any> {
-        const { value: params } = await this.validateRequest(paramsSchema, req.params);
+        const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(querySchema, req.query);
         const file = await this.exportService.exportCsv(params.id, query);
 

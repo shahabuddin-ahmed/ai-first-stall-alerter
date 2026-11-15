@@ -14,7 +14,10 @@ export class LlmCallRepo implements LlmCallRepoInterface {
     public async findLatest(cacheKey: string): Promise<LlmCallInterface | null> {
         const found = await LlmCall.findOne({
             where: { cacheKey },
-            order: [["createdAt", "DESC"], ["id", "DESC"]],
+            order: [
+                ["createdAt", "DESC"],
+                ["id", "DESC"],
+            ],
         });
         return found ? (found.get({ plain: true }) as LlmCallInterface) : null;
     }

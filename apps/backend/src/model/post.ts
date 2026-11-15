@@ -35,7 +35,7 @@ Post.init(
             allowNull: false,
         },
         content: {
-            type: new DataTypes.TEXT,
+            type: new DataTypes.TEXT(),
             allowNull: false,
         },
         author: {

@@ -2,9 +2,8 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import { Controller } from "../controller";
 import { HttpStatus } from "../../../constant/http";
-import { ActionCode, StageType } from "../../../constant/stage";
+import { ActionCode, STAGE_LIMITS, StageType } from "../../../constant/stage";
 import { ACTIONS } from "../../../rules/messages";
-import { STAGE_LIMITS } from "../../../rules/stage-list-checks";
 import { ConfigServiceInterface, ConfigSnapshot } from "../../../service/config";
 
 export interface StageControllerInterface {
@@ -16,7 +15,7 @@ export interface StageControllerInterface {
 const stageName = Joi.string()
     .trim()
     .min(1)
-    .max(40)
+    .max(STAGE_LIMITS.MAX_NAME_LENGTH)
     .pattern(/^[\p{L}\p{N} -]+$/u)
     .messages({ "string.pattern.base": "{{#label}} can only use letters, digits, spaces and dashes" });
 
@@ -24,19 +23,24 @@ const saveSchema = Joi.object({
     version: Joi.number().integer().min(1).required(),
     stages: Joi.array()
         .min(1)
-        .max(30)
+        .max(STAGE_LIMITS.MAX_STAGES)
         .items(
             Joi.object({
                 name: stageName.required(),
-                type: Joi.string().valid(...Object.values(StageType)).required(),
+                type: Joi.string()
+                    .valid(...Object.values(StageType))
+                    .required(),
                 thresholdDays: Joi.number()
                     .integer()
                     .min(STAGE_LIMITS.MIN_THRESHOLD_DAYS)
                     .max(STAGE_LIMITS.MAX_THRESHOLD_DAYS)
                     .allow(null)
                     .default(null),
-                aliases: Joi.array().max(10).items(stageName).default([]),
-                actionCode: Joi.string().valid(...Object.values(ActionCode)).allow(null).default(null),
+                aliases: Joi.array().max(STAGE_LIMITS.MAX_ALIASES).items(stageName).default([]),
+                actionCode: Joi.string()
+                    .valid(...Object.values(ActionCode))
+                    .allow(null)
+                    .default(null),
             })
         )
         .required(),

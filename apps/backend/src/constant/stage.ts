@@ -24,6 +24,15 @@ export enum RecipientType {
     ASSESSMENT_REVIEWER = "assessment_reviewer",
 }
 
+// What a team can set on the Hiring stages page.
+export const STAGE_LIMITS = {
+    MIN_THRESHOLD_DAYS: 1,
+    MAX_THRESHOLD_DAYS: 90,
+    MAX_NAME_LENGTH: 40,
+    MAX_STAGES: 30,
+    MAX_ALIASES: 10,
+} as const;
+
 // Where the stall timer started.
 export enum TimerSource {
     STAGE_ENTERED = "stage_entered_at",

@@ -14,11 +14,9 @@ export const COLUMN_FIELDS: Record<BoardColumn, keyof BoardRecord> = {
     [BoardColumn.LAST_CONTACTED_AT]: "lastContactedAt",
 };
 
-const MAX_DETAILS = 10;
-
 const fail = (code: FileErrorCode, message: string, details: string[] = []): ParseResult => ({
     ok: false,
-    error: { code, message, details: details.slice(0, MAX_DETAILS) } as FileError,
+    error: { code, message, details: details.slice(0, BOARD_LIMITS.MAX_ERROR_DETAILS) } as FileError,
 });
 
 const decodeUtf8 = (bytes: Uint8Array): string | null => {
@@ -35,7 +33,7 @@ const readRows = (text: string): string[][] | { line: number } => {
         return parse(text, {
             relax_column_count: true, // wrong field counts become row errors, not a file error
             skip_empty_lines: false, // blank lines still count for record numbers
-            trim: true,
+            trim: true, // every value (and column name) comes back without outer spaces
         }) as string[][];
     } catch (err) {
         return { line: Number((err as { lines?: number }).lines) || 1 };
@@ -47,7 +45,10 @@ const readRows = (text: string): string[][] | { line: number } => {
 export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
     const text = decodeUtf8(bytes);
     if (text === null) {
-        return fail(FileErrorCode.INVALID_ENCODING, "The file is not UTF-8 text. Save it as \"CSV UTF-8\" and upload it again.");
+        return fail(
+            FileErrorCode.INVALID_ENCODING,
+            'The file is not UTF-8 text. Save it as "CSV UTF-8" and upload it again.'
+        );
     }
     if (text.trim() === "") {
         return fail(FileErrorCode.EMPTY_FILE, "The file is empty.");
@@ -55,12 +56,14 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
 
     const rows = readRows(text);
     if (!Array.isArray(rows)) {
-        return fail(FileErrorCode.INVALID_CSV, `The file is not valid CSV near line ${rows.line}. Check for a missing closing quote.`, [
-            `line ${rows.line}`,
-        ]);
+        return fail(
+            FileErrorCode.INVALID_CSV,
+            `The file is not valid CSV near line ${rows.line}. Check for a missing closing quote.`,
+            [`line ${rows.line}`]
+        );
     }
 
-    const header = rows[0].map((name) => name.trim());
+    const header = rows[0];
     const seen = new Set<string>();
     const duplicates = new Set<string>();
     header.filter(Boolean).forEach((name) => (seen.has(name) ? duplicates.add(name) : seen.add(name)));
@@ -78,13 +81,13 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
     const tooLong: string[] = [];
 
     rows.slice(1).forEach((fields, index) => {
-        if (fields.every((field) => field.trim() === "")) {
+        if (fields.every((field) => field === "")) {
             return; // blank record
         }
         const recordNumber = index + 2; // the header is record 1
         const record = { recordNumber, fieldCount: fields.length } as BoardRecord;
         for (const [column, position] of columnIndex) {
-            const value = position >= 0 ? (fields[position] ?? "").trim() : "";
+            const value = fields[position] ?? ""; // a missing column (-1) or a short record gives ""
             if (value.length > BOARD_LIMITS.MAX_VALUE_LENGTH) {
                 tooLong.push(`record ${recordNumber}, column ${column}`);
             }

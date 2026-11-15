@@ -40,11 +40,15 @@ const run = async (command: Command): Promise<void> => {
             }
             case "seed:down": {
                 const undone = await seeder.down({ to: 0 });
-                console.log(undone.length ? `Removed seeds: ${undone.map((m) => m.name).join(", ")}` : "No seeds to remove.");
+                console.log(
+                    undone.length ? `Removed seeds: ${undone.map((m) => m.name).join(", ")}` : "No seeds to remove."
+                );
                 break;
             }
             default:
-                throw new Error(`Unknown command "${command}". Use: migrate, migrate:down, migrate:status, seed, seed:down`);
+                throw new Error(
+                    `Unknown command "${command}". Use: migrate, migrate:down, migrate:status, seed, seed:down`
+                );
         }
     } finally {
         await sequelize.close();

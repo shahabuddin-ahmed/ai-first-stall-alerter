@@ -25,3 +25,11 @@ export const EXPORT_COLUMNS: readonly ExportColumn[] = Object.values(ExportColum
 export const FORMULA_START = /^[=+\-@\t\r]/;
 
 export const CSV_CONTENT_TYPE = "text/csv; charset=utf-8";
+
+// Lets Excel read the file as UTF-8 (names with accents).
+export const CSV_BOM = "\uFEFF";
+
+// RFC 4180 line ending.
+export const CSV_LINE_END = "\r\n";
+
+export const EXPORT_FILE_PREFIX = "stallalert";

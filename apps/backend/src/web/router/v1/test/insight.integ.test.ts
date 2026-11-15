@@ -52,7 +52,12 @@ const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
     });
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
-        importService, configService, await newAiInsightRepo(), await newLlmCallRepo(), generator, 5
+        importService,
+        configService,
+        await newAiInsightRepo(),
+        await newLlmCallRepo(),
+        generator,
+        5
     );
     const app = express();
     app.use(express.json());
@@ -105,7 +110,13 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
 
         expect(res.status).toBe(HttpStatus.OK);
         const view = res.body.response;
-        expect(view).toMatchObject({ aiStatus: AiStatus.AI_DRAFT, errorCode: null, cached: false, model: "test-model", topN: 5 });
+        expect(view).toMatchObject({
+            aiStatus: AiStatus.AI_DRAFT,
+            errorCode: null,
+            cached: false,
+            model: "test-model",
+            topN: 5,
+        });
         expect(view.briefing.source).toBe(MessageSource.AI_DRAFT);
         expect(view.bottleneckNotes.map((note: any) => [note.key, note.source])).toEqual([
             ["Offer", MessageSource.AI_DRAFT],
@@ -113,7 +124,11 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
         ]);
         expect(view.bottleneckNotes[1].text).toContain("Recruiter A"); // "R2" turned back into the name
         expect(view.drafts.map((draft: any) => draft.rank)).toEqual([1, 2, 3, 4, 5]);
-        expect(view.drafts[0]).toMatchObject({ candidateId: "127", recipient: "hiring_manager", source: MessageSource.AI_DRAFT });
+        expect(view.drafts[0]).toMatchObject({
+            candidateId: "127",
+            recipient: "hiring_manager",
+            source: MessageSource.AI_DRAFT,
+        });
         expect(view.drafts[0].text).toContain("Hana Novak");
         expect(JSON.stringify(view.drafts)).not.toContain("{{");
         expect(generator.calls).toBe(1);

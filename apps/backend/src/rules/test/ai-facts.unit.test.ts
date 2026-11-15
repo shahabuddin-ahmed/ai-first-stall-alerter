@@ -23,13 +23,27 @@ describe("buildInsightFacts", () => {
 
         expect(Object.keys(facts).sort()).toEqual(["alerts", "board", "bottlenecks"]);
         expect(Object.keys(facts.board).sort()).toEqual([
-            "invalid", "not_stalled", "on_hold", "stalled", "stalled_by_action", "stalled_by_other_recruiters",
-            "stalled_by_recruiter", "terminal", "total", "valid",
+            "invalid",
+            "not_stalled",
+            "on_hold",
+            "stalled",
+            "stalled_by_action",
+            "stalled_by_other_recruiters",
+            "stalled_by_recruiter",
+            "terminal",
+            "total",
+            "valid",
         ]);
         facts.alerts.forEach((alert) =>
             expect(Object.keys(alert).sort()).toEqual([
-                "action_code", "days_in_stage", "days_since_contact", "overdue_days", "rank", "recipient_type",
-                "recruiter_key", "stage_threshold",
+                "action_code",
+                "days_in_stage",
+                "days_since_contact",
+                "overdue_days",
+                "rank",
+                "recipient_type",
+                "recruiter_key",
+                "stage_threshold",
             ])
         );
     });
@@ -37,7 +51,13 @@ describe("buildInsightFacts", () => {
     it("never contains names, candidate IDs, roles, recruiter names, stage names or dates", () => {
         const text = JSON.stringify(buildInsightFacts(sampleB, 20));
         const forbidden = [
-            ...sampleB.queue.flatMap((item) => [item.name, item.firstName, `"${item.candidateId}"`, item.role, item.recruiter]),
+            ...sampleB.queue.flatMap((item) => [
+                item.name,
+                item.firstName,
+                `"${item.candidateId}"`,
+                item.role,
+                item.recruiter,
+            ]),
             ...DEFAULT_STAGES.map((stage) => `"${stage.name}"`),
             "2026-",
         ];
@@ -50,8 +70,14 @@ describe("buildInsightFacts", () => {
 
         expect(facts.alerts.map((alert) => alert.rank)).toEqual([1, 2, 3, 4, 5]);
         expect(facts.alerts[0]).toEqual({
-            rank: 1, action_code: "REVIEW_APPLICATION", recipient_type: "hiring_manager", stage_threshold: 5,
-            days_in_stage: 34, overdue_days: 29, days_since_contact: null, recruiter_key: "R1",
+            rank: 1,
+            action_code: "REVIEW_APPLICATION",
+            recipient_type: "hiring_manager",
+            stage_threshold: 5,
+            days_in_stage: 34,
+            overdue_days: 29,
+            days_since_contact: null,
+            recruiter_key: "R1",
         });
     });
 
