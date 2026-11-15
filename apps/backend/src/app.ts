@@ -13,6 +13,9 @@ import { newSettingRepo } from "./repo/setting";
 import { newConfigService } from "./service/config";
 import { newStageV1Controller } from "./web/controller/v1/stage";
 import { newSettingV1Controller } from "./web/controller/v1/setting";
+import { newImportRepo } from "./repo/import";
+import { newImportService } from "./service/import";
+import { newImportV1Controller } from "./web/controller/v1/import";
 
 const app = express();
 
@@ -26,6 +29,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
     const postRepo = await newPostRepo();
     const stageRepo = await newStageRepo();
     const settingRepo = await newSettingRepo();
+    const importRepo = await newImportRepo();
 
     // Initialize Service
     const postService = await newPostService(postRepo);
@@ -34,17 +38,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
         configured: Boolean(config.AI.API_KEY && config.AI.MODEL),
         model: config.AI.MODEL || null,
     });
+    const importService = await newImportService(importRepo, configService);
 
     // Initialize Controller
     const postV1Controller = await newPostV1Controller(postService);
     const stageV1Controller = await newStageV1Controller(configService);
     const settingV1Controller = await newSettingV1Controller(configService);
+    const importV1Controller = await newImportV1Controller(importService);
 
     // Initialize Router
     const v1Router = await newV1Router({
         postController: postV1Controller,
         stageController: stageV1Controller,
         settingController: settingV1Controller,
+        importController: importV1Controller,
     });
 
     app.use(morgan("short"));
