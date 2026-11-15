@@ -1,0 +1,31 @@
+// Hiring stage types (spec C2). Watched stages can stall; paused and final stages never do.
+export enum StageType {
+    WATCHED = "watched",
+    PAUSED = "paused",
+    FINAL = "final",
+}
+
+// The fixed follow-up actions a stage can use. The AI only ever sees these codes, never stage names.
+export enum ActionCode {
+    REVIEW_APPLICATION = "REVIEW_APPLICATION",
+    SCHEDULE_SCREEN = "SCHEDULE_SCREEN",
+    REQUEST_FEEDBACK = "REQUEST_FEEDBACK",
+    REVIEW_ASSESSMENT = "REVIEW_ASSESSMENT",
+    CHASE_REFERENCES = "CHASE_REFERENCES",
+    CONFIRM_OFFER = "CONFIRM_OFFER",
+    GENERIC_FOLLOW_UP = "GENERIC_FOLLOW_UP",
+}
+
+// Who the follow-up message goes to: whoever has to act next.
+export enum RecipientType {
+    HIRING_MANAGER = "hiring_manager",
+    CANDIDATE = "candidate",
+    INTERVIEW_PANEL = "interview_panel",
+    ASSESSMENT_REVIEWER = "assessment_reviewer",
+}
+
+// Where the stall timer started.
+export enum TimerSource {
+    STAGE_ENTERED = "stage_entered_at",
+    LAST_ACTIVITY = "last_activity_at",
+}
