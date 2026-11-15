@@ -1,4 +1,4 @@
-import app from "./app";
+import app, { appReady } from "./app";
 import http from "http";
 import config from "./config/config";
 import newSequelize from "./infra/sequelize";
@@ -34,6 +34,14 @@ process.on("SIGTERM", gracefulShutdown(server, forcedShutdownMs));
 process.on("SIGINT", gracefulShutdown(server, forcedShutdownMs));
 
 
-server.listen(config.APPLICATION_SERVER_PORT, () => {
-    logger.log("StallAlert API is running on port: " + config.APPLICATION_SERVER_PORT);
-});
+// Accept requests only when the database, stages and settings are ready.
+appReady
+    .then(() => {
+        server.listen(config.APPLICATION_SERVER_PORT, () => {
+            logger.log("StallAlert API is running on port: " + config.APPLICATION_SERVER_PORT);
+        });
+    })
+    .catch((err) => {
+        logger.error("StallAlert API could not start:", err instanceof Error ? err.message : err);
+        process.exit(1);
+    });

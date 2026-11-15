@@ -9,7 +9,7 @@ const row = (change: Partial<ExportRow> = {}): ExportRow => ({
     ...change,
 });
 
-const lines = (csv: string) => csv.replace(/^﻿/, "").split("\r\n");
+const lines = (csv: string) => csv.replace(/^\uFEFF/, "").split("\r\n");
 
 describe("guardFormula", () => {
     it.each(["=SUM(A1:A9)", "+1", "-1", "@cmd", "\tTab", "\rReturn"])("puts ' in front of %j", (value) => {
@@ -26,7 +26,7 @@ describe("buildExportCsv", () => {
     it("starts with a UTF-8 BOM (Excel) and the header in spec order, with Windows line endings", () => {
         const csv = buildExportCsv([]);
 
-        expect(csv.startsWith("﻿")).toBe(true);
+        expect(csv.startsWith("\uFEFF")).toBe(true);
         expect(lines(csv)[0]).toBe(
             "rank,candidate_id,name,role,stage,recruiter,reference_date,stage_threshold,timer_from,days_in_stage," +
             "overdue_days,reason,action,message_to,message_draft,message_source,ai_note_status"

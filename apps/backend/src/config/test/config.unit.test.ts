@@ -7,6 +7,7 @@ const loadConfig = (env: Record<string, string | undefined>) => {
     process.env = { ...env } as NodeJS.ProcessEnv;
     let loaded: unknown;
     jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- a fresh copy per test
         loaded = require("../config").default;
     });
     return loaded as typeof import("../config").default;

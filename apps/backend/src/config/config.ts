@@ -44,6 +44,11 @@ interface Config {
 		MODE: AiMode;
 		REASONING_EFFORT: ReasoningEffort;
 	};
+	SECURITY: {
+		WEB_ORIGINS: string[];
+		UPLOADS_PER_MINUTE: number;
+		INSIGHTS_PER_MINUTE: number;
+	};
 }
 
 // Every setting the API reads from the environment (.env locally, docker-compose in Docker).
@@ -69,6 +74,11 @@ const envSchema = Joi.object({
 	// How much "thinking" a reasoning model may do: off = no thinking (fastest), low/medium/high,
 	// none = do not send the setting (for models without thinking).
 	AI_REASONING_EFFORT: Joi.string().valid(...Object.values(ReasoningEffort)).default(ReasoningEffort.LOW),
+	// Browsers may call the API only from these origins (comma-separated), e.g. the Next.js app.
+	WEB_ORIGIN: Joi.string().default("http://localhost:3000"),
+	// Per IP address, per minute. One API process keeps the counts in memory.
+	RATE_LIMIT_UPLOADS_PER_MINUTE: Joi.number().integer().min(1).max(1000).default(20),
+	RATE_LIMIT_INSIGHTS_PER_MINUTE: Joi.number().integer().min(1).max(1000).default(10),
 	MYSQL_PASSWORD: Joi.string().allow("").when("NODE_ENV", {
 		is: NodeEnv.PRODUCTION,
 		then: Joi.required(),
@@ -118,6 +128,11 @@ const config: Config = {
 		MAX_OUTPUT_TOKENS: env.AI_MAX_OUTPUT_TOKENS,
 		MODE: env.AI_MODE,
 		REASONING_EFFORT: env.AI_REASONING_EFFORT,
+	},
+	SECURITY: {
+		WEB_ORIGINS: env.WEB_ORIGIN.split(",").map((origin: string) => origin.trim()).filter(Boolean),
+		UPLOADS_PER_MINUTE: env.RATE_LIMIT_UPLOADS_PER_MINUTE,
+		INSIGHTS_PER_MINUTE: env.RATE_LIMIT_INSIGHTS_PER_MINUTE,
 	},
 };
 

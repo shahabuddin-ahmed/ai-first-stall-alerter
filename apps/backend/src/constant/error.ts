@@ -5,6 +5,8 @@ export enum ERROR_CODES {
     E_SERVICE_UNAVAILABLE = "E_SERVICE_UNAVAILABLE",
     E_CONFLICT = "E_CONFLICT",
     E_NOT_FOUND = "E_NOT_FOUND",
+    E_TOO_MANY_REQUESTS = "E_TOO_MANY_REQUESTS",
+    E_PAYLOAD_TOO_LARGE = "E_PAYLOAD_TOO_LARGE",
     // File errors (spec C7): the whole upload is rejected and nothing is stored.
     // Same values as FileErrorCode in constant/board.ts.
     FILE_TOO_LARGE = "FILE_TOO_LARGE",
@@ -37,6 +39,12 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
     },
     E_NOT_FOUND: {
         message: "Not found",
+    },
+    E_TOO_MANY_REQUESTS: {
+        message: "Too many requests. Wait a minute and try again.",
+    },
+    E_PAYLOAD_TOO_LARGE: {
+        message: "The request body is too large.",
     },
     FILE_TOO_LARGE: {
         message: "The file is larger than 5 MB.",

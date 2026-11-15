@@ -8,6 +8,7 @@ import { LlmCallRepoInterface } from "../repo/llm-call";
 import { buildInsightFacts, InsightFacts, recruiterKeysOf } from "../rules/ai-facts";
 import { fillPlaceholders, templateBottleneckNote, templateBriefing } from "../rules/messages";
 import { BoardAnalysis } from "../rules/types";
+import logger from "../infra/logger";
 import { ConfigServiceInterface } from "./config";
 import { ImportServiceInterface } from "./import";
 import { BottleneckType } from "../constant/board";
@@ -156,7 +157,7 @@ export class InsightService implements InsightServiceInterface {
                 result = { ok: true, output: check.output };
             } else {
                 // Rule names and ranks only, no candidate data.
-                console.warn("AI answer failed the checks:", check.problems.join("; "));
+                logger.warn("AI answer failed the checks", { problems: check.problems.join("; ") });
                 result = { ok: false, code: AiErrorCode.INVALID_OUTPUT };
             }
         } catch (err) {
@@ -192,7 +193,7 @@ export class InsightService implements InsightServiceInterface {
         try {
             await work();
         } catch (err) {
-            console.error(`Could not ${what}:`, err instanceof Error ? err.message : err);
+            logger.error(`Could not ${what}`, { error: err instanceof Error ? err.name : "Error" });
         }
     }
 
