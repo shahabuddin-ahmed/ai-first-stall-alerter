@@ -3,6 +3,7 @@ export enum ERROR_CODES {
     E_INVALID_DATA = "E_INVALID_DATA",
     E_INTERNAL_SERVER_ERROR = "E_INTERNAL_SERVER_ERROR",
     E_SERVICE_UNAVAILABLE = "E_SERVICE_UNAVAILABLE",
+    E_CONFLICT = "E_CONFLICT",
 }
 
 export const errorMessages: Record<ERROR_CODES, { message: string }> = {
@@ -18,6 +19,9 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
     },
     E_SERVICE_UNAVAILABLE: {
         message: "Service temporarily unavailable",
+    },
+    E_CONFLICT: {
+        message: "The data changed since you loaded it. Reload and try again.",
     },
 };
 

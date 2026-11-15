@@ -32,6 +32,10 @@ interface Config {
 	SEQUELIZEOPTIONS: SequelizeOptions;
 	APPLICATION_SERVER_PORT: number;
 	APP_FORCE_SHUTDOWN_SECOND: number;
+	AI: {
+		API_KEY: string;
+		MODEL: string;
+	};
 }
 
 // Every setting the API reads from the environment (.env locally, docker-compose in Docker).
@@ -45,6 +49,9 @@ const envSchema = Joi.object({
 	MYSQL_DATABASE: Joi.string().default("stallalert"),
 	MYSQL_TEST_DATABASE: Joi.string().default(Joi.ref("MYSQL_DATABASE", { adjust: (name: string) => `${name}_test` })),
 	MYSQL_USER: Joi.string().default("root"),
+	// AI drafts run only when both are set (and the team setting is on). Never sent to the browser.
+	AI_API_KEY: Joi.string().allow("").default(""),
+	AI_MODEL: Joi.string().allow("").default(""),
 	MYSQL_PASSWORD: Joi.string().allow("").when("NODE_ENV", {
 		is: "production",
 		then: Joi.required(),
@@ -84,7 +91,11 @@ const config: Config = {
 		log: console.log
 	},
 	APPLICATION_SERVER_PORT: env.APPLICATION_SERVER_PORT,
-	APP_FORCE_SHUTDOWN_SECOND: env.APP_FORCE_SHUTDOWN_SECOND
+	APP_FORCE_SHUTDOWN_SECOND: env.APP_FORCE_SHUTDOWN_SECOND,
+	AI: {
+		API_KEY: env.AI_API_KEY,
+		MODEL: env.AI_MODEL,
+	},
 };
 
 export default config;

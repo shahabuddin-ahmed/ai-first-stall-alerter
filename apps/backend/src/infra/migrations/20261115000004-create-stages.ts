@@ -7,13 +7,38 @@ export const up: Migration = async ({ context: queryInterface }) => {
     await queryInterface.createTable(
         "stages",
         {
-            id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
-            name: { type: DataTypes.STRING(40), allowNull: false },
-            type: { type: DataTypes.ENUM("watched", "paused", "final"), allowNull: false },
-            threshold_days: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: true, comment: "watched stages only, 1-90" },
-            position: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
-            aliases: { type: DataTypes.JSON, allowNull: false, comment: "other names used in CSV files" },
-            created_at: { type: DataTypes.DATE(3), allowNull: false, defaultValue: literal("CURRENT_TIMESTAMP(3)") },
+            id: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                autoIncrement: true,
+                primaryKey: true,
+            },
+            name: {
+                type: DataTypes.STRING(40),
+                allowNull: false,
+            },
+            type: {
+                type: DataTypes.ENUM("watched", "paused", "final"),
+                allowNull: false,
+            },
+            threshold_days: {
+                type: DataTypes.SMALLINT.UNSIGNED,
+                allowNull: true,
+                comment: "watched stages only, 1-90",
+            },
+            position: {
+                type: DataTypes.SMALLINT.UNSIGNED,
+                allowNull: false,
+            },
+            aliases: {
+                type: DataTypes.JSON,
+                allowNull: false,
+                comment: "other names used in CSV files",
+            },
+            created_at: {
+                type: DataTypes.DATE(3),
+                allowNull: false,
+                defaultValue: literal("CURRENT_TIMESTAMP(3)"),
+            },
             updated_at: {
                 type: DataTypes.DATE(3),
                 allowNull: false,

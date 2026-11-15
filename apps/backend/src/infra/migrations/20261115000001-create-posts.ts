@@ -11,21 +11,36 @@ export const up: Migration = async ({ context: queryInterface }) => {
                 autoIncrement: true,
                 primaryKey: true,
             },
-            title: { type: DataTypes.STRING(150), allowNull: false },
-            content: { type: DataTypes.TEXT, allowNull: false },
+            title: {
+                type: DataTypes.STRING(150),
+                allowNull: false,
+            },
+            content: {
+                type: DataTypes.TEXT,
+                allowNull: false,
+            },
             author: {
                 type: DataTypes.STRING(100),
                 allowNull: false,
                 defaultValue: "anonymous",
             },
-            tags: { type: DataTypes.JSON, allowNull: false },
+            tags: {
+                type: DataTypes.JSON,
+                allowNull: false,
+            },
             published: {
                 type: DataTypes.BOOLEAN,
                 allowNull: false,
                 defaultValue: false,
             },
-            createdAt: { type: DataTypes.DATE, allowNull: false },
-            updatedAt: { type: DataTypes.DATE, allowNull: false },
+            createdAt: {
+                type: DataTypes.DATE,
+                allowNull: false,
+            },
+            updatedAt: {
+                type: DataTypes.DATE,
+                allowNull: false,
+            },
         },
         { charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" },
     );
