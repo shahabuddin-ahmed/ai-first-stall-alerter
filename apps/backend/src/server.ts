@@ -29,10 +29,11 @@ const gracefulShutdown = (server: http.Server, forcedTimeout: number) => {
 
 const server = http.createServer(app);
 
-process.on("SIGTERM", gracefulShutdown(server, config.APP_FORCE_SHUTDOWN_SECOND));
-process.on("SIGINT", gracefulShutdown(server, config.APP_FORCE_SHUTDOWN_SECOND));
+const forcedShutdownMs = config.APP_FORCE_SHUTDOWN_SECOND * 1000;
+process.on("SIGTERM", gracefulShutdown(server, forcedShutdownMs));
+process.on("SIGINT", gracefulShutdown(server, forcedShutdownMs));
 
 
 server.listen(config.APPLICATION_SERVER_PORT, () => {
-    logger.log("API is running on port: " + config.APPLICATION_SERVER_PORT);
+    logger.log("StallAlert API is running on port: " + config.APPLICATION_SERVER_PORT);
 });

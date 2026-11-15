@@ -33,8 +33,8 @@ interface Config {
 
 const config: Config = {
 	SEQUELIZE: {
-		USERNAME: process.env.MYSQL_USER || "stallalert",
-		PASSWORD: process.env.MYSQL_PASSWORD || "stallalert",
+		USERNAME: process.env.MYSQL_USER || "root",
+		PASSWORD: process.env.MYSQL_PASSWORD || "root",
 		MYSQL_DATABASE: process.env.MYSQL_DATABASE || "stallalert"
 	},
 	SEQUELIZEOPTIONS: {
