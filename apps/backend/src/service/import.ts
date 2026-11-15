@@ -7,9 +7,9 @@ import { ImportRepoInterface } from "../repo/import";
 import { withTransaction } from "../repo/transaction";
 import { analyseBoard } from "../rules/analyse-board";
 import { parseBoardCsv } from "../rules/csv-reader";
-import { filterQueue } from "../rules/queue-filter";
+import { filterQueue, QueueFilter } from "../rules/queue-filter";
 import { dayNumberOf, parseIsoDate, toIsoDate } from "../rules/dates";
-import { BoardAnalysis, BoardCounts, Bottleneck, ParsedBoard, QueueItem, RowError } from "../rules/types";
+import { BoardAnalysis, BoardCounts, Bottleneck, Page, ParsedBoard, QueueItem, RowError } from "../rules/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
@@ -24,11 +24,11 @@ export interface ImportSummary {
     createdAt: Date;
 }
 
-export interface BoardQuery {
+export interface ReportQuery extends QueueFilter {
     referenceDate?: string;
-    stage?: string;
-    recruiter?: string;
-    search?: string;
+}
+
+export interface BoardQuery extends ReportQuery {
     page: number;
     pageSize: number;
 }
@@ -41,31 +41,36 @@ export interface BoardView {
     bottlenecks: Bottleneck[];
     stageThresholds: { name: string; thresholdDays: number; stalled: number }[];
     filterOptions: { stages: string[]; recruiters: string[] };
-    queue: { items: QueueItem[]; page: number; pageSize: number; total: number };
+    queue: Page<QueueItem>;
 }
 
 export interface UploadResult extends BoardView {
     alreadyImported: boolean;
 }
 
-export interface RowErrorsView {
+export interface RowErrorsView extends Page<RowError> {
     import: ImportSummary;
     referenceDate: string;
-    items: RowError[];
-    page: number;
-    pageSize: number;
+}
+
+export interface ImportList {
+    data: ImportSummary[];
+    offset: number;
+    limit: number;
     total: number;
+}
+
+export interface AnalysedImport {
+    summary: ImportSummary;
+    analysis: BoardAnalysis;
 }
 
 export interface ImportServiceInterface {
     upload(file: { fileName: string; bytes: Buffer }, query: BoardQuery): Promise<UploadResult>;
     getBoard(id: number, query: BoardQuery): Promise<BoardView>;
-    getRowErrors(id: number, query: { referenceDate?: string; page: number; pageSize: number }): Promise<RowErrorsView>;
-    analyse(id: number, referenceDate?: string): Promise<{ summary: ImportSummary; analysis: BoardAnalysis }>;
-    list(
-        offset: number,
-        limit: number
-    ): Promise<{ data: ImportSummary[]; offset: number; limit: number; total: number }>;
+    getRowErrors(id: number, query: BoardQuery): Promise<RowErrorsView>;
+    analyse(id: number, referenceDate?: string): Promise<AnalysedImport>;
+    list(offset: number, limit: number): Promise<ImportList>;
     remove(id: number): Promise<boolean>;
 }
 
@@ -113,7 +118,7 @@ export class ImportService implements ImportServiceInterface {
             );
             return {
                 alreadyImported: false,
-                ...this.buildView(toSummary(created), parsed.board, { ...query, referenceDate }),
+                ...this.buildView(toSummary(created), parsed.board, referenceDate, query),
             };
         } catch (err) {
             if (!(err instanceof UniqueConstraintError)) {
@@ -123,10 +128,9 @@ export class ImportService implements ImportServiceInterface {
             if (!existing) {
                 throw err;
             }
-            // Same bytes, so the stored rows are the rows we just read.
             return {
                 alreadyImported: true,
-                ...this.buildView(toSummary(existing), parsed.board, { ...query, referenceDate }),
+                ...this.buildView(toSummary(existing), parsed.board, referenceDate, query),
             };
         }
     }
@@ -134,7 +138,7 @@ export class ImportService implements ImportServiceInterface {
     async getBoard(id: number, query: BoardQuery): Promise<BoardView> {
         const referenceDate = this.resolveReferenceDate(query.referenceDate);
         const { found, board } = await this.loadBoard(id);
-        return this.buildView(toSummary(found), board, { ...query, referenceDate });
+        return this.buildView(toSummary(found), board, referenceDate, query);
     }
 
     async getRowErrors(
@@ -152,8 +156,7 @@ export class ImportService implements ImportServiceInterface {
         };
     }
 
-    // The full analysis of a stored import (also used by insights and export).
-    async analyse(id: number, referenceDate?: string): Promise<{ summary: ImportSummary; analysis: BoardAnalysis }> {
+    async analyse(id: number, referenceDate?: string): Promise<AnalysedImport> {
         const date = this.resolveReferenceDate(referenceDate);
         const { found, board } = await this.loadBoard(id);
         return {
@@ -162,10 +165,7 @@ export class ImportService implements ImportServiceInterface {
         };
     }
 
-    async list(
-        offset: number,
-        limit: number
-    ): Promise<{ data: ImportSummary[]; offset: number; limit: number; total: number }> {
+    async list(offset: number, limit: number): Promise<ImportList> {
         const [data, total] = await Promise.all([this.importRepo.list(offset, limit), this.importRepo.count()]);
         return { data: data.map(toSummary), offset, limit, total };
     }
@@ -187,7 +187,6 @@ export class ImportService implements ImportServiceInterface {
         return { found, board: { headerCount: found.headerCount, records } };
     }
 
-    // Default: today (UTC). Never later than today anywhere on Earth.
     private resolveReferenceDate(value?: string): string {
         if (!value) {
             return toIsoDate(dayNumberOf(this.now()));
@@ -204,13 +203,9 @@ export class ImportService implements ImportServiceInterface {
         return value;
     }
 
-    private buildView(
-        summary: ImportSummary,
-        board: ParsedBoard,
-        query: BoardQuery & { referenceDate: string }
-    ): BoardView {
+    private buildView(summary: ImportSummary, board: ParsedBoard, referenceDate: string, query: BoardQuery): BoardView {
         const { stages, stagesVersion } = this.configService.getSnapshot();
-        const analysis = analyseBoard(board, stages, query.referenceDate);
+        const analysis = analyseBoard(board, stages, referenceDate);
 
         const filtered = filterQueue(analysis.queue, query);
 

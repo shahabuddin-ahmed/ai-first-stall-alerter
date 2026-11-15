@@ -1,21 +1,19 @@
 import { ERROR_CODES } from "../constant/error";
-import { ActionCode, StageType } from "../constant/stage";
+import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
 import { SettingRepoInterface } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
 import { findStageListProblems } from "../rules/stage-list-checks";
-import { StageConfig } from "../rules/types";
+import { StageConfig, StageInput } from "../rules/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
 
-// Stages and team settings as the rest of the API sees them. Read from memory, never from the database.
 export interface ConfigSnapshot {
     stages: StageConfig[];
     stagesVersion: number;
     useAiDrafts: boolean;
 }
 
-// What the browser may see about AI: whether it is set up and which model. Never the key.
 export interface AiSetup {
     configured: boolean;
     model: string | null;
@@ -28,15 +26,6 @@ export interface SettingsView {
     stagesVersion: number;
 }
 
-// A stage as sent by the browser: the list order is the pipeline order, so there is no position.
-export interface StageInput {
-    name: string;
-    type: StageType;
-    thresholdDays: number | null;
-    aliases: string[];
-    actionCode: ActionCode | null;
-}
-
 export interface ConfigServiceInterface {
     load(): Promise<void>;
     getSnapshot(): ConfigSnapshot;
@@ -45,13 +34,9 @@ export interface ConfigServiceInterface {
     updateSettings(update: { useAiDrafts: boolean }): Promise<SettingsView>;
 }
 
-// Write-through memory cache: every save goes to MySQL first, then the memory copy is reloaded from MySQL.
-// Fine for one API process. Several processes would need a shared cache (see README).
 export class ConfigService implements ConfigServiceInterface {
-    // Set by load(), which newConfigService runs before the API handles requests.
     private snapshot!: ConfigSnapshot;
-    // Saves run one after another, so the memory copy always ends with the last saved version.
-    private saving: Promise<unknown> = Promise.resolve();
+    private saving: Promise<void> = Promise.resolve();
 
     constructor(
         private stageRepo: StageRepoInterface,
@@ -71,7 +56,6 @@ export class ConfigService implements ConfigServiceInterface {
         return this.snapshot;
     }
 
-    // Names and aliases arrive trimmed and checked (request schema). Only watched stages keep a threshold and an action.
     async saveStages(input: StageInput[], expectedVersion: number): Promise<ConfigSnapshot> {
         const stages: StageConfig[] = input.map((stage, index) => {
             const watched = stage.type === StageType.WATCHED;
@@ -92,7 +76,6 @@ export class ConfigService implements ConfigServiceInterface {
 
         return this.oneAtATime(async () => {
             await withTransaction(async (transaction) => {
-                // Optimistic lock: if someone saved since this user loaded the page, nothing is changed.
                 const stillCurrent = await this.settingRepo.bumpStagesVersion(expectedVersion, transaction);
                 if (!stillCurrent) {
                     throw new ConflictException(ERROR_CODES.E_CONFLICT, "", [
@@ -124,10 +107,19 @@ export class ConfigService implements ConfigServiceInterface {
         });
     }
 
-    private oneAtATime<T>(work: () => Promise<T>): Promise<T> {
-        const run = this.saving.then(work, work);
-        this.saving = run.catch(() => undefined);
-        return run;
+    private async oneAtATime<T>(work: () => Promise<T>): Promise<T> {
+        const previousSave = this.saving;
+        let finishSave = (): void => undefined;
+        this.saving = new Promise<void>((resolve) => {
+            finishSave = resolve;
+        });
+
+        try {
+            await previousSave;
+            return await work();
+        } finally {
+            finishSave();
+        }
     }
 }
 

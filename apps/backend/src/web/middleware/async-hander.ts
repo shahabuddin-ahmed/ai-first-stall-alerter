@@ -1,6 +1,9 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 
-// Wraps an async controller so a thrown error goes to the global error handler.
-export const asyncHandler = (fn: any) => (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+export const asyncHandler = (fn: RequestHandler) => async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        await fn(req, res, next);
+    } catch (err) {
+        next(err);
+    }
 };

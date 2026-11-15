@@ -1,15 +1,14 @@
 import { ActionCode, RecipientType, TimerSource } from "../constant/stage";
-import { BoardAnalysis, Bottleneck } from "./types";
+import { BoardAnalysis, Bottleneck, MessageFacts, ReasonFacts } from "./types";
 import { BottleneckType } from "../constant/board";
 
 interface ActionDetails {
-    label: string; // shown in the queue
-    instruction: string; // used in the reason sentence: "<recruiter> should <instruction>."
+    label: string;
+    instruction: string;
     recipient: RecipientType;
-    template: string; // fallback message (spec C5): carries out the action, no promises or guesses
+    template: string;
 }
 
-// What to do for each action code, and who the message goes to (spec C2, C5).
 export const ACTIONS: Record<ActionCode, ActionDetails> = {
     [ActionCode.REVIEW_APPLICATION]: {
         label: "Review the application",
@@ -64,25 +63,11 @@ export const ACTIONS: Record<ActionCode, ActionDetails> = {
 
 const days = (count: number): string => `${count} ${count === 1 ? "day" : "days"}`;
 
-// "Lopes, Ana" → "Ana"; "Amara Okafor" → "Amara"
 export const firstNameOf = (name: string): string => {
     const given = name.includes(",") ? name.slice(name.indexOf(",") + 1) : name;
     return given.trim().split(/\s+/)[0] || name;
 };
 
-export interface ReasonFacts {
-    name: string;
-    stage: string;
-    recruiter: string;
-    actionCode: ActionCode;
-    stageThreshold: number;
-    timerFrom: string;
-    timerSource: TimerSource;
-    daysInStage: number;
-    overdueDays: number;
-}
-
-// Why this candidate is in the queue (spec C5), in one short paragraph.
 export const explainReason = (facts: ReasonFacts): string => {
     const opening =
         facts.timerSource === TimerSource.LAST_ACTIVITY
@@ -99,14 +84,6 @@ export const explainReason = (facts: ReasonFacts): string => {
     );
 };
 
-export interface MessageFacts {
-    name: string;
-    firstName: string;
-    role: string;
-    recruiter: string;
-}
-
-// Fills the placeholders of a template or an AI draft with this candidate's details (on the server, never by the AI).
 export const fillPlaceholders = (text: string, facts: MessageFacts): string =>
     text
         .replace(/\{\{first_name\}\}/g, facts.firstName)
@@ -117,7 +94,6 @@ export const fillPlaceholders = (text: string, facts: MessageFacts): string =>
 export const templateMessage = (actionCode: ActionCode, facts: MessageFacts): string =>
     fillPlaceholders(ACTIONS[actionCode].template, facts);
 
-// The briefing written by code, used whenever AI text is not (spec E: template fallback).
 export const templateBriefing = (analysis: BoardAnalysis): string => {
     const { counts, queue, bottlenecks } = analysis;
     if (queue.length === 0) {
@@ -144,7 +120,6 @@ export const templateBottleneckNote = (bottleneck: Bottleneck): string =>
         ? `${bottleneck.key} has ${bottleneck.stalled} stalled candidates. Clear these follow-ups first.`
         : `${bottleneck.key} owns ${bottleneck.stalled} stalled follow-ups. Consider sharing some of them.`;
 
-// Who the message goes to, as people read it (export and screens).
 export const RECIPIENT_LABELS: Record<RecipientType, string> = {
     [RecipientType.HIRING_MANAGER]: "Hiring manager",
     [RecipientType.CANDIDATE]: "Candidate",

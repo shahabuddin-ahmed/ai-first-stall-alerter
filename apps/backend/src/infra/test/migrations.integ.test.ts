@@ -1,5 +1,5 @@
 import { QueryTypes, UniqueConstraintError } from "sequelize";
-import config from "../../config/config";
+import { assertTestDatabase } from "./test-database";
 import newSequelize from "../sequelize";
 import { newMigrator, newSeeder } from "../migrator";
 
@@ -30,11 +30,7 @@ const countRows = async (sql: string, replacements: unknown[]): Promise<number> 
 
 beforeAll(async () => {
     // Safety: never drop tables in a real database.
-    if (!config.SEQUELIZE.MYSQL_DATABASE.endsWith("_test")) {
-        throw new Error(
-            `Refusing to run migration tests on "${config.SEQUELIZE.MYSQL_DATABASE}" (name must end with _test)`
-        );
-    }
+    assertTestDatabase();
     // Start from an empty database.
     await seeder.down({ to: 0 });
     await migrator.down({ to: 0 });

@@ -12,7 +12,7 @@ const toStageConfig = (stage: StageInterface): StageConfig => ({
     type: stage.type,
     thresholdDays: stage.thresholdDays,
     position: stage.position,
-    aliases: stage.aliases, // a JSON column: mysql2 returns it as an array
+    aliases: stage.aliases,
     actionCode: stage.actionCode,
 });
 
@@ -25,7 +25,6 @@ export class StageRepo implements StageRepoInterface {
         return stages.map((stage) => toStageConfig(stage.get({ plain: true }) as StageInterface));
     }
 
-    // The whole list is saved at once (its order is the pipeline), inside the caller's transaction.
     public async replaceAll(stages: StageConfig[], transaction: Transaction): Promise<void> {
         await Stage.destroy({ where: {}, transaction });
         await Stage.bulkCreate(

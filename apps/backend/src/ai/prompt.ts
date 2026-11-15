@@ -1,7 +1,6 @@
 import { AI_LIMITS, DRAFT_PLACEHOLDERS } from "../constant/ai";
 import { InsightFacts } from "../rules/ai-facts";
 
-// The one prompt StallAlert sends. Code has already decided everything; the model only writes text.
 export const SYSTEM_PROMPT = `You write short follow-up text for a recruiting team.
 You get facts about stalled candidates as JSON. Code has already decided who is stalled, the order (rank),
 the action and who the message goes to. Never change or question those decisions.
@@ -28,7 +27,6 @@ Nowhere: links, HTML, markdown, promises about timing, guesses about why somethi
 
 export const buildUserMessage = (facts: InsightFacts): string => JSON.stringify(facts);
 
-// JSON schema for the provider's structured output. Lengths and ranks are checked again by the guardrails.
 export const RESPONSE_SCHEMA = {
     type: "object",
     additionalProperties: false,

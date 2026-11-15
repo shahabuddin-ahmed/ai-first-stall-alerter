@@ -4,20 +4,19 @@ import { HttpAiGenerator } from "./http-generator";
 import { AiMode } from "../constant/ai";
 import type { AiConfig } from "../config/config";
 
-// Picks the AI from the server settings. null = AI is not set up, so templates are always used.
-export const newAiGenerator = (ai: Omit<AiConfig, "TOP_N">): AiGenerator | null => {
-    if (ai.MODE === AiMode.FAKE) {
+export const newAiGenerator = (ai: AiConfig): AiGenerator | null => {
+    if (ai.AI_MODE === AiMode.FAKE) {
         return new FakeAiGenerator();
     }
-    if (!ai.API_KEY || !ai.MODEL) {
+    if (!ai.AI_API_KEY || !ai.AI_MODEL) {
         return null;
     }
     return new HttpAiGenerator({
-        apiKey: ai.API_KEY,
-        model: ai.MODEL,
-        baseUrl: ai.BASE_URL,
-        timeoutMs: ai.TIMEOUT_MS,
-        maxOutputTokens: ai.MAX_OUTPUT_TOKENS,
-        reasoningEffort: ai.REASONING_EFFORT,
+        apiKey: ai.AI_API_KEY,
+        model: ai.AI_MODEL,
+        baseUrl: ai.AI_BASE_URL,
+        timeoutMs: ai.AI_TIMEOUT_MS,
+        maxOutputTokens: ai.AI_MAX_OUTPUT_TOKENS,
+        reasoningEffort: ai.AI_REASONING_EFFORT,
     });
 };

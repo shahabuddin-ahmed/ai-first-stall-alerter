@@ -33,15 +33,12 @@ const app = express();
 app.use(securityHeaders);
 app.use(requestId);
 app.use(requestLogger);
-app.use(newCors(config.SECURITY.WEB_ORIGINS));
+app.use(newCors(config.SECURITY.WEB_ORIGIN));
 app.use(bodyParser.json({ limit: JSON_BODY_LIMIT }));
 
-// Rate limits on the expensive endpoints (checked before the routes run).
-app.post(`${API_PREFIX}/imports`, newRateLimit(config.SECURITY.UPLOADS_PER_MINUTE));
-app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.INSIGHTS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports`, newRateLimit(config.SECURITY.RATE_LIMIT_UPLOADS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.RATE_LIMIT_INSIGHTS_PER_MINUTE));
 
-// Connects to MySQL, loads the stages and settings, then adds the routes.
-// server.ts waits for this before it accepts any request.
 export const appReady: Promise<void> = (async () => {
     await initializeDBConnection();
 
@@ -52,7 +49,6 @@ export const appReady: Promise<void> = (async () => {
     const aiInsightRepo = await newAiInsightRepo();
     const llmCallRepo = await newLlmCallRepo();
 
-    // AI: null when no key/model is set (templates only). AI_MODE=fake uses the built-in stand-in.
     const aiGenerator = newAiGenerator(config.AI);
 
     const postService = await newPostService(postRepo);
@@ -67,7 +63,7 @@ export const appReady: Promise<void> = (async () => {
         aiInsightRepo,
         llmCallRepo,
         aiGenerator,
-        config.AI.TOP_N
+        config.AI.AI_TOP_N
     );
     const exportService = await newExportService(importService, insightService);
 

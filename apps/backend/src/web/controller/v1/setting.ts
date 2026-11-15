@@ -16,19 +16,17 @@ const updateSchema = Joi.object({
 export class SettingController extends Controller implements SettingControllerInterface {
     constructor(private configService: ConfigServiceInterface) {
         super();
-        this.get = this.get.bind(this);
-        this.update = this.update.bind(this);
     }
 
-    async get(_req: Request, res: Response): Promise<any> {
+    get = async (_req: Request, res: Response): Promise<any> => {
         return this.sendResponse({ response: this.configService.getSettings() }, HttpStatus.OK, res);
-    }
+    };
 
-    async update(req: Request, res: Response): Promise<any> {
+    update = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(updateSchema, req.body);
         const settings = await this.configService.updateSettings({ useAiDrafts: value.useAiDrafts });
         return this.sendResponse({ response: settings }, HttpStatus.OK, res);
-    }
+    };
 }
 
 export const newSettingV1Controller = async (configService: ConfigServiceInterface): Promise<SettingController> => {

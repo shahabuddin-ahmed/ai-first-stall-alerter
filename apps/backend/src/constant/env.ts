@@ -1,9 +1,15 @@
-// The environments the API can run in (NODE_ENV).
 export enum NodeEnv {
     DEVELOPMENT = "development",
     TEST = "test",
     PRODUCTION = "production",
 }
 
-// Tests only ever use a database whose name ends with this.
 export const TEST_DATABASE_SUFFIX = "_test";
+
+export enum DbCommand {
+    MIGRATE = "migrate",
+    MIGRATE_DOWN = "migrate:down",
+    MIGRATE_STATUS = "migrate:status",
+    SEED = "seed",
+    SEED_DOWN = "seed:down",
+}

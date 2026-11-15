@@ -2,9 +2,6 @@ import { STAGE_LIMITS, StageType } from "../constant/stage";
 import { normaliseStageName } from "./stage-matcher";
 import { StageConfig } from "./types";
 
-// Rules for a whole stage list before it is saved (spec C2). Single values (name, type, threshold range)
-// are already checked by the request schema; these rules need the whole list.
-// Returns the problems in plain words; an empty list means the stages can be saved.
 export const findStageListProblems = (stages: StageConfig[]): string[] => {
     const problems: string[] = [];
 
@@ -12,7 +9,6 @@ export const findStageListProblems = (stages: StageConfig[]): string[] => {
         problems.push("Add at least one watched stage.");
     }
 
-    // Every name and alias must point to one stage only, or a CSV value could match two stages.
     const seen = new Set<string>();
     for (const stage of stages) {
         for (const name of [stage.name, ...stage.aliases]) {

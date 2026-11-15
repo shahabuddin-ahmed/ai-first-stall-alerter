@@ -1,7 +1,6 @@
 import { AI_LIMITS, DRAFT_PLACEHOLDERS } from "../constant/ai";
 import { InsightFacts } from "../rules/ai-facts";
 
-// A checked AI answer, still with placeholders (this is what the cache stores).
 export interface AiOutput {
     briefing: string;
     bottleneck_notes: string[];
@@ -13,7 +12,6 @@ export type GuardrailResult = { ok: true; output: AiOutput } | { ok: false; prob
 const LINK_OR_MARKUP = /https?:\/\/|www\.|<\/?[a-z!][^>]*>|\[[^\]]*\]\([^)]*\)/i;
 const PLACEHOLDER = /\{\{[^{}]*\}\}/g;
 
-// Every number that appears anywhere in the facts. The briefing may only use these.
 const numbersIn = (value: unknown, found = new Set<number>()): Set<number> => {
     if (typeof value === "number") {
         found.add(value);
@@ -48,7 +46,6 @@ const checkNumbers = (label: string, text: string, allowed: Set<number>, problem
 const isObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-// Checks an AI answer before anything is shown or cached (spec E4). Any problem → templates for the whole report.
 export const checkAiOutput = (raw: unknown, facts: InsightFacts): GuardrailResult => {
     if (
         !isObject(raw) ||
@@ -82,7 +79,6 @@ export const checkAiOutput = (raw: unknown, facts: InsightFacts): GuardrailResul
         checkNumbers(`bottleneck note ${index + 1}`, note, allowedNumbers, problems);
     });
 
-    // Exactly one draft per requested rank: none missing, none twice, none invented.
     const wanted = facts.alerts.map((alert) => alert.rank);
     const got = output.drafts.map((draft) => draft.rank);
     if (got.length !== new Set(got).size) {

@@ -10,7 +10,6 @@ export class LlmCallRepo implements LlmCallRepoInterface {
         await LlmCall.create(call);
     }
 
-    // The most recent call for one report (used to show "AI unavailable" without calling again).
     public async findLatest(cacheKey: string): Promise<LlmCallInterface | null> {
         const found = await LlmCall.findOne({
             where: { cacheKey },

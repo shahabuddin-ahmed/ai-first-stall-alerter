@@ -20,7 +20,6 @@ const fail = (code: FileErrorCode, message: string, details: string[] = []): Par
 
 const decodeUtf8 = (bytes: Uint8Array): string | null => {
     try {
-        // fatal: invalid UTF-8 throws instead of turning into "�". A BOM is removed.
         return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     } catch {
         return null;
@@ -30,17 +29,15 @@ const decodeUtf8 = (bytes: Uint8Array): string | null => {
 const readRows = (text: string): string[][] | { line: number } => {
     try {
         return parse(text, {
-            relax_column_count: true, // wrong field counts become row errors, not a file error
+            relax_column_count: true,
             skip_empty_lines: false, // blank lines still count for record numbers
-            trim: true, // every value (and column name) comes back without outer spaces
+            trim: true,
         }) as string[][];
     } catch (err) {
         return { line: Number((err as { lines?: number }).lines) || 1 };
     }
 };
 
-// Reads a hiring-board CSV file (spec C1) into records with the 8 known columns.
-// Returns a file error (spec C7) when the whole file has to be rejected.
 export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
     const text = decodeUtf8(bytes);
     if (text === null) {
@@ -81,12 +78,12 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
 
     rows.slice(1).forEach((fields, index) => {
         if (fields.every((field) => field === "")) {
-            return; // blank record
+            return;
         }
-        const recordNumber = index + 2; // the header is record 1
+        const recordNumber = index + 2;
         const record = { recordNumber, fieldCount: fields.length } as BoardRecord;
         for (const [column, position] of columnIndex) {
-            const value = fields[position] ?? ""; // a missing column (-1) or a short record gives ""
+            const value = fields[position] ?? "";
             if (value.length > BOARD_LIMITS.MAX_VALUE_LENGTH) {
                 tooLong.push(`record ${recordNumber}, column ${column}`);
             }

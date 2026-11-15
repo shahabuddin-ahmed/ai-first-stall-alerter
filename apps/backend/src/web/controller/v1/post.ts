@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import { Controller } from "../controller";
+import { HttpStatus } from "../../../constant/http";
 import { PostServiceInterface } from "../../../service/post";
 
 export interface PostControllerInterface {
@@ -14,14 +15,9 @@ export interface PostControllerInterface {
 export class PostController extends Controller implements PostControllerInterface {
     constructor(private postService: PostServiceInterface) {
         super();
-        this.create = this.create.bind(this);
-        this.list = this.list.bind(this);
-        this.getById = this.getById.bind(this);
-        this.update = this.update.bind(this);
-        this.remove = this.remove.bind(this);
     }
 
-    async create(req: Request, res: Response): Promise<any> {
+    create = async (req: Request, res: Response): Promise<any> => {
         const schema = Joi.object({
             title: Joi.string().min(1).required(),
             content: Joi.string().min(1).required(),
@@ -34,10 +30,10 @@ export class PostController extends Controller implements PostControllerInterfac
 
         const { value } = await this.validateRequest(schema, req.body);
         const data = await this.postService.create(value);
-        return this.sendResponse({ response: data }, 201, res);
-    }
+        return this.sendResponse({ response: data }, HttpStatus.CREATED, res);
+    };
 
-    async list(req: Request, res: Response): Promise<any> {
+    list = async (req: Request, res: Response): Promise<any> => {
         const schema = Joi.object({
             offset: Joi.number().integer().min(0).default(0),
             limit: Joi.number().integer().min(1).max(100).default(25),
@@ -45,20 +41,20 @@ export class PostController extends Controller implements PostControllerInterfac
 
         const { value } = await this.validateRequest(schema, req.query);
         const data = await this.postService.list(value.offset, value.limit);
-        return this.sendResponse({ response: data }, 200, res);
-    }
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
+    };
 
-    async getById(req: Request, res: Response): Promise<any> {
+    getById = async (req: Request, res: Response): Promise<any> => {
         const schema = Joi.object({
             id: Joi.number().integer().positive().required(),
         });
 
         const { value } = await this.validateRequest(schema, req.params);
         const data = await this.postService.getById(value.id);
-        return this.sendResponse({ response: data }, 200, res);
-    }
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
+    };
 
-    async update(req: Request, res: Response): Promise<any> {
+    update = async (req: Request, res: Response): Promise<any> => {
         const paramSchema = Joi.object({
             id: Joi.number().integer().positive().required(),
         });
@@ -76,18 +72,18 @@ export class PostController extends Controller implements PostControllerInterfac
         const { value: body } = await this.validateRequest(bodySchema, req.body);
 
         const data = await this.postService.update(params.id, body);
-        return this.sendResponse({ response: data }, 200, res);
-    }
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
+    };
 
-    async remove(req: Request, res: Response): Promise<any> {
+    remove = async (req: Request, res: Response): Promise<any> => {
         const schema = Joi.object({
             id: Joi.number().integer().positive().required(),
         });
 
         const { value } = await this.validateRequest(schema, req.params);
         await this.postService.remove(value.id);
-        return this.sendResponse({ response: { deleted: true } }, 200, res);
-    }
+        return this.sendResponse({ response: { deleted: true } }, HttpStatus.OK, res);
+    };
 }
 
 export const newPostV1Controller = async (postService: PostServiceInterface): Promise<PostController> => {

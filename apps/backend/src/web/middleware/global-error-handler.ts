@@ -7,7 +7,6 @@ import logger from "../../infra/logger";
 import { ResponseType } from "../controller/controller";
 import { pathOf } from "./request-logger";
 
-// Errors thrown by express.json() for bad or too large JSON bodies.
 const BODY_ERRORS: Record<string, { status: HttpStatus; code: ERROR_CODES }> = {
     "entity.parse.failed": { status: HttpStatus.BAD_REQUEST, code: ERROR_CODES.E_INVALID_DATA },
     "entity.too.large": { status: HttpStatus.PAYLOAD_TOO_LARGE, code: ERROR_CODES.E_PAYLOAD_TOO_LARGE },
@@ -42,7 +41,6 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, _next:
         code,
         message,
         response: null,
-        // Server errors never return details (they could hold internal data).
         errors: isServerError || bodyError ? [message] : err.errors || [message],
     } as ResponseType);
 };

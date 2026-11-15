@@ -1,15 +1,10 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
+import { StageConfig } from "../rules/types";
 import { ActionCode, StageType } from "../constant/stage";
 
-export interface StageInterface {
+export interface StageInterface extends StageConfig {
     id?: number;
-    name: string;
-    type: StageType;
-    thresholdDays: number | null;
-    position: number;
-    aliases: string[];
-    actionCode: ActionCode | null;
     createdAt?: Date;
     updatedAt?: Date;
 }

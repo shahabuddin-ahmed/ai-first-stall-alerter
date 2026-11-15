@@ -3,11 +3,10 @@ import { NodeEnv } from "../constant/env";
 
 type Fields = Record<string, string | number | boolean | null | undefined>;
 
-// One JSON line per event, easy to search. Only ids, codes, paths and timings:
-// never candidate data, CSV content, AI text, query strings or secrets.
+// Log only ids, codes, paths and timings: never candidate data, CSV content, AI text, query strings or secrets.
 const write = (level: "info" | "warn" | "error", message: string, fields: Fields = {}): void => {
     if (config.NODE_ENV === NodeEnv.TEST && level === "info") {
-        return; // keep test output readable
+        return;
     }
     const line = JSON.stringify({ level, time: new Date().toISOString(), message, ...fields });
     if (level === "error") {

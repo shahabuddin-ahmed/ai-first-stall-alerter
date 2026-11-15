@@ -10,7 +10,6 @@ export interface ExportControllerInterface {
     download(req: Request, res: Response): any;
 }
 
-// The same filters as the queue screen (no pages: the file has every matching row).
 const querySchema = Joi.object({
     referenceDate: referenceDateField,
     ...queueFilterFields,
@@ -19,11 +18,9 @@ const querySchema = Joi.object({
 export class ExportController extends Controller implements ExportControllerInterface {
     constructor(private exportService: ExportServiceInterface) {
         super();
-        this.download = this.download.bind(this);
     }
 
-    // GET /imports/:id/export — a CSV file download, not JSON. Errors are still JSON.
-    async download(req: Request, res: Response): Promise<any> {
+    download = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(querySchema, req.query);
         const file = await this.exportService.exportCsv(params.id, query);
@@ -32,7 +29,7 @@ export class ExportController extends Controller implements ExportControllerInte
         res.setHeader("Content-Disposition", `attachment; filename="${file.fileName}"`);
         res.setHeader("Cache-Control", "no-store");
         return res.status(HttpStatus.OK).send(file.csv);
-    }
+    };
 }
 
 export const newExportV1Controller = async (exportService: ExportServiceInterface): Promise<ExportController> => {

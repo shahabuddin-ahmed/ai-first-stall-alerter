@@ -58,7 +58,6 @@ export class ImportRepo implements ImportRepoInterface {
         return Import.count();
     }
 
-    // The stored rows in file order, in the shape the rules use.
     public async listRecords(importId: number): Promise<BoardRecord[]> {
         const records = await ImportRecord.findAll({
             where: { importId },
@@ -66,10 +65,9 @@ export class ImportRepo implements ImportRepoInterface {
             attributes: { exclude: ["importId"] },
             raw: true,
         });
-        return records as unknown as BoardRecord[]; // empty values are stored as "", never NULL
+        return records as unknown as BoardRecord[];
     }
 
-    // Rows and cached AI results are deleted by the database (ON DELETE CASCADE).
     public async delete(id: number): Promise<boolean> {
         const deleted = await Import.destroy({ where: { id } });
         return deleted > 0;

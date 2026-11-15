@@ -7,7 +7,7 @@ import { buildUserMessage, RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./prompt";
 export interface HttpGeneratorOptions {
     apiKey: string;
     model: string;
-    baseUrl: string; // OpenAI-compatible, e.g. https://openrouter.ai/api/v1
+    baseUrl: string;
     timeoutMs: number;
     maxOutputTokens: number;
     reasoningEffort: ReasoningEffort;
@@ -21,7 +21,6 @@ interface ChatCompletion {
 
 const isTimeout = (err: unknown): boolean => TIMEOUT_ERROR_NAMES.includes((err as Error).name);
 
-// One plain fetch to an OpenAI-compatible chat endpoint. No SDK, no retries (the user can press Retry).
 export class HttpAiGenerator implements AiGenerator {
     readonly model: string;
 
@@ -29,7 +28,6 @@ export class HttpAiGenerator implements AiGenerator {
         this.model = options.model;
     }
 
-    // OpenRouter's "reasoning" setting: off = no thinking; low/medium/high = how much; none = not sent.
     private reasoningSetting(): { reasoning?: Record<string, unknown> } {
         const effort = this.options.reasoningEffort;
         if (effort === ReasoningEffort.NONE) {
@@ -63,7 +61,7 @@ export class HttpAiGenerator implements AiGenerator {
                         type: AI_REQUEST.RESPONSE_FORMAT,
                         json_schema: { name: AI_REQUEST.SCHEMA_NAME, strict: true, schema: RESPONSE_SCHEMA },
                     },
-                    usage: { include: true }, // OpenRouter: return the cost
+                    usage: { include: true },
                     ...this.reasoningSetting(),
                 }),
                 signal: AbortSignal.timeout(this.options.timeoutMs),

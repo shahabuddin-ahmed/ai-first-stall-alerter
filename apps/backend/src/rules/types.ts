@@ -1,17 +1,18 @@
 import { BoardColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../constant/board";
 import { ActionCode, RecipientType, StageType, TimerSource } from "../constant/stage";
 
-// A hiring stage as configured by the team (the `stages` table).
-export interface StageConfig {
+export interface StageInput {
     name: string;
     type: StageType;
     thresholdDays: number | null;
-    position: number;
     aliases: string[];
     actionCode: ActionCode | null;
 }
 
-// One CSV record as stored: the 8 known columns as raw (trimmed) text. "" = empty or column not in the file.
+export interface StageConfig extends StageInput {
+    position: number;
+}
+
 export interface BoardRecord {
     recordNumber: number;
     fieldCount: number;
@@ -50,26 +51,37 @@ export interface RowError {
     errors: FieldError[];
 }
 
-export interface QueueItem {
-    rank: number;
-    recordNumber: number;
-    candidateId: string;
+export interface MessageFacts {
     name: string;
     firstName: string;
     role: string;
-    stage: string;
-    stagePosition: number;
     recruiter: string;
+}
+
+export interface ReasonFacts {
+    name: string;
+    stage: string;
+    recruiter: string;
+    actionCode: ActionCode;
+    stageThreshold: number;
     timerFrom: string;
     timerSource: TimerSource;
     daysInStage: number;
-    stageThreshold: number;
     overdueDays: number;
-    actionCode: ActionCode;
+}
+
+export interface StalledCandidate extends MessageFacts, ReasonFacts {
+    recordNumber: number;
+    candidateId: string;
+    stagePosition: number;
     actionLabel: string;
     recipient: RecipientType;
     lastContactedAt: string | null;
     daysSinceContact: number | null;
+}
+
+export interface QueueItem extends StalledCandidate {
+    rank: number;
     reason: string;
     templateMessage: string;
 }
@@ -96,4 +108,11 @@ export interface BoardAnalysis {
     rowErrors: RowError[];
     queue: QueueItem[];
     bottlenecks: Bottleneck[];
+}
+
+export interface Page<T> {
+    items: T[];
+    page: number;
+    pageSize: number;
+    total: number;
 }

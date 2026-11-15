@@ -5,8 +5,6 @@ import { ERROR_CODES, errorMessages } from "../../constant/error";
 import { HttpStatus } from "../../constant/http";
 import { ResponseType } from "../controller/controller";
 
-// Limits how often one IP address can call an expensive endpoint (uploads, AI insights).
-// Counts are kept in memory: fine for one API process (several would need a shared store, see README).
 export const newRateLimit = (perMinute: number): RequestHandler =>
     rateLimit({
         windowMs: RATE_LIMIT_WINDOW_MS,

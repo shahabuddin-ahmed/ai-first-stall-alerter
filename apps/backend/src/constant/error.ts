@@ -9,8 +9,6 @@ export enum ERROR_CODES {
     E_NOT_FOUND = "E_NOT_FOUND",
     E_TOO_MANY_REQUESTS = "E_TOO_MANY_REQUESTS",
     E_PAYLOAD_TOO_LARGE = "E_PAYLOAD_TOO_LARGE",
-    // File errors (spec C7): the whole upload is rejected and nothing is stored.
-    // Same values as FileErrorCode in constant/board.ts.
     FILE_TOO_LARGE = "FILE_TOO_LARGE",
     UNSUPPORTED_FILE = "UNSUPPORTED_FILE",
     INVALID_ENCODING = "INVALID_ENCODING",

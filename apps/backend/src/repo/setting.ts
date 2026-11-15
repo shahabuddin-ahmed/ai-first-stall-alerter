@@ -18,8 +18,6 @@ export class SettingRepo implements SettingRepoInterface {
         await Setting.update({ useAiDrafts }, { where: { id: SETTINGS_ID } });
     }
 
-    // Adds 1 to the stages version only if it is still the version the user loaded.
-    // One atomic UPDATE, so two saves at the same moment cannot both win.
     public async bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<boolean> {
         const [affectedRows] = await Setting.update(
             { stagesVersion: literal("stages_version + 1") as unknown as number },

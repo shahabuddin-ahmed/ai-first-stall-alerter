@@ -7,7 +7,6 @@ import { BadRequestException } from "../exception/bad-request-exception";
 import { PayloadTooLargeException } from "../exception/payload-too-large-exception";
 import { UnsupportedMediaTypeException } from "../exception/unsupported-media-type-exception";
 
-// The file stays in memory and is never written to disk.
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -37,7 +36,6 @@ export const csvUpload = (req: Request, res: Response, next: NextFunction): void
             return next(new BadRequestException(ERROR_CODES.E_INVALID_DATA, "", ["Choose a CSV file to upload"]));
         }
 
-        // multer reads the file name as latin1; turn it back into UTF-8 ("Évaluation.csv")
         req.file.originalname = Buffer.from(req.file.originalname, "latin1").toString("utf8");
         const isCsvName = req.file.originalname.toLowerCase().endsWith(CSV_FILE_EXTENSION);
         if (!isCsvName || !CSV_MIME_TYPES.includes(req.file.mimetype)) {

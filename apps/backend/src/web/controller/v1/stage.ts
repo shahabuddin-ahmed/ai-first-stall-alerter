@@ -11,7 +11,6 @@ export interface StageControllerInterface {
     save(req: Request, res: Response): any;
 }
 
-// Letters (any language), digits, spaces and dashes, e.g. "Reference check", "Take-home"
 const stageName = Joi.string()
     .trim()
     .min(1)
@@ -46,7 +45,6 @@ const saveSchema = Joi.object({
         .required(),
 });
 
-// The stages plus the fixed list of actions the page can offer in its dropdown.
 const toResponse = (snapshot: ConfigSnapshot) => ({
     version: snapshot.stagesVersion,
     stages: snapshot.stages.map((stage) => ({
@@ -64,19 +62,17 @@ const toResponse = (snapshot: ConfigSnapshot) => ({
 export class StageController extends Controller implements StageControllerInterface {
     constructor(private configService: ConfigServiceInterface) {
         super();
-        this.list = this.list.bind(this);
-        this.save = this.save.bind(this);
     }
 
-    async list(_req: Request, res: Response): Promise<any> {
+    list = async (_req: Request, res: Response): Promise<any> => {
         return this.sendResponse({ response: toResponse(this.configService.getSnapshot()) }, HttpStatus.OK, res);
-    }
+    };
 
-    async save(req: Request, res: Response): Promise<any> {
+    save = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(saveSchema, req.body);
         const snapshot = await this.configService.saveStages(value.stages, value.version);
         return this.sendResponse({ response: toResponse(snapshot) }, HttpStatus.OK, res);
-    }
+    };
 }
 
 export const newStageV1Controller = async (configService: ConfigServiceInterface): Promise<StageController> => {

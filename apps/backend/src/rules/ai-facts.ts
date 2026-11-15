@@ -3,9 +3,6 @@ import { ActionCode, RecipientType } from "../constant/stage";
 import { BoardAnalysis, QueueItem } from "./types";
 import { BottleneckType } from "../constant/board";
 
-// The only data the AI ever sees (spec E3). Built from an allowlist:
-// no names, candidate IDs, roles, recruiter names, stage names, file names, dates or free text.
-// Candidates are "rank 1..N"; recruiters are "R1, R2..." in order of first appearance in the queue.
 export interface AlertFacts {
     rank: number;
     action_code: ActionCode;
@@ -17,9 +14,12 @@ export interface AlertFacts {
     recruiter_key: string;
 }
 
-export type BottleneckFacts =
-    | { type: BottleneckType.STAGE; action_code: ActionCode; stalled: number }
-    | { type: BottleneckType.RECRUITER; recruiter_key: string; stalled: number };
+export interface BottleneckFacts {
+    type: BottleneckType;
+    action_code?: ActionCode;
+    recruiter_key?: string;
+    stalled: number;
+}
 
 export interface InsightFacts {
     board: {
@@ -38,8 +38,6 @@ export interface InsightFacts {
     alerts: AlertFacts[];
 }
 
-// Recruiter name → "R1", "R2"... in order of first appearance in the ranked queue.
-// The server uses the same map to turn keys in AI text back into names.
 export const recruiterKeysOf = (queue: QueueItem[]): Map<string, string> => {
     const keys = new Map<string, string>();
     for (const item of queue) {
@@ -63,7 +61,6 @@ export const buildInsightFacts = (analysis: BoardAnalysis, topN: number): Insigh
         byAction[item.actionCode] = (byAction[item.actionCode] ?? 0) + 1;
         byRecruiter.set(key, (byRecruiter.get(key) ?? 0) + 1);
     }
-    // Most stalled first. Ties keep the R1, R2... order (the map is in that order and sort is stable).
     const recruiterCounts = [...byRecruiter]
         .map(([recruiter_key, stalled]) => ({ recruiter_key, stalled }))
         .sort((a, b) => b.stalled - a.stalled);

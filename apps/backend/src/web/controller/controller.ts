@@ -4,12 +4,12 @@ import { errorMessages, ERROR_CODES, ApiResponseMessages } from "../../constant/
 import { HttpStatus } from "../../constant/http";
 import { BadRequestException } from "../exception/bad-request-exception";
 
-export type ResponseType = {
+export interface ResponseType {
     code?: string;
     message?: string;
     response: Record<string, any> | Record<string, any>[] | null;
     errors?: string[];
-};
+}
 
 export abstract class Controller {
     sendResponse(requestedData: ResponseType, statusCode: number, res: Response): any {

@@ -1,14 +1,11 @@
 import { QueryInterface, Sequelize } from "sequelize";
 import { SequelizeStorage, Umzug } from "umzug";
 
-// Migrations change the tables; seeders add the default data. Each keeps its own history table,
-// so every file runs exactly once per database.
 const MIGRATION_TABLE = "SequelizeMeta";
 const SEEDER_TABLE = "SequelizeData";
 
 const newRunner = (sequelize: Sequelize, folder: string, tableName: string): Umzug<QueryInterface> => {
     return new Umzug({
-        // .ts when run with ts-node, .js after `yarn build`
         migrations: { glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }] },
         context: sequelize.getQueryInterface(),
         storage: new SequelizeStorage({ sequelize, tableName }),

@@ -1,18 +1,9 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
+import { BoardRecord } from "../rules/types";
 
-export interface ImportRecordInterface {
+export interface ImportRecordInterface extends BoardRecord {
     importId: number;
-    recordNumber: number;
-    fieldCount: number;
-    candidateId: string;
-    name: string;
-    role: string;
-    stage: string;
-    stageEnteredAt: string;
-    recruiter: string;
-    lastActivityAt: string;
-    lastContactedAt: string;
 }
 
 class ImportRecord extends Model<ImportRecordInterface> implements ImportRecordInterface {

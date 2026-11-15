@@ -1,16 +1,13 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
+import { AiUsage } from "../ai/generator";
 import { LlmCallStatus } from "../constant/ai";
 
-export interface LlmCallInterface {
+export interface LlmCallInterface extends AiUsage {
     id?: number;
     importId: number | null;
     cacheKey: string;
     requestedModel: string;
-    servedModel: string | null;
-    inputTokens: number | null;
-    outputTokens: number | null;
-    costUsd: number | null;
     latencyMs: number;
     status: LlmCallStatus;
     errorCode: string | null;

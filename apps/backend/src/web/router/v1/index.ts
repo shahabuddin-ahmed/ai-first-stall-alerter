@@ -39,7 +39,6 @@ export const newV1Router = async ({
     v1.use("/imports/:id/export", await newExportRouter(exportController));
     v1.use("/imports", await newImportRouter(importController));
 
-    // Unknown paths (the request logger already logs them).
     v1.use("*", (req) => {
         throw new NotFoundException(ERROR_CODES.E_PAGE_NOT_FOUND, "", [`Cannot ${req.method} ${req.baseUrl}`]);
     });

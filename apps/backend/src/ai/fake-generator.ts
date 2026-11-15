@@ -3,8 +3,6 @@ import { InsightFacts } from "../rules/ai-facts";
 import { AiGenerator, GenerationResult } from "./generator";
 import { BottleneckType } from "../constant/board";
 
-// Stand-in for the model (AI_MODE=fake): no network, always a valid answer.
-// Used by tests and for demos without an API key. The text is clearly generic.
 const DRAFTS: Record<ActionCode, string> = {
     [ActionCode.REVIEW_APPLICATION]:
         "Hi, could you take a look at {{name}}'s application for the {{role}} role and let me know the next step? Thanks, {{recruiter}}",

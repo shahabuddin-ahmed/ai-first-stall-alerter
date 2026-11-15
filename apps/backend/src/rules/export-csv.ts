@@ -2,7 +2,6 @@ import { CSV_BOM, CSV_LINE_END, EXPORT_COLUMNS, ExportColumn, FORMULA_START } fr
 
 export type ExportRow = Record<ExportColumn, string | number | null>;
 
-// A value that would start a spreadsheet formula gets a ' in front, so it shows as text.
 export const guardFormula = (value: string): string => (FORMULA_START.test(value) ? `'${value}` : value);
 
 const toCell = (value: string | number | null): string => {
@@ -16,7 +15,6 @@ const toCell = (value: string | number | null): string => {
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
-// The follow-up queue as a CSV file (spec C8).
 export const buildExportCsv = (rows: ExportRow[]): string => {
     const header = EXPORT_COLUMNS.join(",");
     const body = rows.map((row) => EXPORT_COLUMNS.map((column) => toCell(row[column])).join(","));

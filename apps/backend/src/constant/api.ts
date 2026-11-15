@@ -1,7 +1,5 @@
-// Limits and defaults for requests to the API.
 export const API_PREFIX = "/api/v1";
 
-// JSON bodies are small (stage lists, settings). CSV files come in as multipart (see UPLOAD_LIMITS).
 export const JSON_BODY_LIMIT = "100kb";
 
 export const PAGINATION = {
@@ -14,7 +12,6 @@ export const PAGINATION = {
 
 export const SEARCH_MAX_LENGTH = 100;
 
-// One CSV file in the "file" field, plus a few small text fields (referenceDate, filters).
 export const UPLOAD_FIELD = "file";
 export const UPLOAD_LIMITS = {
     FILES: 1,
@@ -24,7 +21,6 @@ export const UPLOAD_LIMITS = {
 
 export const CSV_FILE_EXTENSION = ".csv";
 
-// Browsers and spreadsheet apps send CSV files with different types; the .csv name is required too.
 export const CSV_MIME_TYPES: readonly string[] = [
     "text/csv",
     "application/csv",
@@ -34,15 +30,14 @@ export const CSV_MIME_TYPES: readonly string[] = [
     "",
 ];
 
-export const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+export const MS_PER_SECOND = 1000;
 
-// CORS: what the web app may use, and how long a browser may remember the answer.
+export const RATE_LIMIT_WINDOW_MS = 60 * MS_PER_SECOND;
+
 export const CORS_METHODS = ["GET", "POST", "PUT", "DELETE"];
 export const CORS_MAX_AGE_SECONDS = 600;
 
-// Every request gets an id; one sent by the caller is kept only when it looks safe.
 export const REQUEST_ID_HEADER = "X-Request-Id";
 export const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
 
-// "YYYY-MM-DD" (format only; the service checks that the date is real).
 export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

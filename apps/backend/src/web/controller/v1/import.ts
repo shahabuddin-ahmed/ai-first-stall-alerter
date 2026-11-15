@@ -33,46 +33,40 @@ const listSchema = Joi.object({
 export class ImportController extends Controller implements ImportControllerInterface {
     constructor(private importService: ImportServiceInterface) {
         super();
-        this.upload = this.upload.bind(this);
-        this.list = this.list.bind(this);
-        this.getBoard = this.getBoard.bind(this);
-        this.getRowErrors = this.getRowErrors.bind(this);
-        this.remove = this.remove.bind(this);
     }
 
-    // POST /imports (multipart: file + referenceDate). 201 for a new file, 200 when it was already imported.
-    async upload(req: Request, res: Response): Promise<any> {
+    upload = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(boardSchema, req.body);
         const file = req.file as Express.Multer.File;
         const data = await this.importService.upload({ fileName: file.originalname, bytes: file.buffer }, value);
         return this.sendResponse({ response: data }, data.alreadyImported ? HttpStatus.OK : HttpStatus.CREATED, res);
-    }
+    };
 
-    async list(req: Request, res: Response): Promise<any> {
+    list = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(listSchema, req.query);
         const data = await this.importService.list(value.offset, value.limit);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
-    }
+    };
 
-    async getBoard(req: Request, res: Response): Promise<any> {
+    getBoard = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(boardSchema, req.query);
         const data = await this.importService.getBoard(params.id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
-    }
+    };
 
-    async getRowErrors(req: Request, res: Response): Promise<any> {
+    getRowErrors = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(rowErrorsSchema, req.query);
         const data = await this.importService.getRowErrors(params.id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
-    }
+    };
 
-    async remove(req: Request, res: Response): Promise<any> {
+    remove = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(idParamsSchema, req.params);
         await this.importService.remove(value.id);
         return this.sendResponse({ response: { deleted: true } }, HttpStatus.OK, res);
-    }
+    };
 }
 
 export const newImportV1Controller = async (importService: ImportServiceInterface): Promise<ImportController> => {

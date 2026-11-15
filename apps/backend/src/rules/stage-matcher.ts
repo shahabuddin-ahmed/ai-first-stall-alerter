@@ -1,6 +1,5 @@
 import { StageConfig } from "./types";
 
-// "PANEL   interview" and "Panel interview" are the same stage. Values arrive trimmed (CSV reader, request schema).
 export const normaliseStageName = (value: string): string => value.replace(/\s+/g, " ").toLowerCase();
 
 export const buildStageLookup = (stages: StageConfig[]): Map<string, StageConfig> => {

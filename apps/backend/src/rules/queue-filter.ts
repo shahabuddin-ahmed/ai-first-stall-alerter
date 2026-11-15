@@ -3,12 +3,11 @@ import { QueueItem } from "./types";
 export interface QueueFilter {
     stage?: string;
     recruiter?: string;
-    search?: string; // part of a name or candidate ID, any capitals
+    search?: string;
 }
 
-// The same filter for the screen and the export. Ranks are given before filtering, so they never change.
 export const filterQueue = (queue: QueueItem[], filter: QueueFilter): QueueItem[] => {
-    const search = filter.search?.toLowerCase(); // already trimmed by the request check
+    const search = filter.search?.toLowerCase();
     return queue.filter(
         (item) =>
             (!filter.stage || item.stage === filter.stage) &&
