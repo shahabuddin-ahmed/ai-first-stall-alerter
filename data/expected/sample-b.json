@@ -1,0 +1,778 @@
+{
+  "source": "data/sample-b.csv",
+  "generated_by": "scripts/generate_expected.py (independent of the app)",
+  "scenarios": {
+    "default_stages": {
+      "reference_date": "2026-11-13",
+      "stages": "default",
+      "counts": {
+        "total": 43,
+        "valid": 32,
+        "invalid": 11,
+        "terminal": 5,
+        "on_hold": 0,
+        "stalled": 18,
+        "not_stalled": 9
+      },
+      "row_errors": [
+        {
+          "record": 3,
+          "candidate_id": "102",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "duplicate ID (also record 21)"
+            }
+          ]
+        },
+        {
+          "record": 16,
+          "candidate_id": "115",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 17,
+          "candidate_id": "116",
+          "errors": [
+            {
+              "field": "recruiter",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 19,
+          "candidate_id": "118",
+          "errors": [
+            {
+              "field": "stage",
+              "problem": "\"Technical Test\" is not in your hiring stages"
+            }
+          ]
+        },
+        {
+          "record": 20,
+          "candidate_id": "119",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 21,
+          "candidate_id": "102",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "duplicate ID (also record 3)"
+            }
+          ]
+        },
+        {
+          "record": 27,
+          "candidate_id": "126",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        },
+        {
+          "record": 29,
+          "candidate_id": "128",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        },
+        {
+          "record": 30,
+          "candidate_id": "129",
+          "errors": [
+            {
+              "field": "last_contacted_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 37,
+          "candidate_id": "",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 42,
+          "candidate_id": "141",
+          "errors": [
+            {
+              "field": "(record)",
+              "problem": "8 fields, expected 7"
+            }
+          ]
+        }
+      ],
+      "queue": [
+        {
+          "candidate_id": "127",
+          "name": "Hana Novak",
+          "stage": "Applied",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-10-10",
+          "days_in_stage": 34,
+          "stage_threshold": 5,
+          "overdue_days": 29,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 1
+        },
+        {
+          "candidate_id": "104",
+          "name": "Jonas Berg",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-10-20",
+          "days_in_stage": 24,
+          "stage_threshold": 5,
+          "overdue_days": 19,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "108",
+          "name": "Kwame Mensah",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-10-28",
+          "days_in_stage": 16,
+          "stage_threshold": 7,
+          "overdue_days": 9,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 15,
+          "rank": 3
+        },
+        {
+          "candidate_id": "101",
+          "name": "Amara Okafor",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 3,
+          "overdue_days": 7,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 8,
+          "rank": 4
+        },
+        {
+          "candidate_id": "125",
+          "name": "Leila Nasser",
+          "stage": "Offer",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 3,
+          "overdue_days": 7,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 2,
+          "rank": 5
+        },
+        {
+          "candidate_id": "0142",
+          "name": "Wei Zhang",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 3,
+          "overdue_days": 5,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 6
+        },
+        {
+          "candidate_id": "122",
+          "name": "Noah Wilson",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-25",
+          "days_in_stage": 19,
+          "stage_threshold": 14,
+          "overdue_days": 5,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 18,
+          "rank": 7
+        },
+        {
+          "candidate_id": "137",
+          "name": "Julia Weber",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 5,
+          "overdue_days": 5,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 8
+        },
+        {
+          "candidate_id": "110",
+          "name": "Hassan Ali",
+          "stage": "Offer",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 3,
+          "overdue_days": 4,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 3,
+          "rank": 9
+        },
+        {
+          "candidate_id": "135",
+          "name": "Sara Lindqvist",
+          "stage": "Assessment",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-02",
+          "days_in_stage": 11,
+          "stage_threshold": 7,
+          "overdue_days": 4,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": 9,
+          "rank": 10
+        },
+        {
+          "candidate_id": "105",
+          "name": "Priya Raman",
+          "stage": "Assessment",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 7,
+          "overdue_days": 3,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": 1,
+          "rank": 11
+        },
+        {
+          "candidate_id": "114",
+          "name": "Oliver Brown",
+          "stage": "Screening",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-04",
+          "days_in_stage": 9,
+          "stage_threshold": 7,
+          "overdue_days": 2,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": null,
+          "rank": 12
+        },
+        {
+          "candidate_id": "124",
+          "name": "Ethan Clark",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 5,
+          "overdue_days": 2,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 13
+        },
+        {
+          "candidate_id": "131",
+          "name": "Mina Choi",
+          "stage": "Applied",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 5,
+          "overdue_days": 2,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 14
+        },
+        {
+          "candidate_id": "121",
+          "name": "Isabel Costa",
+          "stage": "Offer",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-09",
+          "days_in_stage": 4,
+          "stage_threshold": 3,
+          "overdue_days": 1,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 4,
+          "rank": 15
+        },
+        {
+          "candidate_id": "111",
+          "name": "Grace Kim",
+          "stage": "Assessment",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 7,
+          "overdue_days": 1,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": null,
+          "rank": 16
+        },
+        {
+          "candidate_id": "103",
+          "name": "Mei Tanaka",
+          "stage": "Interview",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-10-30",
+          "days_in_stage": 14,
+          "stage_threshold": 14,
+          "overdue_days": 0,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 11,
+          "rank": 17
+        },
+        {
+          "candidate_id": "139",
+          "name": "Emma Dubois",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 5,
+          "rank": 18
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Offer",
+          "stalled": 5
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter A",
+          "stalled": 7
+        }
+      ]
+    },
+    "all_thresholds_7": {
+      "reference_date": "2026-11-13",
+      "stages": "all7",
+      "counts": {
+        "total": 43,
+        "valid": 32,
+        "invalid": 11,
+        "terminal": 5,
+        "on_hold": 0,
+        "stalled": 20,
+        "not_stalled": 7
+      },
+      "row_errors": [
+        {
+          "record": 3,
+          "candidate_id": "102",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "duplicate ID (also record 21)"
+            }
+          ]
+        },
+        {
+          "record": 16,
+          "candidate_id": "115",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 17,
+          "candidate_id": "116",
+          "errors": [
+            {
+              "field": "recruiter",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 19,
+          "candidate_id": "118",
+          "errors": [
+            {
+              "field": "stage",
+              "problem": "\"Technical Test\" is not in your hiring stages"
+            }
+          ]
+        },
+        {
+          "record": 20,
+          "candidate_id": "119",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 21,
+          "candidate_id": "102",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "duplicate ID (also record 3)"
+            }
+          ]
+        },
+        {
+          "record": 27,
+          "candidate_id": "126",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        },
+        {
+          "record": 29,
+          "candidate_id": "128",
+          "errors": [
+            {
+              "field": "stage_entered_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        },
+        {
+          "record": 30,
+          "candidate_id": "129",
+          "errors": [
+            {
+              "field": "last_contacted_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 37,
+          "candidate_id": "",
+          "errors": [
+            {
+              "field": "candidate_id",
+              "problem": "missing value"
+            }
+          ]
+        },
+        {
+          "record": 42,
+          "candidate_id": "141",
+          "errors": [
+            {
+              "field": "(record)",
+              "problem": "8 fields, expected 7"
+            }
+          ]
+        }
+      ],
+      "queue": [
+        {
+          "candidate_id": "127",
+          "name": "Hana Novak",
+          "stage": "Applied",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-10-10",
+          "days_in_stage": 34,
+          "stage_threshold": 7,
+          "overdue_days": 27,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 1
+        },
+        {
+          "candidate_id": "104",
+          "name": "Jonas Berg",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-10-20",
+          "days_in_stage": 24,
+          "stage_threshold": 7,
+          "overdue_days": 17,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "122",
+          "name": "Noah Wilson",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-25",
+          "days_in_stage": 19,
+          "stage_threshold": 7,
+          "overdue_days": 12,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 18,
+          "rank": 3
+        },
+        {
+          "candidate_id": "108",
+          "name": "Kwame Mensah",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-10-28",
+          "days_in_stage": 16,
+          "stage_threshold": 7,
+          "overdue_days": 9,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 15,
+          "rank": 4
+        },
+        {
+          "candidate_id": "103",
+          "name": "Mei Tanaka",
+          "stage": "Interview",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-10-30",
+          "days_in_stage": 14,
+          "stage_threshold": 7,
+          "overdue_days": 7,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 11,
+          "rank": 5
+        },
+        {
+          "candidate_id": "143",
+          "name": "Zara Khan",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-31",
+          "days_in_stage": 13,
+          "stage_threshold": 7,
+          "overdue_days": 6,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 1,
+          "rank": 6
+        },
+        {
+          "candidate_id": "135",
+          "name": "Sara Lindqvist",
+          "stage": "Assessment",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-02",
+          "days_in_stage": 11,
+          "stage_threshold": 7,
+          "overdue_days": 4,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": 9,
+          "rank": 7
+        },
+        {
+          "candidate_id": "117",
+          "name": "Liam Murphy",
+          "stage": "Interview",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-02",
+          "days_in_stage": 11,
+          "stage_threshold": 7,
+          "overdue_days": 4,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 10,
+          "rank": 8
+        },
+        {
+          "candidate_id": "101",
+          "name": "Amara Okafor",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 7,
+          "overdue_days": 3,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 8,
+          "rank": 9
+        },
+        {
+          "candidate_id": "125",
+          "name": "Leila Nasser",
+          "stage": "Offer",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 7,
+          "overdue_days": 3,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 2,
+          "rank": 10
+        },
+        {
+          "candidate_id": "105",
+          "name": "Priya Raman",
+          "stage": "Assessment",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 7,
+          "overdue_days": 3,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": 1,
+          "rank": 11
+        },
+        {
+          "candidate_id": "137",
+          "name": "Julia Weber",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-03",
+          "days_in_stage": 10,
+          "stage_threshold": 7,
+          "overdue_days": 3,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 12
+        },
+        {
+          "candidate_id": "114",
+          "name": "Oliver Brown",
+          "stage": "Screening",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-04",
+          "days_in_stage": 9,
+          "stage_threshold": 7,
+          "overdue_days": 2,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": null,
+          "rank": 13
+        },
+        {
+          "candidate_id": "0142",
+          "name": "Wei Zhang",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 7,
+          "overdue_days": 1,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 14
+        },
+        {
+          "candidate_id": "111",
+          "name": "Grace Kim",
+          "stage": "Assessment",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 7,
+          "overdue_days": 1,
+          "action_code": "REVIEW_ASSESSMENT",
+          "days_since_contact": null,
+          "rank": 15
+        },
+        {
+          "candidate_id": "110",
+          "name": "Hassan Ali",
+          "stage": "Offer",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": 3,
+          "rank": 16
+        },
+        {
+          "candidate_id": "132",
+          "name": "Lars Nielsen",
+          "stage": "Interview",
+          "recruiter": "Recruiter C",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 17
+        },
+        {
+          "candidate_id": "139",
+          "name": "Emma Dubois",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 5,
+          "rank": 18
+        },
+        {
+          "candidate_id": "124",
+          "name": "Ethan Clark",
+          "stage": "Applied",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 19
+        },
+        {
+          "candidate_id": "131",
+          "name": "Mina Choi",
+          "stage": "Applied",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "REVIEW_APPLICATION",
+          "days_since_contact": null,
+          "rank": 20
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Interview",
+          "stalled": 5
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter A",
+          "stalled": 8
+        }
+      ]
+    }
+  }
+}

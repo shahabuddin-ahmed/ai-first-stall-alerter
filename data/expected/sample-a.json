@@ -1,0 +1,153 @@
+{
+  "source": "data/sample-a.csv",
+  "generated_by": "scripts/generate_expected.py (independent of the app)",
+  "scenarios": {
+    "default_stages": {
+      "reference_date": "2026-11-13",
+      "stages": "default",
+      "counts": {
+        "total": 6,
+        "valid": 6,
+        "invalid": 0,
+        "terminal": 1,
+        "on_hold": 0,
+        "stalled": 3,
+        "not_stalled": 2
+      },
+      "row_errors": [],
+      "queue": [
+        {
+          "candidate_id": "001",
+          "name": "Ayesha Rahman",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-01",
+          "days_in_stage": 12,
+          "stage_threshold": 7,
+          "overdue_days": 5,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 1,
+          "rank": 1
+        },
+        {
+          "candidate_id": "003",
+          "name": "Karim Hasan",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 3,
+          "overdue_days": 4,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "006",
+          "name": "Imran Roy",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 3,
+          "overdue_days": 4,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 3
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Offer",
+          "stalled": 2
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter A",
+          "stalled": 3
+        }
+      ]
+    },
+    "all_thresholds_7": {
+      "reference_date": "2026-11-13",
+      "stages": "all7",
+      "counts": {
+        "total": 6,
+        "valid": 6,
+        "invalid": 0,
+        "terminal": 1,
+        "on_hold": 0,
+        "stalled": 4,
+        "not_stalled": 1
+      },
+      "row_errors": [],
+      "queue": [
+        {
+          "candidate_id": "001",
+          "name": "Ayesha Rahman",
+          "stage": "Screening",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-01",
+          "days_in_stage": 12,
+          "stage_threshold": 7,
+          "overdue_days": 5,
+          "action_code": "SCHEDULE_SCREEN",
+          "days_since_contact": 1,
+          "rank": 1
+        },
+        {
+          "candidate_id": "003",
+          "name": "Karim Hasan",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "006",
+          "name": "Imran Roy",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 3
+        },
+        {
+          "candidate_id": "002",
+          "name": "Rahim Karim",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 4
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Offer",
+          "stalled": 2
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter A",
+          "stalled": 3
+        }
+      ]
+    }
+  }
+}

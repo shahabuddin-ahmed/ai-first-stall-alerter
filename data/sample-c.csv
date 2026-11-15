@@ -1,0 +1,9 @@
+candidate_id,name,role,stage,stage_entered_at,recruiter,last_activity_at,last_contacted_at
+c01,Tom Reyes,Backend Engineer,Interview,2026-10-20,Recruiter A,2026-11-06,2026-11-07
+c02,Lena Fischer,Backend Engineer,Interview,2026-10-20,Recruiter B,,
+c03,Omar Said,Data Analyst,Offer,2026-11-05,Recruiter A,2026-11-01,
+c04,Ana Ruiz,QA Engineer,Screening,2026-11-01,Recruiter B,2026-11-20,
+c05,Kai Lin,Frontend Engineer,Assessment,2026-11-01,Recruiter A,2026/11/05,
+c06,Iris Bell,Product Designer,On hold,2026-09-01,Recruiter B,,
+c07,Raj Patel,Data Analyst,Sourced,2026-11-10,Recruiter A,,
+c08,Eve Moss,QA Engineer,Panel interview,2026-10-01,Recruiter B,2026-10-25,
