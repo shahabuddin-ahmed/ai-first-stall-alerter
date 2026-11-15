@@ -7,7 +7,7 @@ import { BadRequestException } from "../exception/bad-request-exception";
 import { PayloadTooLargeException } from "../exception/payload-too-large-exception";
 import { UnsupportedMediaTypeException } from "../exception/unsupported-media-type-exception";
 
-// The file stays in memory (max 5 MB) and is never written to disk.
+// The file stays in memory and is never written to disk.
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {

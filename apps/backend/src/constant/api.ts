@@ -40,5 +40,9 @@ export const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 export const CORS_METHODS = ["GET", "POST", "PUT", "DELETE"];
 export const CORS_MAX_AGE_SECONDS = 600;
 
+// Every request gets an id; one sent by the caller is kept only when it looks safe.
+export const REQUEST_ID_HEADER = "X-Request-Id";
+export const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{8,64}$/;
+
 // "YYYY-MM-DD" (format only; the service checks that the date is real).
 export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,10 +1,8 @@
 import { Transaction } from "sequelize";
+import { BOARD_LIMITS } from "../constant/board";
 import Import, { ImportInterface } from "../model/import";
 import ImportRecord from "../model/import-record";
 import { BoardRecord } from "../rules/types";
-
-// Rows are inserted in batches so a 10,000-row file is a few INSERTs, not one huge one.
-const RECORD_BATCH_SIZE = 1000;
 
 export interface ImportRepoInterface {
     create(details: ImportInterface, records: BoardRecord[], transaction: Transaction): Promise<ImportInterface>;
@@ -25,9 +23,9 @@ export class ImportRepo implements ImportRepoInterface {
         const created = await Import.create(details, { transaction });
         const importId = created.get("id") as number;
 
-        for (let start = 0; start < records.length; start += RECORD_BATCH_SIZE) {
+        for (let start = 0; start < records.length; start += BOARD_LIMITS.INSERT_BATCH_SIZE) {
             await ImportRecord.bulkCreate(
-                records.slice(start, start + RECORD_BATCH_SIZE).map((record) => ({ ...record, importId })),
+                records.slice(start, start + BOARD_LIMITS.INSERT_BATCH_SIZE).map((record) => ({ ...record, importId })),
                 { transaction }
             );
         }

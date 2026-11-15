@@ -36,7 +36,12 @@ export const BOARD_LIMITS = {
     MAX_ERROR_DETAILS: 10,
     // A stage or recruiter is a bottleneck from this many stalled candidates
     MIN_BOTTLENECK_STALLED: 2,
+    // Rows are inserted in batches, so a 10,000-row file is a few INSERTs, not one huge one
+    INSERT_BATCH_SIZE: 1000,
 } as const;
+
+// The reference date may be any real date up to "today" anywhere on Earth (UTC+14 is the latest time zone).
+export const LATEST_UTC_OFFSET_MS = 14 * 60 * 60 * 1000;
 
 // Problems that reject the whole file. Nothing is stored.
 export enum FileErrorCode {

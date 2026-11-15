@@ -67,7 +67,7 @@ const days = (count: number): string => `${count} ${count === 1 ? "day" : "days"
 // "Lopes, Ana" → "Ana"; "Amara Okafor" → "Amara"
 export const firstNameOf = (name: string): string => {
     const given = name.includes(",") ? name.slice(name.indexOf(",") + 1) : name;
-    return given.trim().split(/\s+/)[0] || name.trim();
+    return given.trim().split(/\s+/)[0] || name;
 };
 
 export interface ReasonFacts {
@@ -114,7 +114,6 @@ export const fillPlaceholders = (text: string, facts: MessageFacts): string =>
         .replace(/\{\{role\}\}/g, facts.role)
         .replace(/\{\{recruiter\}\}/g, facts.recruiter);
 
-// The template message for an action, filled with the candidate's details.
 export const templateMessage = (actionCode: ActionCode, facts: MessageFacts): string =>
     fillPlaceholders(ACTIONS[actionCode].template, facts);
 

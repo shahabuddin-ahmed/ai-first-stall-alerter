@@ -45,7 +45,6 @@ app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.INSI
 export const appReady: Promise<void> = (async () => {
     await initializeDBConnection();
 
-    // Initialize Repo
     const postRepo = await newPostRepo();
     const stageRepo = await newStageRepo();
     const settingRepo = await newSettingRepo();
@@ -56,9 +55,7 @@ export const appReady: Promise<void> = (async () => {
     // AI: null when no key/model is set (templates only). AI_MODE=fake uses the built-in stand-in.
     const aiGenerator = newAiGenerator(config.AI);
 
-    // Initialize Service
     const postService = await newPostService(postRepo);
-    // Loads the hiring stages and settings into memory once; saves update MySQL first, then memory.
     const configService = await newConfigService(stageRepo, settingRepo, {
         configured: aiGenerator !== null,
         model: aiGenerator?.model ?? null,
@@ -74,7 +71,6 @@ export const appReady: Promise<void> = (async () => {
     );
     const exportService = await newExportService(importService, insightService);
 
-    // Initialize Controller
     const postV1Controller = await newPostV1Controller(postService);
     const stageV1Controller = await newStageV1Controller(configService);
     const settingV1Controller = await newSettingV1Controller(configService);
@@ -82,7 +78,6 @@ export const appReady: Promise<void> = (async () => {
     const insightV1Controller = await newInsightV1Controller(insightService);
     const exportV1Controller = await newExportV1Controller(exportService);
 
-    // Initialize Router
     const v1Router = await newV1Router({
         postController: postV1Controller,
         stageController: stageV1Controller,

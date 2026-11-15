@@ -4,7 +4,8 @@ import { ERROR_CODES } from "../../../constant/error";
 import { HttpStatus } from "../../../constant/http";
 import { globalErrorHandler } from "../global-error-handler";
 import { newRateLimit } from "../rate-limit";
-import { REQUEST_ID_HEADER, requestId } from "../request-id";
+import { REQUEST_ID_HEADER } from "../../../constant/api";
+import { requestId } from "../request-id";
 import { newCors, securityHeaders } from "../security";
 
 const WEB_APP = "http://localhost:3000";

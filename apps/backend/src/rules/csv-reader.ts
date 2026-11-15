@@ -2,7 +2,6 @@ import { parse } from "csv-parse/sync";
 import { BOARD_LIMITS, BoardColumn, FileErrorCode, KNOWN_COLUMNS, REQUIRED_COLUMNS } from "../constant/board";
 import { BoardRecord, FileError, ParseResult } from "./types";
 
-// Which BoardRecord field holds each CSV column.
 export const COLUMN_FIELDS: Record<BoardColumn, keyof BoardRecord> = {
     [BoardColumn.CANDIDATE_ID]: "candidateId",
     [BoardColumn.NAME]: "name",

@@ -1,6 +1,5 @@
-import crypto from "crypto";
 import { UniqueConstraintError } from "sequelize";
-import { BOARD_LIMITS } from "../constant/board";
+import { BOARD_LIMITS, LATEST_UTC_OFFSET_MS } from "../constant/board";
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { ImportInterface } from "../model/import";
@@ -14,10 +13,8 @@ import { BoardAnalysis, BoardCounts, Bottleneck, ParsedBoard, QueueItem, RowErro
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
+import { sha256Hex } from "../utils/utility";
 import { ConfigServiceInterface } from "./config";
-
-// The reference date may be any real date up to "today" anywhere on Earth (UTC+14 is the latest time zone).
-const LATEST_UTC_OFFSET_MS = 14 * 60 * 60 * 1000;
 
 export interface ImportSummary {
     id: number;
@@ -103,7 +100,7 @@ export class ImportService implements ImportServiceInterface {
 
         const details: ImportInterface = {
             fileName: file.fileName.slice(0, BOARD_LIMITS.MAX_VALUE_LENGTH),
-            fileHash: crypto.createHash("sha256").update(file.bytes).digest("hex"),
+            fileHash: sha256Hex(file.bytes),
             fileSize: file.bytes.length,
             headerCount: parsed.board.headerCount,
             recordCount: parsed.board.records.length,
@@ -119,7 +116,6 @@ export class ImportService implements ImportServiceInterface {
                 ...this.buildView(toSummary(created), parsed.board, { ...query, referenceDate }),
             };
         } catch (err) {
-            // Same file uploaded twice (even at the same moment): MySQL rejects the second insert on the unique hash.
             if (!(err instanceof UniqueConstraintError)) {
                 throw err;
             }

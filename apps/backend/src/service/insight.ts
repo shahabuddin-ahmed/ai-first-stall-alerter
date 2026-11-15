@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import {
     AiErrorCode,
     AiNoteStatus,
@@ -17,6 +16,7 @@ import { buildInsightFacts, InsightFacts, recruiterKeysOf } from "../rules/ai-fa
 import { fillPlaceholders, templateBottleneckNote, templateBriefing } from "../rules/messages";
 import { BoardAnalysis } from "../rules/types";
 import logger from "../infra/logger";
+import { sha256Hex } from "../utils/utility";
 import { ConfigServiceInterface } from "./config";
 import { ImportServiceInterface } from "./import";
 import { BottleneckType } from "../constant/board";
@@ -137,7 +137,7 @@ export class InsightService implements InsightServiceInterface {
     // One report = one import, reference date, stages version, top N, prompt version and model.
     cacheKey(importId: number, referenceDate: string, stagesVersion: number): string {
         const parts = [importId, referenceDate, stagesVersion, this.topN, PROMPT_VERSION, this.model ?? ""];
-        return crypto.createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+        return sha256Hex(JSON.stringify(parts));
     }
 
     private get model(): string | null {

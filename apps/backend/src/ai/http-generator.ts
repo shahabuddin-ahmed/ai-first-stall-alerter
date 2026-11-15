@@ -64,7 +64,6 @@ export class HttpAiGenerator implements AiGenerator {
                         json_schema: { name: AI_REQUEST.SCHEMA_NAME, strict: true, schema: RESPONSE_SCHEMA },
                     },
                     usage: { include: true }, // OpenRouter: return the cost
-                    // Thinking models: think less (faster) and do not send the thinking text back
                     ...this.reasoningSetting(),
                 }),
                 signal: AbortSignal.timeout(this.options.timeoutMs),
