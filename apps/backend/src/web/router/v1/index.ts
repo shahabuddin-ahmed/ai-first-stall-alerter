@@ -12,6 +12,8 @@ import { ImportController } from "../../controller/v1/import";
 import { newImportRouter } from "./import";
 import { InsightController } from "../../controller/v1/insight";
 import { newInsightRouter } from "./insight";
+import { ExportController } from "../../controller/v1/export";
+import { newExportRouter } from "./export";
 
 export const newV1Router = async ({
     postController,
@@ -19,12 +21,14 @@ export const newV1Router = async ({
     settingController,
     importController,
     insightController,
+    exportController,
 }: {
     postController: PostController;
     stageController: StageController;
     settingController: SettingController;
     importController: ImportController;
     insightController: InsightController;
+    exportController: ExportController;
 }): Promise<Router> => {
     const v1 = Router();
     v1.use("/health", await newHealthRouter());
@@ -32,6 +36,7 @@ export const newV1Router = async ({
     v1.use("/stages", await newStageRouter(stageController));
     v1.use("/settings", await newSettingRouter(settingController));
     v1.use("/imports/:id/insights", await newInsightRouter(insightController));
+    v1.use("/imports/:id/export", await newExportRouter(exportController));
     v1.use("/imports", await newImportRouter(importController));
 
     v1.use("*", (_req, res) => {

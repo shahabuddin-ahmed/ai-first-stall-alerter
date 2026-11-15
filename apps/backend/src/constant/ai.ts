@@ -7,6 +7,15 @@ export enum AiStatus {
     NOTHING_STALLED = "nothing_stalled", // no alerts, so no AI call
 }
 
+// The AI state of one exported row (spec C8: ai_note_status).
+export enum AiNoteStatus {
+    AI_DRAFT = "ai_draft", // the message is the AI draft
+    DISABLED = "disabled", // the team turned "Use AI drafts" off
+    OUTSIDE_AI_SCOPE = "outside_ai_scope", // rank is below the top N, so AI never writes it
+    PENDING = "pending", // AI insights were not requested yet for this report
+    UNAVAILABLE = "unavailable", // AI is not set up on the server, or the last call failed
+}
+
 // Where a piece of text came from.
 export enum MessageSource {
     AI_DRAFT = "ai_draft",

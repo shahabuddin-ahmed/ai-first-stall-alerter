@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { AiErrorCode, AiStatus, LlmCallStatus, MessageSource, PROMPT_VERSION } from "../constant/ai";
+import { AiErrorCode, AiNoteStatus, AiStatus, LlmCallStatus, MessageSource, PROMPT_VERSION } from "../constant/ai";
 import { ActionCode, RecipientType } from "../constant/stage";
 import { AiError, AiGenerator } from "../ai/generator";
 import { AiOutput, checkAiOutput } from "../ai/guardrails";
@@ -35,8 +35,16 @@ export interface InsightsView {
     drafts: InsightDraft[];
 }
 
+// What is already known about AI for a report, without calling the AI (used by the export).
+export interface SavedDrafts {
+    status: AiNoteStatus.AI_DRAFT | AiNoteStatus.DISABLED | AiNoteStatus.PENDING | AiNoteStatus.UNAVAILABLE;
+    topN: number;
+    draftsByRank: Map<number, string>; // AI drafts with names filled in (only when status is AI_DRAFT)
+}
+
 export interface InsightServiceInterface {
     getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
+    getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts>;
 }
 
 type Attempt = { ok: true; output: AiOutput } | { ok: false; code: AiErrorCode };
@@ -83,6 +91,37 @@ export class InsightService implements InsightServiceInterface {
 
         const attempt = await this.callOnce(cacheKey, importId, facts);
         return attempt.ok ? this.aiView(importId, analysis, attempt.output, false) : templates(AiStatus.FAILED, attempt.code);
+    }
+
+    // Reads the cache and the call log only. Never calls the AI.
+    async getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts> {
+        const saved = (status: SavedDrafts["status"], draftsByRank = new Map<number, string>()): SavedDrafts => ({
+            status,
+            topN: this.topN,
+            draftsByRank,
+        });
+        const { useAiDrafts, stagesVersion } = this.configService.getSnapshot();
+        if (!this.generator) {
+            return saved(AiNoteStatus.UNAVAILABLE);
+        }
+        if (!useAiDrafts) {
+            return saved(AiNoteStatus.DISABLED);
+        }
+
+        const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion);
+        const cached = await this.aiInsightRepo.findByKey(cacheKey);
+        if (cached) {
+            const items = new Map(analysis.queue.map((item) => [item.rank, item]));
+            const draftsByRank = new Map(
+                cached.drafts
+                    .filter((draft) => items.has(draft.rank))
+                    .map((draft) => [draft.rank, fillPlaceholders(draft.text, items.get(draft.rank)!)])
+            );
+            return saved(AiNoteStatus.AI_DRAFT, draftsByRank);
+        }
+
+        const lastCall = await this.llmCallRepo.findLatest(cacheKey);
+        return saved(lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING);
     }
 
     // One report = one import, reference date, stages version, top N, prompt version and model.
