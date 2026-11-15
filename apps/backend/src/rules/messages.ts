@@ -139,3 +139,11 @@ export const templateBottleneckNote = (bottleneck: Bottleneck): string =>
     bottleneck.type === BottleneckType.STAGE
         ? `${bottleneck.key} has ${bottleneck.stalled} stalled candidates. Clear these follow-ups first.`
         : `${bottleneck.key} owns ${bottleneck.stalled} stalled follow-ups. Consider sharing some of them.`;
+
+// Who the message goes to, as people read it (export and screens).
+export const RECIPIENT_LABELS: Record<RecipientType, string> = {
+    [RecipientType.HIRING_MANAGER]: "Hiring manager",
+    [RecipientType.CANDIDATE]: "Candidate",
+    [RecipientType.INTERVIEW_PANEL]: "Interview panel",
+    [RecipientType.ASSESSMENT_REVIEWER]: "Assessment reviewer",
+};

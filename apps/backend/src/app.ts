@@ -21,6 +21,8 @@ import { newAiInsightRepo } from "./repo/ai-insight";
 import { newLlmCallRepo } from "./repo/llm-call";
 import { newInsightService } from "./service/insight";
 import { newInsightV1Controller } from "./web/controller/v1/insight";
+import { newExportService } from "./service/export";
+import { newExportV1Controller } from "./web/controller/v1/export";
 
 const app = express();
 
@@ -57,6 +59,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
         aiGenerator,
         config.AI.TOP_N
     );
+    const exportService = await newExportService(importService, insightService);
 
     // Initialize Controller
     const postV1Controller = await newPostV1Controller(postService);
@@ -64,6 +67,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
     const settingV1Controller = await newSettingV1Controller(configService);
     const importV1Controller = await newImportV1Controller(importService);
     const insightV1Controller = await newInsightV1Controller(insightService);
+    const exportV1Controller = await newExportV1Controller(exportService);
 
     // Initialize Router
     const v1Router = await newV1Router({
@@ -72,6 +76,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
         settingController: settingV1Controller,
         importController: importV1Controller,
         insightController: insightV1Controller,
+        exportController: exportV1Controller,
     });
 
     app.use(morgan("short"));

@@ -7,6 +7,7 @@ import { ImportRepoInterface } from "../repo/import";
 import { withTransaction } from "../repo/transaction";
 import { analyseBoard } from "../rules/analyse-board";
 import { parseBoardCsv } from "../rules/csv-reader";
+import { filterQueue } from "../rules/queue-filter";
 import { dayNumberOf, parseIsoDate, toIsoDate } from "../rules/dates";
 import { BoardAnalysis, BoardCounts, Bottleneck, ParsedBoard, QueueItem, RowError } from "../rules/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
@@ -192,14 +193,7 @@ export class ImportService implements ImportServiceInterface {
         const { stages, stagesVersion } = this.configService.getSnapshot();
         const analysis = analyseBoard(board, stages, query.referenceDate);
 
-        // Filters never change ranks: ranks are given to the whole queue first.
-        const search = query.search?.trim().toLowerCase();
-        const filtered = analysis.queue.filter(
-            (item) =>
-                (!query.stage || item.stage === query.stage) &&
-                (!query.recruiter || item.recruiter === query.recruiter) &&
-                (!search || item.name.toLowerCase().includes(search) || item.candidateId.toLowerCase().includes(search))
-        );
+        const filtered = filterQueue(analysis.queue, query);
 
         return {
             import: summary,
