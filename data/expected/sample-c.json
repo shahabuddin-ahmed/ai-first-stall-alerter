@@ -1,0 +1,195 @@
+{
+  "source": "data/sample-c.csv",
+  "generated_by": "scripts/generate_expected.py (independent of the app)",
+  "scenarios": {
+    "default_stages": {
+      "reference_date": "2026-11-13",
+      "stages": "default",
+      "counts": {
+        "total": 8,
+        "valid": 6,
+        "invalid": 2,
+        "terminal": 0,
+        "on_hold": 1,
+        "stalled": 3,
+        "not_stalled": 2
+      },
+      "row_errors": [
+        {
+          "record": 5,
+          "candidate_id": "c04",
+          "errors": [
+            {
+              "field": "last_activity_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 6,
+          "candidate_id": "c05",
+          "errors": [
+            {
+              "field": "last_activity_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        }
+      ],
+      "queue": [
+        {
+          "candidate_id": "c02",
+          "name": "Lena Fischer",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-20",
+          "days_in_stage": 24,
+          "stage_threshold": 14,
+          "overdue_days": 10,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 1
+        },
+        {
+          "candidate_id": "c03",
+          "name": "Omar Said",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 3,
+          "overdue_days": 5,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "c08",
+          "name": "Eve Moss",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-25",
+          "days_in_stage": 19,
+          "stage_threshold": 14,
+          "overdue_days": 5,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 3
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Interview",
+          "stalled": 2
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter B",
+          "stalled": 2
+        }
+      ]
+    },
+    "all_thresholds_7": {
+      "reference_date": "2026-11-13",
+      "stages": "all7",
+      "counts": {
+        "total": 8,
+        "valid": 6,
+        "invalid": 2,
+        "terminal": 0,
+        "on_hold": 1,
+        "stalled": 4,
+        "not_stalled": 1
+      },
+      "row_errors": [
+        {
+          "record": 5,
+          "candidate_id": "c04",
+          "errors": [
+            {
+              "field": "last_activity_at",
+              "problem": "after the reference date"
+            }
+          ]
+        },
+        {
+          "record": 6,
+          "candidate_id": "c05",
+          "errors": [
+            {
+              "field": "last_activity_at",
+              "problem": "not a real YYYY-MM-DD date"
+            }
+          ]
+        }
+      ],
+      "queue": [
+        {
+          "candidate_id": "c02",
+          "name": "Lena Fischer",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-20",
+          "days_in_stage": 24,
+          "stage_threshold": 7,
+          "overdue_days": 17,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 1
+        },
+        {
+          "candidate_id": "c08",
+          "name": "Eve Moss",
+          "stage": "Interview",
+          "recruiter": "Recruiter B",
+          "timer_from": "2026-10-25",
+          "days_in_stage": 19,
+          "stage_threshold": 7,
+          "overdue_days": 12,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": null,
+          "rank": 2
+        },
+        {
+          "candidate_id": "c03",
+          "name": "Omar Said",
+          "stage": "Offer",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-05",
+          "days_in_stage": 8,
+          "stage_threshold": 7,
+          "overdue_days": 1,
+          "action_code": "CONFIRM_OFFER",
+          "days_since_contact": null,
+          "rank": 3
+        },
+        {
+          "candidate_id": "c01",
+          "name": "Tom Reyes",
+          "stage": "Interview",
+          "recruiter": "Recruiter A",
+          "timer_from": "2026-11-06",
+          "days_in_stage": 7,
+          "stage_threshold": 7,
+          "overdue_days": 0,
+          "action_code": "REQUEST_FEEDBACK",
+          "days_since_contact": 6,
+          "rank": 4
+        }
+      ],
+      "bottlenecks": [
+        {
+          "type": "stage",
+          "key": "Interview",
+          "stalled": 3
+        },
+        {
+          "type": "recruiter",
+          "key": "Recruiter A",
+          "stalled": 2
+        }
+      ]
+    }
+  }
+}
