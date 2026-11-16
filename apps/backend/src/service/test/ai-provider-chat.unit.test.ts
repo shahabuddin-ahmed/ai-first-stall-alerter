@@ -2,9 +2,9 @@ import http from "http";
 import { AddressInfo } from "net";
 import { AiErrorCode, ReasoningEffort } from "../../constant/ai";
 import { ActionCode, RecipientType } from "../../constant/stage";
-import { InsightFacts } from "../../service/hiring-board/ai-facts";
-import { AiError } from "../generator";
-import { HttpAiGenerator } from "../http-generator";
+import { InsightFacts } from "../pipeline-messages";
+import { AiError, OpenRouterProvider } from "../ai-provider";
+import { isTimeoutError } from "../../utils/http";
 
 // A tiny local server stands in for OpenRouter, so no real calls are made.
 type Handler = (body: any, req: http.IncomingMessage, res: http.ServerResponse) => void;
@@ -68,7 +68,7 @@ const ANSWER = {
 };
 
 const generator = (timeoutMs = 2000) =>
-    new HttpAiGenerator({
+    new OpenRouterProvider({
         apiKey: "test-key",
         baseUrl,
         timeoutMs,
@@ -89,16 +89,18 @@ const completion = (content: string, extra: Record<string, unknown> = {}) => ({
     usage: { prompt_tokens: 900, completion_tokens: 120, cost: 0.00042 },
 });
 
-const errorCodeOf = async (promise: Promise<unknown>) => {
+const thrownBy = async (promise: Promise<unknown>): Promise<unknown> => {
     try {
         await promise;
     } catch (err) {
-        return (err as AiError).code;
+        return err;
     }
     throw new Error("expected an error");
 };
 
-describe("HttpAiGenerator", () => {
+const errorCodeOf = async (promise: Promise<unknown>) => ((await thrownBy(promise)) as AiError).code;
+
+describe("OpenRouterProvider.generate", () => {
     it("sends one chat request with the prompt, the facts and a JSON schema, and reads the answer and usage", async () => {
         handler = reply(200, completion(JSON.stringify(ANSWER)));
 
@@ -125,7 +127,7 @@ describe("HttpAiGenerator", () => {
     it("can switch thinking off, or not send the setting at all", async () => {
         handler = reply(200, completion(JSON.stringify(ANSWER)));
         const make = (reasoningEffort: ReasoningEffort) =>
-            new HttpAiGenerator({
+            new OpenRouterProvider({
                 apiKey: "k",
                 baseUrl,
                 timeoutMs: 2000,
@@ -153,7 +155,7 @@ describe("HttpAiGenerator", () => {
     it("stops waiting after the timeout", async () => {
         handler = (_body, _req, res) =>
             setTimeout(() => reply(200, completion(JSON.stringify(ANSWER)))(_body, _req, res), 1500);
-        expect(await errorCodeOf(generator(1000).generate(FACTS, "test/model"))).toBe(AiErrorCode.TIMEOUT);
+        expect(isTimeoutError(await thrownBy(generator(1000).generate(FACTS, "test/model")))).toBe(true);
     });
 
     it("reports a refusal", async () => {
@@ -172,13 +174,15 @@ describe("HttpAiGenerator", () => {
     });
 
     it("reports a provider that cannot be reached", async () => {
-        const unreachable = new HttpAiGenerator({
+        const unreachable = new OpenRouterProvider({
             apiKey: "k",
             baseUrl: "http://127.0.0.1:9/api/v1",
             timeoutMs: 2000,
             maxOutputTokens: 100,
             reasoningEffort: ReasoningEffort.NONE,
         });
-        expect(await errorCodeOf(unreachable.generate(FACTS, "test/model"))).toBe(AiErrorCode.PROVIDER_ERROR);
+        const error = await thrownBy(unreachable.generate(FACTS, "test/model"));
+        expect(error).not.toBeInstanceOf(AiError);
+        expect(isTimeoutError(error)).toBe(false);
     });
 });

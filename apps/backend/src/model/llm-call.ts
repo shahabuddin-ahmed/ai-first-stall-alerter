@@ -1,6 +1,6 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { AiUsage } from "../ai/generator";
+import { AiUsage } from "../service/ai-provider";
 import { AI_COLUMN_LIMITS, LlmCallStatus } from "../constant/ai";
 import { HASH_COLUMN_LENGTH } from "../constant/hash";
 

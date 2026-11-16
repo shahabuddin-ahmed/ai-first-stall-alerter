@@ -48,7 +48,7 @@ yarn dev
 
 Every value is checked at start-up. A wrong value stops the API with a clear message.
 
-The AI model is picked in the settings (default `inclusionai/ling-3.2-flash:free`). Only free models that support
+The AI model is picked in the settings (default `inclusionai/ling-3.2-flash:free`). Only models that support
 JSON output are listed. Tested with Ling and `AI_REASONING_EFFORT=off`: one real call
 answered in 9 seconds and passed every check.
 
@@ -59,7 +59,7 @@ answered in 9 seconds and passed every check.
 | GET       | `/health`                                                               | API and database status (200 or 503)                                                               |
 | GET · PUT | `/stages`                                                               | Read or save the hiring stages (save needs the current `version`, else 409)                        |
 | GET · PUT | `/settings`                                                             | Read or save AI drafts on/off and the AI model (`aiModel`); shows if AI is set up (never the key)  |
-| GET       | `/settings/models`                                                      | Free models you can pick (OpenRouter list, saved in the DB and refreshed every 30 minutes)         |
+| GET       | `/settings/models`                                                      | Models you can pick (OpenRouter list, saved in the DB and refreshed every 30 minutes)              |
 | POST      | `/imports`                                                              | Upload a CSV (`file`, `referenceDate`). 201 new, 200 if the same file was already imported         |
 | GET       | `/imports`                                                              | List imports, newest first                                                                         |
 | GET       | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Counts, bottlenecks and the ranked queue, recalculated                                             |
@@ -92,7 +92,7 @@ yarn db:seed:down        # remove the default data
 | `stages`         | Hiring stages: name, type, threshold, order, aliases, action code                                                                                                                                      |
 | `settings`       | One row: AI drafts on/off, the AI model and the stages version (goes up on each stages save)                                                                                                           |
 | `ai_insights`    | Cached, validated AI answers (placeholders, no names); deleted with the import                                                                                                                         |
-| `ai_models`      | Free OpenRouter models that support JSON output; refreshed every 30 minutes                                                                                                                            |
+| `ai_models`      | OpenRouter models that support JSON output; refreshed every 30 minutes                                                                                                                                 |
 | `llm_calls`      | One row per AI call: model, tokens, cost, time, status; never the text                                                                                                                                 |
 
 To change a table, add a new migration file. Never edit one that has already run.
@@ -109,7 +109,7 @@ yarn perf         # 10,000-row speed test against a running API (add --insights 
 ```
 
 The expected results in `data/expected/*.json` come from `scripts/generate_expected.py` (Python, written separately
-from the app). The hiring-board tests must match them exactly. No test calls a real AI.
+from the app). The pipeline tests must match them exactly. No test calls a real AI.
 
 ## Speed (10,000 rows, measured)
 

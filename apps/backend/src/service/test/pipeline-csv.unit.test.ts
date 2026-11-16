@@ -1,32 +1,33 @@
-import { BOARD_LIMITS, FileErrorCode } from "../../../constant/board";
-import { parseBoardCsv } from "../csv-reader";
-import { FileError, ParsedBoard } from "../types";
+import { PIPELINE_LIMITS, FileErrorCode } from "../../constant/pipeline";
+import { parsePipelineCsv, buildExportCsv, ExportRow, guardFormula } from "../pipeline-csv";
+import { FileError, ParsedPipeline } from "../pipeline-types";
+import { ExportColumn, EXPORT_COLUMNS } from "../../constant/export";
 
 const HEADER = "candidate_id,name,role,stage,stage_entered_at,recruiter";
 const ROW = "001,Ana Ruiz,QA Engineer,Applied,2026-11-01,Recruiter A";
 
-const parse = (text: string | Buffer): ParsedBoard => {
-    const result = parseBoardCsv(typeof text === "string" ? Buffer.from(text, "utf8") : text);
+const parse = (text: string | Buffer): ParsedPipeline => {
+    const result = parsePipelineCsv(typeof text === "string" ? Buffer.from(text, "utf8") : text);
     if (!result.ok) {
         throw new Error(`unexpected file error ${result.error.code}`);
     }
-    return result.board;
+    return result.pipeline;
 };
 
 const fileError = (text: string | Buffer): FileError => {
-    const result = parseBoardCsv(typeof text === "string" ? Buffer.from(text, "utf8") : text);
+    const result = parsePipelineCsv(typeof text === "string" ? Buffer.from(text, "utf8") : text);
     if (result.ok) {
         throw new Error("expected a file error");
     }
     return result.error;
 };
 
-describe("parseBoardCsv: reading records", () => {
+describe("parsePipelineCsv: reading records", () => {
     it("reads a simple file, numbering records with the header as 1", () => {
-        const board = parse(`${HEADER}\n${ROW}\n`);
+        const pipeline = parse(`${HEADER}\n${ROW}\n`);
 
-        expect(board.headerCount).toBe(6);
-        expect(board.records).toEqual([
+        expect(pipeline.headerCount).toBe(6);
+        expect(pipeline.records).toEqual([
             {
                 recordNumber: 2,
                 fieldCount: 6,
@@ -43,49 +44,49 @@ describe("parseBoardCsv: reading records", () => {
     });
 
     it("removes a UTF-8 BOM", () => {
-        const board = parse(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(`${HEADER}\n${ROW}`)]));
-        expect(board.records[0].candidateId).toBe("001");
+        const pipeline = parse(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(`${HEADER}\n${ROW}`)]));
+        expect(pipeline.records[0].candidateId).toBe("001");
     });
 
     it("accepts Windows line endings (CRLF)", () => {
-        const board = parse(`${HEADER}\r\n${ROW}\r\n${ROW.replace("001", "002")}\r\n`);
-        expect(board.records.map((record) => record.candidateId)).toEqual(["001", "002"]);
+        const pipeline = parse(`${HEADER}\r\n${ROW}\r\n${ROW.replace("001", "002")}\r\n`);
+        expect(pipeline.records.map((record) => record.candidateId)).toEqual(["001", "002"]);
     });
 
     it("keeps commas and quotes inside quoted values", () => {
-        const board = parse(`${HEADER}\n001,"Lopes, Ana","QA ""Lead""",Applied,2026-11-01,Recruiter A`);
-        expect(board.records[0].name).toBe("Lopes, Ana");
-        expect(board.records[0].role).toBe('QA "Lead"');
+        const pipeline = parse(`${HEADER}\n001,"Lopes, Ana","QA ""Lead""",Applied,2026-11-01,Recruiter A`);
+        expect(pipeline.records[0].name).toBe("Lopes, Ana");
+        expect(pipeline.records[0].role).toBe('QA "Lead"');
     });
 
     it("trims headers and values, accepts any column order and ignores extra columns", () => {
-        const board = parse(
+        const pipeline = parse(
             " recruiter , notes ,stage,candidate_id,name,role,stage_entered_at,last_activity_at\n" +
                 " Recruiter A ,private note, Offer , 0142 ,Wei Zhang,Data Analyst,2026-11-05,2026-11-06"
         );
 
-        expect(board.headerCount).toBe(8);
-        expect(board.records[0]).toMatchObject({
+        expect(pipeline.headerCount).toBe(8);
+        expect(pipeline.records[0]).toMatchObject({
             candidateId: "0142",
             recruiter: "Recruiter A",
             stage: "Offer",
             lastActivityAt: "2026-11-06",
         });
-        expect(JSON.stringify(board.records[0])).not.toContain("private note");
+        expect(JSON.stringify(pipeline.records[0])).not.toContain("private note");
     });
 
     it("skips blank records but keeps the record numbers of the file", () => {
-        const board = parse(`${HEADER}\n${ROW}\n\n,,,,,\n${ROW.replace("001", "002")}`);
-        expect(board.records.map((record) => record.recordNumber)).toEqual([2, 5]);
+        const pipeline = parse(`${HEADER}\n${ROW}\n\n,,,,,\n${ROW.replace("001", "002")}`);
+        expect(pipeline.records.map((record) => record.recordNumber)).toEqual([2, 5]);
     });
 
     it("keeps records with the wrong number of fields (they become row errors later)", () => {
-        const board = parse(`${HEADER}\n141,Rosa Lopez,QA Engineer, Mobile,Interview,2026-11-01,Recruiter C`);
-        expect(board.records[0]).toMatchObject({ recordNumber: 2, fieldCount: 7, candidateId: "141" });
+        const pipeline = parse(`${HEADER}\n141,Rosa Lopez,QA Engineer, Mobile,Interview,2026-11-01,Recruiter C`);
+        expect(pipeline.records[0]).toMatchObject({ recordNumber: 2, fieldCount: 7, candidateId: "141" });
     });
 });
 
-describe("parseBoardCsv: file errors", () => {
+describe("parsePipelineCsv: file errors", () => {
     it("rejects an empty file", () => {
         expect(fileError("").code).toBe(FileErrorCode.EMPTY_FILE);
         expect(fileError(" \n \n").code).toBe(FileErrorCode.EMPTY_FILE);
@@ -124,13 +125,13 @@ describe("parseBoardCsv: file errors", () => {
     });
 
     it("rejects more than 10,000 candidate records", () => {
-        const rows = Array.from({ length: BOARD_LIMITS.MAX_RECORDS + 1 }, (_, i) => ROW.replace("001", String(i)));
+        const rows = Array.from({ length: PIPELINE_LIMITS.MAX_RECORDS + 1 }, (_, i) => ROW.replace("001", String(i)));
         expect(fileError(`${HEADER}\n${rows.join("\n")}`).code).toBe(FileErrorCode.TOO_MANY_ROWS);
     });
 
     it("accepts exactly 10,000 records", () => {
-        const rows = Array.from({ length: BOARD_LIMITS.MAX_RECORDS }, (_, i) => ROW.replace("001", String(i)));
-        expect(parse(`${HEADER}\n${rows.join("\n")}`).records).toHaveLength(BOARD_LIMITS.MAX_RECORDS);
+        const rows = Array.from({ length: PIPELINE_LIMITS.MAX_RECORDS }, (_, i) => ROW.replace("001", String(i)));
+        expect(parse(`${HEADER}\n${rows.join("\n")}`).records).toHaveLength(PIPELINE_LIMITS.MAX_RECORDS);
     });
 
     it("rejects a name longer than 50 characters, and accepts exactly 50", () => {
@@ -154,5 +155,62 @@ describe("parseBoardCsv: file errors", () => {
 
     it("ignores long values in columns it does not store", () => {
         expect(parse(`${HEADER},notes\n${ROW},${"x".repeat(1000)}`).records).toHaveLength(1);
+    });
+});
+
+const row = (change: Partial<ExportRow> = {}): ExportRow => ({
+    ...(Object.fromEntries(EXPORT_COLUMNS.map((column) => [column, ""])) as ExportRow),
+    [ExportColumn.RANK]: 1,
+    [ExportColumn.CANDIDATE_ID]: "0142",
+    [ExportColumn.NAME]: "Wei Zhang",
+    ...change,
+});
+
+const lines = (csv: string) => csv.replace(/^\uFEFF/, "").split("\r\n");
+
+describe("guardFormula", () => {
+    it.each(["=SUM(A1:A9)", "+1", "-1", "@cmd", "\tTab", "\rReturn"])("puts ' in front of %j", (value) => {
+        expect(guardFormula(value)).toBe(`'${value}`);
+    });
+
+    it("leaves normal text alone", () => {
+        expect(guardFormula("Hana Novak")).toBe("Hana Novak");
+        expect(guardFormula("a=b")).toBe("a=b");
+    });
+});
+
+describe("buildExportCsv", () => {
+    it("starts with a UTF-8 BOM (Excel) and the header in spec order, with Windows line endings", () => {
+        const csv = buildExportCsv([]);
+
+        expect(csv.startsWith("\uFEFF")).toBe(true);
+        expect(lines(csv)[0]).toBe(
+            "rank,candidate_id,name,role,stage,recruiter,reference_date,stage_threshold,timer_from,days_in_stage," +
+                "overdue_days,reason,action,message_to,message_draft,message_source,ai_note_status"
+        );
+        expect(csv.endsWith("\r\n")).toBe(true);
+    });
+
+    it("keeps leading zeros and writes numbers as numbers", () => {
+        expect(lines(buildExportCsv([row()]))[1]).toMatch(/^1,0142,Wei Zhang,/);
+    });
+
+    it("quotes values with commas, quotes or line breaks (RFC 4180)", () => {
+        const csv = buildExportCsv([
+            row({ [ExportColumn.NAME]: "Lopes, Ana", [ExportColumn.REASON]: 'She said "soon"\nthen nothing' }),
+        ]);
+
+        expect(csv).toContain('"Lopes, Ana"');
+        expect(csv).toContain('"She said ""soon""\nthen nothing"');
+    });
+
+    it("guards formulas in text cells, even inside quotes", () => {
+        const csv = buildExportCsv([row({ [ExportColumn.NAME]: '=HYPERLINK("http://x","click")' })]);
+
+        expect(csv).toContain(`"'=HYPERLINK(""http://x"",""click"")"`);
+    });
+
+    it("writes empty values as empty cells", () => {
+        expect(lines(buildExportCsv([row({ [ExportColumn.ROLE]: null })]))[1]).toMatch(/^1,0142,Wei Zhang,,/);
     });
 });

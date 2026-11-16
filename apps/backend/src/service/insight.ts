@@ -8,18 +8,22 @@ import {
     RECRUITER_KEY_PATTERN,
 } from "../constant/ai";
 import { ActionCode, RecipientType } from "../constant/stage";
-import { AiError, AiGenerator, AiUsage } from "../ai/generator";
-import { AiOutput, checkAiOutput } from "../ai/guardrails";
+import { AiAttempt, AiOutput, AiServiceInterface } from "./ai";
 import { AiInsightRepoInterface } from "../repo/ai-insight";
 import { LlmCallRepoInterface } from "../repo/llm-call";
-import { buildInsightFacts, InsightFacts, recruiterKeysOf } from "./hiring-board/ai-facts";
-import { fillPlaceholders, templateBottleneckNote, templateBriefing } from "./hiring-board/messages";
-import { BoardAnalysis } from "./hiring-board/types";
-import logger from "../infra/logger";
+import {
+    buildInsightFacts,
+    InsightFacts,
+    recruiterKeysOf,
+    fillPlaceholders,
+    templateBottleneckNote,
+    templateBriefing,
+} from "./pipeline-messages";
+import { PipelineAnalysis } from "./pipeline-types";
 import { sha256Hex } from "../utils/utility";
 import { ConfigServiceInterface } from "./config";
 import { ImportServiceInterface } from "./import";
-import { BottleneckType } from "../constant/board";
+import { BottleneckType } from "../constant/pipeline";
 
 export interface InsightDraft {
     rank: number;
@@ -51,34 +55,32 @@ export interface SavedDrafts {
 
 export interface InsightServiceInterface {
     getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
-    getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts>;
+    getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
 
-type Attempt = { ok: true; output: AiOutput } | { ok: false; code: AiErrorCode };
-
 export class InsightService implements InsightServiceInterface {
-    private inFlight = new Map<string, Promise<Attempt>>();
+    private inFlight = new Map<string, Promise<AiAttempt>>();
 
     constructor(
         private importService: ImportServiceInterface,
         private configService: ConfigServiceInterface,
         private aiInsightRepo: AiInsightRepoInterface,
         private llmCallRepo: LlmCallRepoInterface,
-        private generator: AiGenerator | null,
+        private aiService: AiServiceInterface,
         private topN: number
     ) {}
 
     async getInsights(importId: number, referenceDate?: string): Promise<InsightsView> {
         const { analysis } = await this.importService.analyse(importId, referenceDate);
         const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
-        const model = this.generator ? aiModel : null;
+        const model = this.aiService.isConfigured() ? aiModel : null;
         const templates = (aiStatus: AiStatus, errorCode: AiErrorCode | null = null) =>
             this.templateView(importId, analysis, model, aiStatus, errorCode);
 
         if (analysis.queue.length === 0) {
             return templates(AiStatus.NOTHING_STALLED);
         }
-        if (!this.generator) {
+        if (!this.aiService.isConfigured()) {
             return templates(AiStatus.NOT_CONFIGURED);
         }
         if (!useAiDrafts) {
@@ -94,18 +96,18 @@ export class InsightService implements InsightServiceInterface {
         }
 
         const attempt = await this.callOnce(cacheKey, importId, facts, aiModel);
-        return attempt.ok
+        return attempt.output
             ? this.aiView(importId, analysis, aiModel, attempt.output, false)
-            : templates(AiStatus.FAILED, attempt.code);
+            : templates(AiStatus.FAILED, attempt.errorCode);
     }
 
-    async getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts> {
+    async getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts> {
         const saved = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
             status,
             draftsByAction,
         });
         const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
-        if (!this.generator) {
+        if (!this.aiService.isConfigured()) {
             return saved(AiNoteStatus.UNAVAILABLE);
         }
         if (!useAiDrafts) {
@@ -130,7 +132,7 @@ export class InsightService implements InsightServiceInterface {
         return sha256Hex(JSON.stringify(parts));
     }
 
-    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<Attempt> {
+    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
         const running = this.inFlight.get(cacheKey);
         if (running) {
             return running;
@@ -145,7 +147,7 @@ export class InsightService implements InsightServiceInterface {
         importId: number,
         facts: InsightFacts,
         model: string
-    ): Promise<Attempt> {
+    ): Promise<AiAttempt> {
         try {
             return await this.attempt(cacheKey, importId, facts, model);
         } finally {
@@ -153,30 +155,10 @@ export class InsightService implements InsightServiceInterface {
         }
     }
 
-    private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<Attempt> {
-        const generator = this.generator as AiGenerator;
+    private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
         const startedAt = Date.now();
-        let result: Attempt;
-        let usage: AiUsage = {
-            servedModel: null,
-            inputTokens: null,
-            outputTokens: null,
-            costUsd: null,
-        };
-
-        try {
-            const generated = await generator.generate(facts, model);
-            usage = generated;
-            const check = checkAiOutput(generated.output, facts);
-            if (check.ok) {
-                result = { ok: true, output: check.output };
-            } else {
-                logger.warn("AI answer failed the checks", { problems: check.problems.join("; ") });
-                result = { ok: false, code: AiErrorCode.INVALID_OUTPUT };
-            }
-        } catch (err) {
-            result = { ok: false, code: err instanceof AiError ? err.code : AiErrorCode.PROVIDER_ERROR };
-        }
+        const attempt = await this.aiService.generate(facts, model);
+        const { usage } = attempt;
 
         await this.llmCallRepo.log({
             importId,
@@ -187,24 +169,24 @@ export class InsightService implements InsightServiceInterface {
             outputTokens: usage.outputTokens,
             costUsd: usage.costUsd,
             latencyMs: Date.now() - startedAt,
-            status: result.ok ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
-            errorCode: result.ok ? null : result.code,
+            status: attempt.output ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
+            errorCode: attempt.errorCode,
         });
-        if (result.ok) {
+        if (attempt.output) {
             await this.aiInsightRepo.save({
                 importId,
                 cacheKey,
                 model,
                 promptVersion: PROMPT_VERSION,
-                output: result.output,
+                output: attempt.output,
             });
         }
-        return result;
+        return attempt;
     }
 
     private aiView(
         importId: number,
-        analysis: BoardAnalysis,
+        analysis: PipelineAnalysis,
         model: string,
         output: AiOutput,
         cached: boolean
@@ -241,7 +223,7 @@ export class InsightService implements InsightServiceInterface {
 
     private templateView(
         importId: number,
-        analysis: BoardAnalysis,
+        analysis: PipelineAnalysis,
         model: string | null,
         aiStatus: AiStatus,
         errorCode: AiErrorCode | null
@@ -278,8 +260,8 @@ export const newInsightService = async (
     configService: ConfigServiceInterface,
     aiInsightRepo: AiInsightRepoInterface,
     llmCallRepo: LlmCallRepoInterface,
-    generator: AiGenerator | null,
+    aiService: AiServiceInterface,
     topN: number
 ): Promise<InsightService> => {
-    return new InsightService(importService, configService, aiInsightRepo, llmCallRepo, generator, topN);
+    return new InsightService(importService, configService, aiInsightRepo, llmCallRepo, aiService, topN);
 };

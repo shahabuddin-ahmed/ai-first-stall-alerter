@@ -1,17 +1,17 @@
-import { BoardColumn, DATE_COLUMNS, INVALID_DATE_TEXT } from "../constant/board";
+import { PipelineColumn, DATE_COLUMNS, INVALID_DATE_TEXT } from "../constant/pipeline";
 import { ImportRecordInterface } from "../model/import-record";
-import { COLUMN_FIELDS } from "../service/hiring-board/csv-reader";
+import { COLUMN_FIELDS } from "../service/pipeline-csv";
 import { parseIsoDate } from "../utils/dates";
-import { BoardRecord } from "../service/hiring-board/types";
+import { PipelineRecord } from "../service/pipeline-types";
 
 const isInvalidDate = (value: string): boolean => value !== "" && parseIsoDate(value) === null;
 
 const storedDate = (value: string): string | null => (value === "" || isInvalidDate(value) ? null : value);
 
-const restoredDate = (value: string | null, column: BoardColumn, invalidDates: BoardColumn[] | null): string =>
+const restoredDate = (value: string | null, column: PipelineColumn, invalidDates: PipelineColumn[] | null): string =>
     value ?? (invalidDates?.includes(column) ? INVALID_DATE_TEXT : "");
 
-export const toStoredRecord = (record: BoardRecord, importId: number): ImportRecordInterface => {
+export const toStoredRecord = (record: PipelineRecord, importId: number): ImportRecordInterface => {
     const invalidDates = DATE_COLUMNS.filter((column) => isInvalidDate(record[COLUMN_FIELDS[column]] as string));
     return {
         ...record,
@@ -23,9 +23,9 @@ export const toStoredRecord = (record: BoardRecord, importId: number): ImportRec
     };
 };
 
-export const toBoardRecord = ({ invalidDates, ...stored }: ImportRecordInterface): BoardRecord => ({
+export const toPipelineRecord = ({ invalidDates, ...stored }: ImportRecordInterface): PipelineRecord => ({
     ...stored,
-    stageEnteredAt: restoredDate(stored.stageEnteredAt, BoardColumn.STAGE_ENTERED_AT, invalidDates),
-    lastActivityAt: restoredDate(stored.lastActivityAt, BoardColumn.LAST_ACTIVITY_AT, invalidDates),
-    lastContactedAt: restoredDate(stored.lastContactedAt, BoardColumn.LAST_CONTACTED_AT, invalidDates),
+    stageEnteredAt: restoredDate(stored.stageEnteredAt, PipelineColumn.STAGE_ENTERED_AT, invalidDates),
+    lastActivityAt: restoredDate(stored.lastActivityAt, PipelineColumn.LAST_ACTIVITY_AT, invalidDates),
+    lastContactedAt: restoredDate(stored.lastContactedAt, PipelineColumn.LAST_CONTACTED_AT, invalidDates),
 });

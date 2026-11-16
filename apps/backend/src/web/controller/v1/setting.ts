@@ -4,7 +4,7 @@ import { Controller } from "../controller";
 import { HttpStatus } from "../../../constant/http";
 import { AI_COLUMN_LIMITS } from "../../../constant/ai";
 import { ConfigServiceInterface } from "../../../service/config";
-import { AiModelServiceInterface } from "../../../service/ai-model";
+import { AiServiceInterface } from "../../../service/ai";
 
 export interface SettingControllerInterface {
     get(req: Request, res: Response): any;
@@ -20,7 +20,7 @@ const updateSchema = Joi.object({
 export class SettingController extends Controller implements SettingControllerInterface {
     constructor(
         private configService: ConfigServiceInterface,
-        private aiModelService: AiModelServiceInterface
+        private aiService: AiServiceInterface
     ) {
         super();
     }
@@ -39,14 +39,14 @@ export class SettingController extends Controller implements SettingControllerIn
     };
 
     listModels = async (_req: Request, res: Response): Promise<any> => {
-        const models = await this.aiModelService.list();
+        const models = await this.aiService.listModels();
         return this.sendResponse({ response: models }, HttpStatus.OK, res);
     };
 }
 
 export const newSettingV1Controller = async (
     configService: ConfigServiceInterface,
-    aiModelService: AiModelServiceInterface
+    aiService: AiServiceInterface
 ): Promise<SettingController> => {
-    return new SettingController(configService, aiModelService);
+    return new SettingController(configService, aiService);
 };

@@ -1,6 +1,7 @@
 import http from "http";
 import { AddressInfo } from "net";
-import { HttpModelSource } from "../model-source";
+import { ReasoningEffort } from "../../constant/ai";
+import { OpenRouterProvider } from "../ai-provider";
 
 let server: http.Server;
 let baseUrl: string;
@@ -28,19 +29,31 @@ afterAll(async () => {
     await new Promise((resolve) => server.close(resolve));
 });
 
-describe("HttpModelSource", () => {
-    it("keeps only free models that support JSON output", async () => {
+const provider = () =>
+    new OpenRouterProvider({
+        apiKey: "",
+        baseUrl,
+        timeoutMs: 2000,
+        maxOutputTokens: 100,
+        reasoningEffort: ReasoningEffort.NONE,
+    });
+
+describe("OpenRouterProvider.listModels", () => {
+    it("keeps only models that support JSON output", async () => {
         status = 200;
 
-        const models = await new HttpModelSource(baseUrl).listFreeModels();
+        const models = await provider().listModels();
 
         expect(requestedUrl).toBe("/api/v1/models");
-        expect(models).toEqual([{ modelId: "free/json:free", name: "Free JSON", contextLength: 1000 }]);
+        expect(models).toEqual([
+            { modelId: "free/json:free", name: "Free JSON", contextLength: 1000 },
+            { modelId: "paid/json", name: "Paid JSON", contextLength: 1000 },
+        ]);
     });
 
     it("fails when OpenRouter answers with an error", async () => {
         status = 500;
 
-        await expect(new HttpModelSource(baseUrl).listFreeModels()).rejects.toThrow("HTTP 500");
+        await expect(provider().listModels()).rejects.toThrow("HTTP 500");
     });
 });

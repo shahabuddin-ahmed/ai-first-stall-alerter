@@ -3,17 +3,12 @@ import { withTransaction } from "./transaction";
 
 export interface AiModelRepoInterface {
     list(): Promise<AiModelInterface[]>;
-    lastRefreshedAt(): Promise<Date | null>;
     replaceAll(models: AiModelInterface[]): Promise<void>;
 }
 
 export class AiModelRepo implements AiModelRepoInterface {
     public async list(): Promise<AiModelInterface[]> {
         return AiModel.findAll({ attributes: ["modelId", "name", "contextLength"], order: [["name", "ASC"]] });
-    }
-
-    public async lastRefreshedAt(): Promise<Date | null> {
-        return AiModel.max<Date | null, AiModel>("createdAt");
     }
 
     public async replaceAll(models: AiModelInterface[]): Promise<void> {

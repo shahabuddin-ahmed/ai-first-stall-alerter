@@ -5,8 +5,8 @@ import request from "supertest";
 import { QueryTypes } from "sequelize";
 import { AiErrorCode, AiStatus, MessageSource, DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { HttpStatus } from "../../../../constant/http";
-import { FakeAiGenerator } from "../../../../ai/fake-generator";
-import { AiError, AiGenerator, GenerationResult } from "../../../../ai/generator";
+import { AiService } from "../../../../service/ai";
+import { AiError, AiProviderInterface, FakeAiProvider, GenerationResult } from "../../../../service/ai-provider";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { newAiInsightRepo } from "../../../../repo/ai-insight";
@@ -14,10 +14,8 @@ import { newImportRepo } from "../../../../repo/import";
 import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
-import { InsightFacts } from "../../../../service/hiring-board/ai-facts";
-import { FakeModelSource } from "../../../../ai/model-source";
+import { InsightFacts } from "../../../../service/pipeline-messages";
 import { newAiModelRepo } from "../../../../repo/ai-model";
-import { newAiModelService } from "../../../../service/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
 import { newInsightService } from "../../../../service/insight";
@@ -35,12 +33,12 @@ const SAMPLE_B = fs.readFileSync(path.resolve(__dirname, "../../../../../../../d
 const REFERENCE_DATE = "2026-11-13";
 
 // Wraps the fake AI so tests can count calls, slow it down or make it fail.
-class TestGenerator implements AiGenerator {
+class TestGenerator implements AiProviderInterface {
     calls = 0;
     models: string[] = [];
     seenFacts: InsightFacts[] = [];
     behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) =>
-        new FakeAiGenerator().generate(facts, DEFAULT_AI_MODEL);
+        new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
 
     async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
         this.models.push(model);
@@ -48,30 +46,29 @@ class TestGenerator implements AiGenerator {
         this.seenFacts.push(facts);
         return this.behaviour(facts);
     }
+
+    async listModels() {
+        return new FakeAiProvider().listModels();
+    }
 }
 
-const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
-    const aiModelService = await newAiModelService(await newAiModelRepo(), new FakeModelSource());
-    const configService = await newConfigService(
-        await newStageRepo(),
-        await newSettingRepo(),
-        aiModelService,
-        generator !== null
-    );
+const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
+    const aiService = new AiService(await newAiModelRepo(), generator ?? new FakeAiProvider(), generator !== null);
+    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
         importService,
         configService,
         await newAiInsightRepo(),
         await newLlmCallRepo(),
-        generator,
+        aiService,
         5
     );
     const app = express();
     app.use(express.json());
     app.use("/api/v1/imports/:id/insights", await newInsightRouter(await newInsightV1Controller(insightService)));
     app.use("/api/v1/imports", await newImportRouter(await newImportV1Controller(importService)));
-    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService, aiModelService)));
+    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService, aiService)));
     app.use(globalErrorHandler);
     return app;
 };
@@ -163,7 +160,7 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
     it("makes one AI call when three requests arrive at the same moment", async () => {
         generator.behaviour = async (facts) => {
             await new Promise((resolve) => setTimeout(resolve, 200));
-            return new FakeAiGenerator().generate(facts, DEFAULT_AI_MODEL);
+            return new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
         };
 
         const results = await Promise.all([insights(app, importId), insights(app, importId), insights(app, importId)]);
@@ -203,7 +200,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         expectTemplates(first.body.response);
 
         // Retry works: the failure was not cached, so the AI is asked again
-        generator.behaviour = (facts) => new FakeAiGenerator().generate(facts, DEFAULT_AI_MODEL);
+        generator.behaviour = (facts) => new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
         const retry = await insights(app, importId);
         expect(retry.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
         expect(generator.calls).toBe(2);
@@ -215,7 +212,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
 
     it("when the answer breaks a rule (a date in a message), uses templates for the whole report", async () => {
         generator.behaviour = async (facts) => {
-            const good = await new FakeAiGenerator().generate(facts, DEFAULT_AI_MODEL);
+            const good = await new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
             const output = good.output as any;
             output.drafts[2].text = "Hi {{first_name}}, please reply by 20 November.";
             return good;

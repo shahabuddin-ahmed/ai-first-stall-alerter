@@ -1,24 +1,25 @@
 import fs from "fs";
 import path from "path";
-import { RowErrorCode } from "../../../constant/board";
-import { TimerSource } from "../../../constant/stage";
-import { analyseBoard } from "../analyse-board";
-import { parseBoardCsv } from "../csv-reader";
+import { RowErrorCode } from "../../constant/pipeline";
+import { TimerSource, StageType } from "../../constant/stage";
+import { analysePipeline, findStageListProblems } from "../pipeline-analysis";
+import { parsePipelineCsv } from "../pipeline-csv";
 import { DEFAULT_STAGES } from "./default-stages";
-import { BoardAnalysis, ParsedBoard } from "../types";
+import { PipelineAnalysis, ParsedPipeline, StageConfig } from "../pipeline-types";
 
 const HEADER = "candidate_id,name,role,stage,stage_entered_at,recruiter,last_activity_at,last_contacted_at";
 const REFERENCE_DATE = "2026-11-13";
 
-const board = (...rows: string[]): ParsedBoard => {
-    const result = parseBoardCsv(Buffer.from([HEADER, ...rows].join("\n")));
+const pipeline = (...rows: string[]): ParsedPipeline => {
+    const result = parsePipelineCsv(Buffer.from([HEADER, ...rows].join("\n")));
     if (!result.ok) {
         throw new Error(result.error.code);
     }
-    return result.board;
+    return result.pipeline;
 };
 
-const analyse = (...rows: string[]): BoardAnalysis => analyseBoard(board(...rows), DEFAULT_STAGES, REFERENCE_DATE);
+const analyse = (...rows: string[]): PipelineAnalysis =>
+    analysePipeline(pipeline(...rows), DEFAULT_STAGES, REFERENCE_DATE);
 
 describe("stall rule", () => {
     it("is stalled on the threshold day with 0 days overdue, not the day before", () => {
@@ -82,14 +83,15 @@ describe("ranking", () => {
     });
 
     it("does not depend on the row order in the file", () => {
-        const sampleB = parseBoardCsv(fs.readFileSync(path.resolve(__dirname, "../../../../../../data/sample-b.csv")));
+        const sampleB = parsePipelineCsv(fs.readFileSync(path.resolve(__dirname, "../../../../../data/sample-b.csv")));
         if (!sampleB.ok) {
             throw new Error("sample B rejected");
         }
-        const reversed = { ...sampleB.board, records: [...sampleB.board.records].reverse() };
+        const reversed = { ...sampleB.pipeline, records: [...sampleB.pipeline.records].reverse() };
 
-        const ids = (b: ParsedBoard) => analyseBoard(b, DEFAULT_STAGES, REFERENCE_DATE).queue.map((i) => i.candidateId);
-        expect(ids(reversed)).toEqual(ids(sampleB.board));
+        const ids = (b: ParsedPipeline) =>
+            analysePipeline(b, DEFAULT_STAGES, REFERENCE_DATE).queue.map((i) => i.candidateId);
+        expect(ids(reversed)).toEqual(ids(sampleB.pipeline));
     });
 
     it("compares IDs by plain character codes (uppercase before lowercase)", () => {
@@ -148,8 +150,8 @@ describe("row errors", () => {
 
 describe("reference date", () => {
     it("an earlier reference date makes applications younger", () => {
-        const result = analyseBoard(
-            board("001,Ana Ruiz,QA,Offer,2026-11-01,Recruiter A,,"),
+        const result = analysePipeline(
+            pipeline("001,Ana Ruiz,QA,Offer,2026-11-01,Recruiter A,,"),
             DEFAULT_STAGES,
             "2026-11-02"
         );
@@ -174,6 +176,39 @@ describe("bottlenecks", () => {
         expect(result.bottlenecks).toEqual([
             { type: "stage", key: "Offer", stalled: 2 },
             { type: "recruiter", key: "Recruiter A", stalled: 2 },
+        ]);
+    });
+});
+
+const withChange = (index: number, change: Partial<StageConfig>): StageConfig[] =>
+    DEFAULT_STAGES.map((stage, i) => (i === index ? { ...stage, ...change } : stage));
+
+describe("findStageListProblems", () => {
+    it("accepts the default stages", () => {
+        expect(findStageListProblems(DEFAULT_STAGES)).toEqual([]);
+    });
+
+    it("needs at least one watched stage", () => {
+        const onlyFinal = DEFAULT_STAGES.filter((stage) => stage.type === StageType.FINAL);
+        expect(findStageListProblems(onlyFinal)).toEqual(["Add at least one watched stage."]);
+    });
+
+    it("rejects two stages with the same name, ignoring capitals and spaces", () => {
+        expect(findStageListProblems(withChange(1, { name: "applied" }))).toEqual([
+            '"applied" is used more than once (as a stage name or alias).',
+        ]);
+    });
+
+    it("rejects an alias that is already another stage's name or alias", () => {
+        expect(findStageListProblems(withChange(5, { aliases: ["Onsite"] }))).toEqual([
+            '"Onsite" is used more than once (as a stage name or alias).',
+        ]);
+    });
+
+    it("needs a threshold and an action on watched stages", () => {
+        expect(findStageListProblems(withChange(0, { thresholdDays: null, actionCode: null }))).toEqual([
+            '"Applied" needs a threshold between 1 and 90 days.',
+            '"Applied" needs a follow-up action.',
         ]);
     });
 });

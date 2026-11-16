@@ -1,5 +1,5 @@
-import { BoardColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../../constant/board";
-import { ActionCode, RecipientType, StageType, TimerSource } from "../../constant/stage";
+import { PipelineColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../constant/pipeline";
+import { ActionCode, RecipientType, StageType, TimerSource } from "../constant/stage";
 
 export interface StageInput {
     name: string;
@@ -23,15 +23,15 @@ export interface RecordText {
     recruiter: string;
 }
 
-export interface BoardRecord extends RecordText {
+export interface PipelineRecord extends RecordText {
     stageEnteredAt: string;
     lastActivityAt: string;
     lastContactedAt: string;
 }
 
-export interface ParsedBoard {
+export interface ParsedPipeline {
     headerCount: number;
-    records: BoardRecord[];
+    records: PipelineRecord[];
 }
 
 export interface FileError {
@@ -40,10 +40,10 @@ export interface FileError {
     details: string[];
 }
 
-export type ParseResult = { ok: true; board: ParsedBoard } | { ok: false; error: FileError };
+export type ParseResult = { ok: true; pipeline: ParsedPipeline } | { ok: false; error: FileError };
 
 export interface FieldError {
-    field: BoardColumn | string;
+    field: PipelineColumn | string;
     code: RowErrorCode;
     problem: string;
 }
@@ -95,7 +95,7 @@ export interface Bottleneck {
     stalled: number;
 }
 
-export interface BoardCounts {
+export interface PipelineCounts {
     total: number;
     valid: number;
     invalid: number;
@@ -105,9 +105,9 @@ export interface BoardCounts {
     notStalled: number;
 }
 
-export interface BoardAnalysis {
+export interface PipelineAnalysis {
     referenceDate: string;
-    counts: BoardCounts;
+    counts: PipelineCounts;
     rowErrors: RowError[];
     queue: QueueItem[];
     bottlenecks: Bottleneck[];

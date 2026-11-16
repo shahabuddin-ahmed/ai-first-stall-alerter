@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { BoardColumn, TEXT_COLUMN_LIMITS } from "../constant/board";
-import { RecordText } from "../service/hiring-board/types";
+import { PipelineColumn, TEXT_COLUMN_LIMITS } from "../constant/pipeline";
+import { RecordText } from "../service/pipeline-types";
 
 export interface ImportRecordInterface extends RecordText {
     id?: number;
@@ -9,7 +9,7 @@ export interface ImportRecordInterface extends RecordText {
     stageEnteredAt: string | null;
     lastActivityAt: string | null;
     lastContactedAt: string | null;
-    invalidDates: BoardColumn[] | null;
+    invalidDates: PipelineColumn[] | null;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -27,7 +27,7 @@ class ImportRecord extends Model<ImportRecordInterface> implements ImportRecordI
     public recruiter!: string;
     public lastActivityAt!: string | null;
     public lastContactedAt!: string | null;
-    public invalidDates!: BoardColumn[] | null;
+    public invalidDates!: PipelineColumn[] | null;
     public readonly createdAt?: Date;
     public readonly updatedAt?: Date;
 }
@@ -52,19 +52,19 @@ ImportRecord.init(
             allowNull: false,
         },
         candidateId: {
-            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[BoardColumn.CANDIDATE_ID]).BINARY,
+            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[PipelineColumn.CANDIDATE_ID]).BINARY,
             allowNull: true,
         },
         name: {
-            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[BoardColumn.NAME]),
+            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[PipelineColumn.NAME]),
             allowNull: true,
         },
         role: {
-            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[BoardColumn.ROLE]),
+            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[PipelineColumn.ROLE]),
             allowNull: true,
         },
         stage: {
-            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[BoardColumn.STAGE]),
+            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[PipelineColumn.STAGE]),
             allowNull: true,
         },
         stageEnteredAt: {
@@ -72,7 +72,7 @@ ImportRecord.init(
             allowNull: true,
         },
         recruiter: {
-            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[BoardColumn.RECRUITER]),
+            type: new DataTypes.STRING(TEXT_COLUMN_LIMITS[PipelineColumn.RECRUITER]),
             allowNull: true,
         },
         lastActivityAt: {

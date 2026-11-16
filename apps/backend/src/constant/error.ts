@@ -1,4 +1,4 @@
-import { BOARD_LIMITS } from "./board";
+import { PIPELINE_LIMITS } from "./pipeline";
 
 export enum ERROR_CODES {
     E_PAGE_NOT_FOUND = "E_PAGE_NOT_FOUND",
@@ -46,7 +46,7 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The request body is too large.",
     },
     FILE_TOO_LARGE: {
-        message: `The file is larger than ${BOARD_LIMITS.MAX_FILE_BYTES / 1024 / 1024} MB.`,
+        message: `The file is larger than ${PIPELINE_LIMITS.MAX_FILE_BYTES / 1024 / 1024} MB.`,
     },
     UNSUPPORTED_FILE: {
         message: "Upload a .csv file.",
@@ -58,7 +58,7 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The file is empty.",
     },
     TOO_MANY_ROWS: {
-        message: `The file has more than ${BOARD_LIMITS.MAX_RECORDS.toLocaleString("en-US")} candidates.`,
+        message: `The file has more than ${PIPELINE_LIMITS.MAX_RECORDS.toLocaleString("en-US")} candidates.`,
     },
     MISSING_HEADERS: {
         message: "Required columns are missing.",

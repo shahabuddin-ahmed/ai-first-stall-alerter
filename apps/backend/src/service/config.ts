@@ -3,12 +3,12 @@ import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
 import { SettingRepoInterface, SettingsUpdate } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
-import { findStageListProblems } from "./hiring-board/stage-list-checks";
-import { StageConfig, StageInput } from "./hiring-board/types";
+import { findStageListProblems } from "./pipeline-analysis";
+import { StageConfig, StageInput } from "./pipeline-types";
 import { StageInterface } from "../model/stage";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
-import { AiModelServiceInterface } from "./ai-model";
+import { AiServiceInterface } from "./ai";
 
 export interface ConfigSnapshot {
     stages: StageConfig[];
@@ -48,8 +48,7 @@ export class ConfigService implements ConfigServiceInterface {
     constructor(
         private stageRepo: StageRepoInterface,
         private settingRepo: SettingRepoInterface,
-        private aiModelService: AiModelServiceInterface,
-        private aiConfigured: boolean
+        private aiService: AiServiceInterface
     ) {}
 
     async load(): Promise<void> {
@@ -104,13 +103,13 @@ export class ConfigService implements ConfigServiceInterface {
 
     getSettings(): SettingsView {
         const { useAiDrafts, aiModel, stagesVersion } = this.getSnapshot();
-        return { useAiDrafts, aiConfigured: this.aiConfigured, aiModel, stagesVersion };
+        return { useAiDrafts, aiConfigured: this.aiService.isConfigured(), aiModel, stagesVersion };
     }
 
     async updateSettings(update: SettingsUpdate): Promise<SettingsView> {
-        if (update.aiModel !== this.snapshot.aiModel && !(await this.aiModelService.isAvailable(update.aiModel))) {
+        if (update.aiModel !== this.snapshot.aiModel && !(await this.aiService.isModelAvailable(update.aiModel))) {
             throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "The settings cannot be saved", [
-                `"${update.aiModel}" is not one of the free AI models.`,
+                `"${update.aiModel}" is not an available AI model.`,
             ]);
         }
         return this.oneAtATime(async () => {
@@ -139,10 +138,9 @@ export class ConfigService implements ConfigServiceInterface {
 export const newConfigService = async (
     stageRepo: StageRepoInterface,
     settingRepo: SettingRepoInterface,
-    aiModelService: AiModelServiceInterface,
-    aiConfigured: boolean
+    aiService: AiServiceInterface
 ): Promise<ConfigService> => {
-    const service = new ConfigService(stageRepo, settingRepo, aiModelService, aiConfigured);
+    const service = new ConfigService(stageRepo, settingRepo, aiService);
     await service.load();
     return service;
 };

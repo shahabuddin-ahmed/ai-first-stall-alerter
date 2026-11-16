@@ -78,10 +78,11 @@ Redis would only be needed if the API ran as several copies (README "next steps"
 ```
 web/        routes + controllers (Joi validation, error mapping)          ← presentation
 service/    use cases: import board, get queue, export, insights, stages, settings  ← application
-  hiring-board/  pure board logic: csv-reader · row-checks · stage-matcher · analyse-board · messages · bottlenecks · ai-facts · export-csv
+  ai.ts           AI service: answer check, error codes, 30-min model list cache
+  ai-provider.ts  AI provider: OpenRouter chat + model list, fake (AI_MODE=fake); prompt text in constant/ai-prompt.ts
+  pipeline-csv.ts · pipeline-analysis.ts · pipeline-messages.ts · pipeline-types.ts   pure pipeline logic: read/write CSV · row errors, stalls, rank, bottlenecks · messages, AI facts
 repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) + stored-record mapping ← infrastructure
-utils/      general helpers: dates, hashing
-ai/         HTTP insights generator · fake generator · guardrails · prompt         ← infrastructure
+utils/      general helpers: dates, hashing, http (shared axios request)
 infra/      MySQL connection, config cache
 ```
 
@@ -220,7 +221,7 @@ Regenerate from the repo root with `python3 scripts/generate_expected.py --write
 ### E1. When AI runs
 AI runs only when **both**: the server has `AI_API_KEY` (`.env`) **and** the team setting
 **Use AI drafts** is on (Settings page, stored in the DB). The model is also picked on the Settings page, from the
-free OpenRouter models that support JSON output (list saved in the DB, refreshed every 30 minutes). One provider call per distinct report (import + reference
+OpenRouter models that support JSON output (list saved in the DB, refreshed every 30 minutes). One provider call per distinct report (import + reference
 date + stage config version + N + prompt version + model); repeats come from the cache; simultaneous requests share
 one call. Zero calls when AI is off or not set up, the file is rejected, nothing is stalled, or the user filters,
 sorts or exports. No automatic retries; a **Retry** button for recoverable failures. `/insights` is rate-limited.
@@ -263,7 +264,7 @@ on fictional cases, target ≥ 95% guardrail pass, defects and fixes logged.
 | DELETE | `/imports/:id` | Delete the import, its rows and cached AI results |
 | GET · PUT | `/stages` | Read or save the hiring stages |
 | GET · PUT | `/settings` | Read or save team settings (AI on/off, AI model); shows whether AI is set up (never the key) |
-| GET | `/settings/models` | Free AI models to pick from (cached in the DB for 30 minutes) |
+| GET | `/settings/models` | AI models to pick from (cached for 30 minutes) |
 | GET | `/health` | API and database status (200 or 503) |
 
 Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7 or `E_INVALID_DATA` (400).

@@ -1,6 +1,6 @@
 import { STAGE_LIMITS } from "./stage";
 
-export enum BoardColumn {
+export enum PipelineColumn {
     CANDIDATE_ID = "candidate_id",
     NAME = "name",
     ROLE = "role",
@@ -11,35 +11,35 @@ export enum BoardColumn {
     LAST_CONTACTED_AT = "last_contacted_at",
 }
 
-export const REQUIRED_COLUMNS: readonly BoardColumn[] = [
-    BoardColumn.CANDIDATE_ID,
-    BoardColumn.NAME,
-    BoardColumn.ROLE,
-    BoardColumn.STAGE,
-    BoardColumn.STAGE_ENTERED_AT,
-    BoardColumn.RECRUITER,
+export const REQUIRED_COLUMNS: readonly PipelineColumn[] = [
+    PipelineColumn.CANDIDATE_ID,
+    PipelineColumn.NAME,
+    PipelineColumn.ROLE,
+    PipelineColumn.STAGE,
+    PipelineColumn.STAGE_ENTERED_AT,
+    PipelineColumn.RECRUITER,
 ];
 
-export const OPTIONAL_DATE_COLUMNS: readonly BoardColumn[] = [
-    BoardColumn.LAST_ACTIVITY_AT,
-    BoardColumn.LAST_CONTACTED_AT,
+export const OPTIONAL_DATE_COLUMNS: readonly PipelineColumn[] = [
+    PipelineColumn.LAST_ACTIVITY_AT,
+    PipelineColumn.LAST_CONTACTED_AT,
 ];
 
-export const KNOWN_COLUMNS: readonly BoardColumn[] = [...REQUIRED_COLUMNS, ...OPTIONAL_DATE_COLUMNS];
+export const KNOWN_COLUMNS: readonly PipelineColumn[] = [...REQUIRED_COLUMNS, ...OPTIONAL_DATE_COLUMNS];
 
-export const DATE_COLUMNS: readonly BoardColumn[] = [BoardColumn.STAGE_ENTERED_AT, ...OPTIONAL_DATE_COLUMNS];
+export const DATE_COLUMNS: readonly PipelineColumn[] = [PipelineColumn.STAGE_ENTERED_AT, ...OPTIONAL_DATE_COLUMNS];
 
 export const TEXT_COLUMN_LIMITS = {
-    [BoardColumn.CANDIDATE_ID]: 36,
-    [BoardColumn.NAME]: 50,
-    [BoardColumn.ROLE]: 50,
-    [BoardColumn.STAGE]: STAGE_LIMITS.MAX_NAME_LENGTH,
-    [BoardColumn.RECRUITER]: 50,
+    [PipelineColumn.CANDIDATE_ID]: 36,
+    [PipelineColumn.NAME]: 50,
+    [PipelineColumn.ROLE]: 50,
+    [PipelineColumn.STAGE]: STAGE_LIMITS.MAX_NAME_LENGTH,
+    [PipelineColumn.RECRUITER]: 50,
 } as const;
 
 export const INVALID_DATE_TEXT = "invalid date";
 
-export const BOARD_LIMITS = {
+export const PIPELINE_LIMITS = {
     MAX_FILE_BYTES: 5 * 1024 * 1024,
     MAX_RECORDS: 10_000,
     MAX_FILE_NAME_LENGTH: 255,

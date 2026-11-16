@@ -1,20 +1,27 @@
 import { UniqueConstraintError } from "sequelize";
-import { BOARD_LIMITS, LATEST_UTC_OFFSET_MS } from "../constant/board";
+import { PIPELINE_LIMITS, LATEST_UTC_OFFSET_MS } from "../constant/pipeline";
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { ImportInterface } from "../model/import";
 import { ImportRepoInterface } from "../repo/import";
 import { withTransaction } from "../repo/transaction";
-import { analyseBoard } from "./hiring-board/analyse-board";
-import { parseBoardCsv } from "./hiring-board/csv-reader";
-import { filterQueue, QueueFilter } from "./hiring-board/queue-filter";
+import { analysePipeline, filterQueue, QueueFilter } from "./pipeline-analysis";
+import { parsePipelineCsv } from "./pipeline-csv";
 import { dayNumberOf, parseIsoDate, toIsoDate } from "../utils/dates";
-import { BoardAnalysis, BoardCounts, Bottleneck, Page, ParsedBoard, QueueItem, RowError } from "./hiring-board/types";
+import {
+    PipelineAnalysis,
+    PipelineCounts,
+    Bottleneck,
+    Page,
+    ParsedPipeline,
+    QueueItem,
+    RowError,
+} from "./pipeline-types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
 import { sha256Hex } from "../utils/utility";
-import { toBoardRecord, toStoredRecord } from "../repo/stored-record";
+import { toPipelineRecord, toStoredRecord } from "../repo/stored-record";
 import { ConfigServiceInterface } from "./config";
 
 export interface ImportSummary {
@@ -29,23 +36,23 @@ export interface ReportQuery extends QueueFilter {
     referenceDate?: string;
 }
 
-export interface BoardQuery extends ReportQuery {
+export interface PipelineQuery extends ReportQuery {
     page: number;
     pageSize: number;
 }
 
-export interface BoardView {
+export interface PipelineView {
     import: ImportSummary;
     referenceDate: string;
     stagesVersion: number;
-    counts: BoardCounts;
+    counts: PipelineCounts;
     bottlenecks: Bottleneck[];
     stageThresholds: { name: string; thresholdDays: number; stalled: number }[];
     filterOptions: { stages: string[]; recruiters: string[] };
     queue: Page<QueueItem>;
 }
 
-export interface UploadResult extends BoardView {
+export interface UploadResult extends PipelineView {
     alreadyImported: boolean;
 }
 
@@ -63,13 +70,13 @@ export interface ImportList {
 
 export interface AnalysedImport {
     summary: ImportSummary;
-    analysis: BoardAnalysis;
+    analysis: PipelineAnalysis;
 }
 
 export interface ImportServiceInterface {
-    upload(file: { fileName: string; bytes: Buffer }, query: BoardQuery): Promise<UploadResult>;
-    getBoard(id: number, query: BoardQuery): Promise<BoardView>;
-    getRowErrors(id: number, query: BoardQuery): Promise<RowErrorsView>;
+    upload(file: { fileName: string; bytes: Buffer }, query: PipelineQuery): Promise<UploadResult>;
+    getPipeline(id: number, query: PipelineQuery): Promise<PipelineView>;
+    getRowErrors(id: number, query: PipelineQuery): Promise<RowErrorsView>;
     analyse(id: number, referenceDate?: string): Promise<AnalysedImport>;
     list(offset: number, limit: number): Promise<ImportList>;
     remove(id: number): Promise<boolean>;
@@ -93,9 +100,9 @@ export class ImportService implements ImportServiceInterface {
         private now: () => number = Date.now
     ) {}
 
-    async upload(file: { fileName: string; bytes: Buffer }, query: BoardQuery): Promise<UploadResult> {
+    async upload(file: { fileName: string; bytes: Buffer }, query: PipelineQuery): Promise<UploadResult> {
         const referenceDate = this.resolveReferenceDate(query.referenceDate);
-        const parsed = parseBoardCsv(file.bytes);
+        const parsed = parsePipelineCsv(file.bytes);
         if (!parsed.ok) {
             throw new UnprocessableEntityException(
                 ERROR_CODES[parsed.error.code as keyof typeof ERROR_CODES],
@@ -105,24 +112,24 @@ export class ImportService implements ImportServiceInterface {
         }
 
         const details: ImportInterface = {
-            fileName: file.fileName.slice(0, BOARD_LIMITS.MAX_FILE_NAME_LENGTH),
+            fileName: file.fileName.slice(0, PIPELINE_LIMITS.MAX_FILE_NAME_LENGTH),
             fileHash: sha256Hex(file.bytes),
             fileSize: file.bytes.length,
-            headerCount: parsed.board.headerCount,
-            recordCount: parsed.board.records.length,
+            headerCount: parsed.pipeline.headerCount,
+            recordCount: parsed.pipeline.records.length,
         };
 
         try {
             // Insert, never "check then insert": the unique hash decides, even for two uploads at once.
             const created = await withTransaction(async (transaction) => {
                 const saved = await this.importRepo.create(details, transaction);
-                const records = parsed.board.records.map((record) => toStoredRecord(record, saved.id as number));
+                const records = parsed.pipeline.records.map((record) => toStoredRecord(record, saved.id as number));
                 await this.importRepo.createRecords(records, transaction);
                 return saved;
             });
             return {
                 alreadyImported: false,
-                ...this.buildView(toSummary(created), parsed.board, referenceDate, query),
+                ...this.buildView(toSummary(created), parsed.pipeline, referenceDate, query),
             };
         } catch (err) {
             if (!(err instanceof UniqueConstraintError)) {
@@ -131,15 +138,15 @@ export class ImportService implements ImportServiceInterface {
             const existing = (await this.importRepo.findByHash(details.fileHash)) as ImportInterface;
             return {
                 alreadyImported: true,
-                ...this.buildView(toSummary(existing), parsed.board, referenceDate, query),
+                ...this.buildView(toSummary(existing), parsed.pipeline, referenceDate, query),
             };
         }
     }
 
-    async getBoard(id: number, query: BoardQuery): Promise<BoardView> {
+    async getPipeline(id: number, query: PipelineQuery): Promise<PipelineView> {
         const referenceDate = this.resolveReferenceDate(query.referenceDate);
-        const { found, board } = await this.loadBoard(id);
-        return this.buildView(toSummary(found), board, referenceDate, query);
+        const { found, pipeline } = await this.loadPipeline(id);
+        return this.buildView(toSummary(found), pipeline, referenceDate, query);
     }
 
     async getRowErrors(
@@ -159,10 +166,10 @@ export class ImportService implements ImportServiceInterface {
 
     async analyse(id: number, referenceDate?: string): Promise<AnalysedImport> {
         const date = this.resolveReferenceDate(referenceDate);
-        const { found, board } = await this.loadBoard(id);
+        const { found, pipeline } = await this.loadPipeline(id);
         return {
             summary: toSummary(found),
-            analysis: analyseBoard(board, this.configService.getSnapshot().stages, date),
+            analysis: analysePipeline(pipeline, this.configService.getSnapshot().stages, date),
         };
     }
 
@@ -179,13 +186,13 @@ export class ImportService implements ImportServiceInterface {
         return true;
     }
 
-    private async loadBoard(id: number): Promise<{ found: ImportInterface; board: ParsedBoard }> {
+    private async loadPipeline(id: number): Promise<{ found: ImportInterface; pipeline: ParsedPipeline }> {
         const found = await this.importRepo.findById(id);
         if (!found) {
             throw new NotFoundException(ERROR_CODES.E_NOT_FOUND, "Import not found");
         }
         const records = await this.importRepo.listRecords(id);
-        return { found, board: { headerCount: found.headerCount, records: records.map(toBoardRecord) } };
+        return { found, pipeline: { headerCount: found.headerCount, records: records.map(toPipelineRecord) } };
     }
 
     private resolveReferenceDate(value?: string): string {
@@ -204,9 +211,14 @@ export class ImportService implements ImportServiceInterface {
         return value;
     }
 
-    private buildView(summary: ImportSummary, board: ParsedBoard, referenceDate: string, query: BoardQuery): BoardView {
+    private buildView(
+        summary: ImportSummary,
+        pipeline: ParsedPipeline,
+        referenceDate: string,
+        query: PipelineQuery
+    ): PipelineView {
         const { stages, stagesVersion } = this.configService.getSnapshot();
-        const analysis = analyseBoard(board, stages, referenceDate);
+        const analysis = analysePipeline(pipeline, stages, referenceDate);
 
         const filtered = filterQueue(analysis.queue, query);
 

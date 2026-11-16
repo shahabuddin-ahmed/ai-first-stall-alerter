@@ -52,8 +52,6 @@ export enum FinishReason {
     LENGTH = "length",
 }
 
-export const TIMEOUT_ERROR_NAMES: readonly string[] = ["TimeoutError", "AbortError"];
-
 export const AI_COLUMN_LIMITS = {
     ERROR_CODE: 20,
     PROMPT_VERSION: 10,
@@ -68,7 +66,7 @@ export enum LlmCallStatus {
 
 export const SENDER_PLACEHOLDER = "{{recruiter}}";
 
-export const DRAFT_PLACEHOLDERS = ["{{first_name}}", "{{name}}", "{{role}}", SENDER_PLACEHOLDER] as const;
+export const DRAFT_PLACEHOLDERS: readonly string[] = ["{{first_name}}", "{{name}}", "{{role}}", SENDER_PLACEHOLDER];
 
 export const AI_LIMITS = {
     BRIEFING_CHARS: 450,
@@ -95,7 +93,6 @@ export const DEFAULT_AI_MODEL = "inclusionai/ling-3.2-flash:free";
 
 export const AI_MODEL_LIST = {
     PATH: "/models",
-    FREE_SUFFIX: ":free",
     REQUIRED_PARAMETER: "structured_outputs",
     CACHE_MS: 30 * 60 * 1000,
     TIMEOUT_MS: 10000,

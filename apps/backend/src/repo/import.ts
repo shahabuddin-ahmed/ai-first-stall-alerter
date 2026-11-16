@@ -1,5 +1,5 @@
 import { Transaction } from "sequelize";
-import { BOARD_LIMITS } from "../constant/board";
+import { PIPELINE_LIMITS } from "../constant/pipeline";
 import Import, { ImportInterface } from "../model/import";
 import ImportRecord, { ImportRecordInterface } from "../model/import-record";
 
@@ -20,8 +20,8 @@ export class ImportRepo implements ImportRepoInterface {
     }
 
     public async createRecords(records: ImportRecordInterface[], transaction: Transaction): Promise<void> {
-        for (let start = 0; start < records.length; start += BOARD_LIMITS.INSERT_BATCH_SIZE) {
-            await ImportRecord.bulkCreate(records.slice(start, start + BOARD_LIMITS.INSERT_BATCH_SIZE), {
+        for (let start = 0; start < records.length; start += PIPELINE_LIMITS.INSERT_BATCH_SIZE) {
+            await ImportRecord.bulkCreate(records.slice(start, start + PIPELINE_LIMITS.INSERT_BATCH_SIZE), {
                 transaction,
             });
         }

@@ -1,14 +1,14 @@
 import fs from "fs";
 import path from "path";
-import { StageType } from "../../../constant/stage";
-import { analyseBoard } from "../analyse-board";
-import { parseBoardCsv } from "../csv-reader";
+import { StageType } from "../../constant/stage";
+import { analysePipeline } from "../pipeline-analysis";
+import { parsePipelineCsv } from "../pipeline-csv";
 import { DEFAULT_STAGES } from "./default-stages";
-import { BoardAnalysis, StageConfig } from "../types";
+import { PipelineAnalysis, StageConfig } from "../pipeline-types";
 
 // The app must give exactly the same answers as scripts/generate_expected.py,
 // which was written separately (Python). Never edit data/expected/*.json by hand.
-const DATA_DIR = path.resolve(__dirname, "../../../../../../data");
+const DATA_DIR = path.resolve(__dirname, "../../../../../data");
 const REFERENCE_DATE = "2026-11-13";
 
 const SCENARIOS: Record<string, StageConfig[]> = {
@@ -18,16 +18,16 @@ const SCENARIOS: Record<string, StageConfig[]> = {
     ),
 };
 
-const analyseSample = (sample: string, stages: StageConfig[]): BoardAnalysis => {
-    const parsed = parseBoardCsv(fs.readFileSync(path.join(DATA_DIR, `${sample}.csv`)));
+const analyseSample = (sample: string, stages: StageConfig[]): PipelineAnalysis => {
+    const parsed = parsePipelineCsv(fs.readFileSync(path.join(DATA_DIR, `${sample}.csv`)));
     if (!parsed.ok) {
         throw new Error(`${sample} was rejected: ${parsed.error.code}`);
     }
-    return analyseBoard(parsed.board, stages, REFERENCE_DATE);
+    return analysePipeline(parsed.pipeline, stages, REFERENCE_DATE);
 };
 
 // The app's result in the expected file's shape.
-const toExpectedShape = (result: BoardAnalysis) => ({
+const toExpectedShape = (result: PipelineAnalysis) => ({
     reference_date: result.referenceDate,
     counts: {
         total: result.counts.total,

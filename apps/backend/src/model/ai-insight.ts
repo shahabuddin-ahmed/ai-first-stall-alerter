@@ -1,6 +1,6 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { AiOutput } from "../ai/guardrails";
+import { AiOutput } from "../service/ai";
 import { AI_COLUMN_LIMITS } from "../constant/ai";
 import { HASH_COLUMN_LENGTH } from "../constant/hash";
 

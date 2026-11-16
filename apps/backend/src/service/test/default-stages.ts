@@ -1,5 +1,5 @@
-import { ActionCode, StageType } from "../../../constant/stage";
-import { StageConfig } from "../types";
+import { ActionCode, StageType } from "../../constant/stage";
+import { StageConfig } from "../pipeline-types";
 
 // Test data only: the default hiring stages, the same as the seed file
 // (src/infra/seeders). The running app always reads the stages from the database.

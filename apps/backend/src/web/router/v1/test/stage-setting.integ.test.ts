@@ -11,11 +11,11 @@ import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
-import { analyseBoard } from "../../../../service/hiring-board/analyse-board";
-import { parseBoardCsv } from "../../../../service/hiring-board/csv-reader";
-import { FAKE_MODELS, FakeModelSource } from "../../../../ai/model-source";
+import { analysePipeline } from "../../../../service/pipeline-analysis";
+import { parsePipelineCsv } from "../../../../service/pipeline-csv";
+import { AiService } from "../../../../service/ai";
+import { FAKE_MODELS, FakeAiProvider } from "../../../../service/ai-provider";
 import { newAiModelRepo } from "../../../../repo/ai-model";
-import { newAiModelService } from "../../../../service/ai-model";
 import { ConfigService, newConfigService } from "../../../../service/config";
 import { newSettingV1Controller } from "../../../controller/v1/setting";
 import { newStageV1Controller } from "../../../controller/v1/stage";
@@ -29,12 +29,12 @@ const SAMPLE_B = path.resolve(__dirname, "../../../../../../../data/sample-b.csv
 
 // One API process: its own memory copy of stages and settings.
 const makeApi = async (): Promise<{ app: Express; service: ConfigService }> => {
-    const aiModelService = await newAiModelService(await newAiModelRepo(), new FakeModelSource());
-    const service = await newConfigService(await newStageRepo(), await newSettingRepo(), aiModelService, false);
+    const aiService = new AiService(await newAiModelRepo(), new FakeAiProvider(), false);
+    const service = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const app = express();
     app.use(express.json());
     app.use("/api/v1/stages", await newStageRouter(await newStageV1Controller(service)));
-    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(service, aiModelService)));
+    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(service, aiService)));
     app.use(globalErrorHandler);
     return { app, service };
 };
@@ -112,9 +112,10 @@ describe("PUT /api/v1/stages", () => {
     });
 
     it("changes the queue without uploading the file again", async () => {
-        const parsed = parseBoardCsv(fs.readFileSync(SAMPLE_B));
+        const parsed = parsePipelineCsv(fs.readFileSync(SAMPLE_B));
         if (!parsed.ok) throw new Error("sample B rejected");
-        const stalled = () => analyseBoard(parsed.board, api.service.getSnapshot().stages, "2026-11-13").counts.stalled;
+        const stalled = () =>
+            analysePipeline(parsed.pipeline, api.service.getSnapshot().stages, "2026-11-13").counts.stalled;
         expect(stalled()).toBe(18);
 
         const { stages } = (await request(api.app).get("/api/v1/stages")).body.response;
@@ -127,9 +128,10 @@ describe("PUT /api/v1/stages", () => {
     });
 
     it("lets a team add a CSV name as an alias, so those rows stop being errors", async () => {
-        const parsed = parseBoardCsv(fs.readFileSync(SAMPLE_B));
+        const parsed = parsePipelineCsv(fs.readFileSync(SAMPLE_B));
         if (!parsed.ok) throw new Error("sample B rejected");
-        const invalid = () => analyseBoard(parsed.board, api.service.getSnapshot().stages, "2026-11-13").counts.invalid;
+        const invalid = () =>
+            analysePipeline(parsed.pipeline, api.service.getSnapshot().stages, "2026-11-13").counts.invalid;
         expect(invalid()).toBe(11);
 
         const { stages } = (await request(api.app).get("/api/v1/stages")).body.response;
@@ -258,15 +260,15 @@ describe("/api/v1/settings", () => {
         expect(api.service.getSnapshot().aiModel).toBe("fake/other-model:free");
     });
 
-    it("rejects a model that is not in the free model list", async () => {
+    it("rejects a model that is not in the model list", async () => {
         const res = await request(api.app).put("/api/v1/settings").send({ useAiDrafts: true, aiModel: "paid/model" });
 
         expect(res.status).toBe(HttpStatus.BAD_REQUEST);
-        expect(res.body.errors).toEqual(['"paid/model" is not one of the free AI models.']);
+        expect(res.body.errors).toEqual(['"paid/model" is not an available AI model.']);
         expect(await dbValue("SELECT ai_model AS value FROM settings")).toBe(DEFAULT_AI_MODEL);
     });
 
-    it("lists the free models and saves them in MySQL", async () => {
+    it("lists the models and saves them in MySQL", async () => {
         const res = await request(api.app).get("/api/v1/settings/models");
 
         expect(res.status).toBe(HttpStatus.OK);

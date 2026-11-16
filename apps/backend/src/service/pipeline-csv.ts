@@ -1,28 +1,29 @@
 import { parse } from "csv-parse/sync";
 import {
-    BOARD_LIMITS,
-    BoardColumn,
+    PIPELINE_LIMITS,
+    PipelineColumn,
     FileErrorCode,
     KNOWN_COLUMNS,
     REQUIRED_COLUMNS,
     TEXT_COLUMN_LIMITS,
-} from "../../constant/board";
-import { BoardRecord, FileError, ParseResult } from "./types";
+} from "../constant/pipeline";
+import { PipelineRecord, FileError, ParseResult } from "./pipeline-types";
+import { CSV_BOM, CSV_LINE_END, EXPORT_COLUMNS, ExportColumn, FORMULA_START } from "../constant/export";
 
-export const COLUMN_FIELDS: Record<BoardColumn, keyof BoardRecord> = {
-    [BoardColumn.CANDIDATE_ID]: "candidateId",
-    [BoardColumn.NAME]: "name",
-    [BoardColumn.ROLE]: "role",
-    [BoardColumn.STAGE]: "stage",
-    [BoardColumn.STAGE_ENTERED_AT]: "stageEnteredAt",
-    [BoardColumn.RECRUITER]: "recruiter",
-    [BoardColumn.LAST_ACTIVITY_AT]: "lastActivityAt",
-    [BoardColumn.LAST_CONTACTED_AT]: "lastContactedAt",
+export const COLUMN_FIELDS: Record<PipelineColumn, keyof PipelineRecord> = {
+    [PipelineColumn.CANDIDATE_ID]: "candidateId",
+    [PipelineColumn.NAME]: "name",
+    [PipelineColumn.ROLE]: "role",
+    [PipelineColumn.STAGE]: "stage",
+    [PipelineColumn.STAGE_ENTERED_AT]: "stageEnteredAt",
+    [PipelineColumn.RECRUITER]: "recruiter",
+    [PipelineColumn.LAST_ACTIVITY_AT]: "lastActivityAt",
+    [PipelineColumn.LAST_CONTACTED_AT]: "lastContactedAt",
 };
 
 const fail = (code: FileErrorCode, message: string, details: string[] = []): ParseResult => ({
     ok: false,
-    error: { code, message, details: details.slice(0, BOARD_LIMITS.MAX_ERROR_DETAILS) } as FileError,
+    error: { code, message, details: details.slice(0, PIPELINE_LIMITS.MAX_ERROR_DETAILS) } as FileError,
 });
 
 const decodeUtf8 = (bytes: Uint8Array): string | null => {
@@ -45,7 +46,7 @@ const readRows = (text: string): string[][] | { line: number } => {
     }
 };
 
-export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
+export const parsePipelineCsv = (bytes: Uint8Array): ParseResult => {
     const text = decodeUtf8(bytes);
     if (text === null) {
         return fail(
@@ -80,7 +81,7 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
     }
 
     const columnIndex = KNOWN_COLUMNS.map((column) => [column, header.indexOf(column)] as const);
-    const records: BoardRecord[] = [];
+    const records: PipelineRecord[] = [];
     const tooLong: string[] = [];
 
     rows.slice(1).forEach((fields, index) => {
@@ -88,12 +89,12 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
             return;
         }
         const recordNumber = index + 2;
-        const record = { recordNumber, fieldCount: fields.length } as BoardRecord;
+        const record = { recordNumber, fieldCount: fields.length } as PipelineRecord;
         for (const [column, position] of columnIndex) {
             (record[COLUMN_FIELDS[column]] as string) = fields[position] ?? "";
         }
         for (const [column, maxLength] of Object.entries(TEXT_COLUMN_LIMITS)) {
-            if ((record[COLUMN_FIELDS[column as BoardColumn]] as string).length > maxLength) {
+            if ((record[COLUMN_FIELDS[column as PipelineColumn]] as string).length > maxLength) {
                 tooLong.push(`record ${recordNumber}, column ${column} (max ${maxLength})`);
             }
         }
@@ -103,15 +104,36 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
     if (records.length === 0) {
         return fail(FileErrorCode.EMPTY_FILE, "The file has a header row but no candidates.");
     }
-    if (records.length > BOARD_LIMITS.MAX_RECORDS) {
+    if (records.length > PIPELINE_LIMITS.MAX_RECORDS) {
         return fail(
             FileErrorCode.TOO_MANY_ROWS,
-            `The file has ${records.length} candidates. The limit is ${BOARD_LIMITS.MAX_RECORDS}.`
+            `The file has ${records.length} candidates. The limit is ${PIPELINE_LIMITS.MAX_RECORDS}.`
         );
     }
     if (tooLong.length > 0) {
         return fail(FileErrorCode.VALUE_TOO_LONG, "Some values are too long.", tooLong);
     }
 
-    return { ok: true, board: { headerCount: header.length, records } };
+    return { ok: true, pipeline: { headerCount: header.length, records } };
+};
+
+export type ExportRow = Record<ExportColumn, string | number | null>;
+
+export const guardFormula = (value: string): string => (FORMULA_START.test(value) ? `'${value}` : value);
+
+const toCell = (value: string | number | null): string => {
+    if (value === null) {
+        return "";
+    }
+    if (typeof value === "number") {
+        return String(value);
+    }
+    const text = guardFormula(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+export const buildExportCsv = (rows: ExportRow[]): string => {
+    const header = EXPORT_COLUMNS.join(",");
+    const body = rows.map((row) => EXPORT_COLUMNS.map((column) => toCell(row[column])).join(","));
+    return CSV_BOM + [header, ...body].join(CSV_LINE_END) + CSV_LINE_END;
 };
