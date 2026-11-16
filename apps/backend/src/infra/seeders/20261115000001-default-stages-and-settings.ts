@@ -4,11 +4,41 @@ import { Migration } from "../migrator";
 // The default hiring stages (spec C2) and the team settings row.
 // Frozen copy on purpose: changing the defaults later means a new seed file, not editing this one.
 const DEFAULT_STAGES = [
-    { name: "Applied", type: "watched", threshold_days: 5, aliases: ["New", "Sourced"], action_code: "REVIEW_APPLICATION" },
-    { name: "Screening", type: "watched", threshold_days: 7, aliases: ["Phone screen", "HR screen"], action_code: "SCHEDULE_SCREEN" },
-    { name: "Interview", type: "watched", threshold_days: 14, aliases: ["Onsite", "Panel interview"], action_code: "REQUEST_FEEDBACK" },
-    { name: "Assessment", type: "watched", threshold_days: 7, aliases: ["Take-home"], action_code: "REVIEW_ASSESSMENT" },
-    { name: "Reference check", type: "watched", threshold_days: 5, aliases: ["References"], action_code: "CHASE_REFERENCES" },
+    {
+        name: "Applied",
+        type: "watched",
+        threshold_days: 5,
+        aliases: ["New", "Sourced"],
+        action_code: "REVIEW_APPLICATION",
+    },
+    {
+        name: "Screening",
+        type: "watched",
+        threshold_days: 7,
+        aliases: ["Phone screen", "HR screen"],
+        action_code: "SCHEDULE_SCREEN",
+    },
+    {
+        name: "Interview",
+        type: "watched",
+        threshold_days: 14,
+        aliases: ["Onsite", "Panel interview"],
+        action_code: "REQUEST_FEEDBACK",
+    },
+    {
+        name: "Assessment",
+        type: "watched",
+        threshold_days: 7,
+        aliases: ["Take-home"],
+        action_code: "REVIEW_ASSESSMENT",
+    },
+    {
+        name: "Reference check",
+        type: "watched",
+        threshold_days: 5,
+        aliases: ["References"],
+        action_code: "CHASE_REFERENCES",
+    },
     { name: "Offer", type: "watched", threshold_days: 3, aliases: [], action_code: "CONFIRM_OFFER" },
     { name: "On hold", type: "paused", threshold_days: null, aliases: ["Paused"], action_code: null },
     { name: "Hired", type: "final", threshold_days: null, aliases: [], action_code: null },
@@ -29,11 +59,9 @@ export const up: Migration = async ({ context: queryInterface }) => {
             })),
             { transaction }
         );
-        await queryInterface.bulkInsert(
-            "settings",
-            [{ id: SETTINGS_ID, use_ai_drafts: true, stages_version: 1 }],
-            { transaction }
-        );
+        await queryInterface.bulkInsert("settings", [{ id: SETTINGS_ID, use_ai_drafts: true, stages_version: 1 }], {
+            transaction,
+        });
     });
 };
 

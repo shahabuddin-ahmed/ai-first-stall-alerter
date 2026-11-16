@@ -1,9 +1,7 @@
 import { StageConfig } from "./types";
 
-// " PANEL   interview " and "Panel interview" are the same stage.
-export const normaliseStageName = (value: string): string => value.split(/\s+/).filter(Boolean).join(" ").toLowerCase();
+export const normaliseStageName = (value: string): string => value.replace(/\s+/g, " ").toLowerCase();
 
-// Every stage name and alias, normalised, pointing to its stage.
 export const buildStageLookup = (stages: StageConfig[]): Map<string, StageConfig> => {
     const lookup = new Map<string, StageConfig>();
     for (const stage of stages) {

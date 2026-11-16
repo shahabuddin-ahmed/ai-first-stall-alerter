@@ -4,12 +4,7 @@ import { newHealthRouter } from "../health";
 import newSequelize from "../../../../infra/sequelize";
 import { ApiResponseMessages, ERROR_CODES } from "../../../../constant/error";
 import { HttpStatus } from "../../../../constant/http";
-import {
-    DatabaseStatus,
-    HealthMessages,
-    SERVICE_NAME,
-    ServiceStatus,
-} from "../../../../constant/health";
+import { DatabaseStatus, HealthMessages, SERVICE_NAME, ServiceStatus } from "../../../../constant/health";
 
 jest.mock("../../../../infra/sequelize", () => ({
     __esModule: true,

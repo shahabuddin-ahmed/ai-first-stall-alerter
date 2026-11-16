@@ -68,7 +68,9 @@ export const up: Migration = async ({ context: queryInterface }) => {
         { charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" }
     );
     // "Did the last call for this report fail?" (used by the export's ai_note_status)
-    await queryInterface.addIndex("llm_calls", ["cache_key", "created_at"], { name: "idx_llm_calls_cache_key_created_at" });
+    await queryInterface.addIndex("llm_calls", ["cache_key", "created_at"], {
+        name: "idx_llm_calls_cache_key_created_at",
+    });
 };
 
 export const down: Migration = async ({ context: queryInterface }) => {

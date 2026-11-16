@@ -1,12 +1,15 @@
 import config from "../../config/config";
+import { TEST_DATABASE_SUFFIX } from "../../constant/env";
 import newSequelize from "../sequelize";
 import { newMigrator, newSeeder } from "../migrator";
 
-// Helpers for integration tests. They only ever touch a database whose name ends with "_test".
+// Helpers for integration tests. They only ever touch a database whose name ends with TEST_DATABASE_SUFFIX.
 export const assertTestDatabase = (): void => {
     const name = config.SEQUELIZE.MYSQL_DATABASE;
-    if (!name.endsWith("_test")) {
-        throw new Error(`Refusing to change "${name}" in a test (the database name must end with _test)`);
+    if (!name.endsWith(TEST_DATABASE_SUFFIX)) {
+        throw new Error(
+            `Refusing to change "${name}" in a test (the database name must end with ${TEST_DATABASE_SUFFIX})`
+        );
     }
 };
 

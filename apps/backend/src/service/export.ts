@@ -1,15 +1,11 @@
 import { AiNoteStatus, MessageSource } from "../constant/ai";
-import { ExportColumn } from "../constant/export";
+import { EXPORT_FILE_PREFIX, ExportColumn } from "../constant/export";
 import { buildExportCsv, ExportRow } from "../rules/export-csv";
-import { RECIPIENT_LABELS } from "../rules/messages";
-import { filterQueue, QueueFilter } from "../rules/queue-filter";
+import { fillPlaceholders, RECIPIENT_LABELS } from "../rules/messages";
+import { filterQueue } from "../rules/queue-filter";
 import { QueueItem } from "../rules/types";
-import { ImportServiceInterface } from "./import";
+import { ImportServiceInterface, ReportQuery } from "./import";
 import { InsightServiceInterface, SavedDrafts } from "./insight";
-
-export interface ExportQuery extends QueueFilter {
-    referenceDate?: string;
-}
 
 export interface ExportFile {
     fileName: string;
@@ -18,38 +14,30 @@ export interface ExportFile {
 }
 
 export interface ExportServiceInterface {
-    exportCsv(importId: number, query: ExportQuery): Promise<ExportFile>;
+    exportCsv(importId: number, query: ReportQuery): Promise<ExportFile>;
 }
 
-// The AI state of one row. Never calls the AI: it only reads what was saved.
 const noteStatusOf = (item: QueueItem, saved: SavedDrafts): AiNoteStatus => {
-    if (saved.status === AiNoteStatus.DISABLED) {
-        return AiNoteStatus.DISABLED;
-    }
-    if (item.rank > saved.topN) {
-        return AiNoteStatus.OUTSIDE_AI_SCOPE;
-    }
-    if (saved.status === AiNoteStatus.AI_DRAFT) {
-        return saved.draftsByRank.has(item.rank) ? AiNoteStatus.AI_DRAFT : AiNoteStatus.UNAVAILABLE;
+    if (saved.status === AiNoteStatus.AI_DRAFT && !saved.draftsByAction.has(item.actionCode)) {
+        return AiNoteStatus.UNAVAILABLE;
     }
     return saved.status;
 };
 
-// The follow-up queue as a CSV download (spec C8): same filters and order as the screen, original ranks,
-// and a message on every row (the AI draft when there is one, otherwise the template).
 export class ExportService implements ExportServiceInterface {
     constructor(
         private importService: ImportServiceInterface,
         private insightService: InsightServiceInterface
     ) {}
 
-    async exportCsv(importId: number, query: ExportQuery): Promise<ExportFile> {
+    async exportCsv(importId: number, query: ReportQuery): Promise<ExportFile> {
         const { analysis } = await this.importService.analyse(importId, query.referenceDate);
         const saved = await this.insightService.getSavedDrafts(importId, analysis);
 
         const rows: ExportRow[] = filterQueue(analysis.queue, query).map((item) => {
             const noteStatus = noteStatusOf(item, saved);
-            const aiDraft = noteStatus === AiNoteStatus.AI_DRAFT ? saved.draftsByRank.get(item.rank) : undefined;
+            const draft = saved.draftsByAction.get(item.actionCode);
+            const aiDraft = noteStatus === AiNoteStatus.AI_DRAFT && draft ? fillPlaceholders(draft, item) : undefined;
             return {
                 [ExportColumn.RANK]: item.rank,
                 [ExportColumn.CANDIDATE_ID]: item.candidateId,
@@ -72,7 +60,7 @@ export class ExportService implements ExportServiceInterface {
         });
 
         return {
-            fileName: `stallalert-${analysis.referenceDate}-import-${importId}.csv`,
+            fileName: `${EXPORT_FILE_PREFIX}-${analysis.referenceDate}-import-${importId}.csv`,
             csv: buildExportCsv(rows),
             rowCount: rows.length,
         };

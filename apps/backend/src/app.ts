@@ -1,9 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
 import { newV1Router } from "./web/router/v1/index";
-import { newPostRepo } from "./repo/post";
-import { newPostService } from "./service/post";
-import { newPostV1Controller } from "./web/controller/v1/post";
 import { globalErrorHandler } from "./web/middleware/global-error-handler";
 import { initializeDBConnection } from "./infra/db";
 import config from "./config/config";
@@ -26,42 +23,30 @@ import { requestId } from "./web/middleware/request-id";
 import { requestLogger } from "./web/middleware/request-logger";
 import { newCors, securityHeaders } from "./web/middleware/security";
 import { newRateLimit } from "./web/middleware/rate-limit";
-
-// JSON bodies are small (stage lists, settings). CSV files come in as multipart, limited to 5 MB by the upload middleware.
-const JSON_BODY_LIMIT = "100kb";
+import { API_PREFIX, JSON_BODY_LIMIT } from "./constant/api";
 
 const app = express();
 
 app.use(securityHeaders);
 app.use(requestId);
 app.use(requestLogger);
-app.use(newCors(config.SECURITY.WEB_ORIGINS));
+app.use(newCors(config.SECURITY.WEB_ORIGIN));
 app.use(bodyParser.json({ limit: JSON_BODY_LIMIT }));
-app.use(bodyParser.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 
-// Rate limits on the expensive endpoints (checked before the routes run).
-app.post("/api/v1/imports", newRateLimit(config.SECURITY.UPLOADS_PER_MINUTE));
-app.post("/api/v1/imports/:id/insights", newRateLimit(config.SECURITY.INSIGHTS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports`, newRateLimit(config.SECURITY.RATE_LIMIT_UPLOADS_PER_MINUTE));
+app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.RATE_LIMIT_INSIGHTS_PER_MINUTE));
 
-// Connects to MySQL, loads the stages and settings, then adds the routes.
-// server.ts waits for this before it accepts any request.
 export const appReady: Promise<void> = (async () => {
     await initializeDBConnection();
 
-    // Initialize Repo
-    const postRepo = await newPostRepo();
     const stageRepo = await newStageRepo();
     const settingRepo = await newSettingRepo();
     const importRepo = await newImportRepo();
     const aiInsightRepo = await newAiInsightRepo();
     const llmCallRepo = await newLlmCallRepo();
 
-    // AI: null when no key/model is set (templates only). AI_MODE=fake uses the built-in stand-in.
     const aiGenerator = newAiGenerator(config.AI);
 
-    // Initialize Service
-    const postService = await newPostService(postRepo);
-    // Loads the hiring stages and settings into memory once; saves update MySQL first, then memory.
     const configService = await newConfigService(stageRepo, settingRepo, {
         configured: aiGenerator !== null,
         model: aiGenerator?.model ?? null,
@@ -73,21 +58,17 @@ export const appReady: Promise<void> = (async () => {
         aiInsightRepo,
         llmCallRepo,
         aiGenerator,
-        config.AI.TOP_N
+        config.AI.AI_TOP_N
     );
     const exportService = await newExportService(importService, insightService);
 
-    // Initialize Controller
-    const postV1Controller = await newPostV1Controller(postService);
     const stageV1Controller = await newStageV1Controller(configService);
     const settingV1Controller = await newSettingV1Controller(configService);
     const importV1Controller = await newImportV1Controller(importService);
     const insightV1Controller = await newInsightV1Controller(insightService);
     const exportV1Controller = await newExportV1Controller(exportService);
 
-    // Initialize Router
     const v1Router = await newV1Router({
-        postController: postV1Controller,
         stageController: stageV1Controller,
         settingController: settingV1Controller,
         importController: importV1Controller,
@@ -95,7 +76,7 @@ export const appReady: Promise<void> = (async () => {
         exportController: exportV1Controller,
     });
 
-    app.use("/api/v1", v1Router);
+    app.use(API_PREFIX, v1Router);
     app.use(globalErrorHandler);
 })();
 

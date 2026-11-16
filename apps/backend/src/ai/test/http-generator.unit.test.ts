@@ -35,26 +35,54 @@ afterAll(async () => {
 
 const FACTS: InsightFacts = {
     board: {
-        total: 3, valid: 3, invalid: 0, terminal: 0, on_hold: 0, stalled: 1, not_stalled: 2,
-        stalled_by_action: { CONFIRM_OFFER: 1 }, stalled_by_recruiter: [{ recruiter_key: "R1", stalled: 1 }],
+        total: 3,
+        valid: 3,
+        invalid: 0,
+        terminal: 0,
+        on_hold: 0,
+        stalled: 1,
+        not_stalled: 2,
+        stalled_by_action: { CONFIRM_OFFER: 1 },
+        stalled_by_recruiter: [{ recruiter_key: "R1", stalled: 1 }],
         stalled_by_other_recruiters: 0,
     },
     bottlenecks: [],
-    alerts: [{
-        rank: 1, action_code: ActionCode.CONFIRM_OFFER, recipient_type: RecipientType.CANDIDATE, stage_threshold: 3,
-        days_in_stage: 5, overdue_days: 2, days_since_contact: null, recruiter_key: "R1",
-    }],
+    alerts: [
+        {
+            rank: 1,
+            action_code: ActionCode.CONFIRM_OFFER,
+            recipient_type: RecipientType.CANDIDATE,
+            stage_threshold: 3,
+            days_in_stage: 5,
+            overdue_days: 2,
+            days_since_contact: null,
+            recruiter_key: "R1",
+        },
+    ],
 };
 
-const ANSWER = { briefing: "Start with rank 1.", bottleneck_notes: [], drafts: [{ rank: 1, text: "Hi {{first_name}}." }] };
+const ANSWER = {
+    briefing: "Start with rank 1.",
+    bottleneck_notes: [],
+    drafts: [{ action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}." }],
+};
 
 const generator = (timeoutMs = 2000) =>
-    new HttpAiGenerator({ apiKey: "test-key", model: "test/model", baseUrl, timeoutMs, maxOutputTokens: 800, reasoningEffort: ReasoningEffort.LOW });
+    new HttpAiGenerator({
+        apiKey: "test-key",
+        model: "test/model",
+        baseUrl,
+        timeoutMs,
+        maxOutputTokens: 800,
+        reasoningEffort: ReasoningEffort.LOW,
+    });
 
-const reply = (status: number, body: unknown): Handler => (_body, _req, res) => {
-    res.writeHead(status, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(body));
-};
+const reply =
+    (status: number, body: unknown): Handler =>
+    (_body, _req, res) => {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(body));
+    };
 
 const completion = (content: string, extra: Record<string, unknown> = {}) => ({
     model: "test/model-served",
@@ -78,7 +106,11 @@ describe("HttpAiGenerator", () => {
         const result = await generator().generate(FACTS);
 
         expect(result).toEqual({
-            output: ANSWER, servedModel: "test/model-served", inputTokens: 900, outputTokens: 120, costUsd: 0.00042,
+            output: ANSWER,
+            servedModel: "test/model-served",
+            inputTokens: 900,
+            outputTokens: 120,
+            costUsd: 0.00042,
         });
         expect(lastRequest.url).toBe("/api/v1/chat/completions");
         expect(lastRequest.headers.authorization).toBe("Bearer test-key");
@@ -94,7 +126,14 @@ describe("HttpAiGenerator", () => {
     it("can switch thinking off, or not send the setting at all", async () => {
         handler = reply(200, completion(JSON.stringify(ANSWER)));
         const make = (reasoningEffort: ReasoningEffort) =>
-            new HttpAiGenerator({ apiKey: "k", model: "m", baseUrl, timeoutMs: 2000, maxOutputTokens: 100, reasoningEffort });
+            new HttpAiGenerator({
+                apiKey: "k",
+                model: "m",
+                baseUrl,
+                timeoutMs: 2000,
+                maxOutputTokens: 100,
+                reasoningEffort,
+            });
 
         await make(ReasoningEffort.OFF).generate(FACTS);
         expect(lastRequest.body.reasoning).toEqual({ enabled: false });
@@ -114,7 +153,8 @@ describe("HttpAiGenerator", () => {
     });
 
     it("stops waiting after the timeout", async () => {
-        handler = (_body, _req, res) => setTimeout(() => reply(200, completion(JSON.stringify(ANSWER)))(_body, _req, res), 1500);
+        handler = (_body, _req, res) =>
+            setTimeout(() => reply(200, completion(JSON.stringify(ANSWER)))(_body, _req, res), 1500);
         expect(await errorCodeOf(generator(1000).generate(FACTS))).toBe(AiErrorCode.TIMEOUT);
     });
 
@@ -135,7 +175,12 @@ describe("HttpAiGenerator", () => {
 
     it("reports a provider that cannot be reached", async () => {
         const unreachable = new HttpAiGenerator({
-            apiKey: "k", model: "m", baseUrl: "http://127.0.0.1:9/api/v1", timeoutMs: 2000, maxOutputTokens: 100, reasoningEffort: ReasoningEffort.NONE,
+            apiKey: "k",
+            model: "m",
+            baseUrl: "http://127.0.0.1:9/api/v1",
+            timeoutMs: 2000,
+            maxOutputTokens: 100,
+            reasoningEffort: ReasoningEffort.NONE,
         });
         expect(await errorCodeOf(unreachable.generate(FACTS))).toBe(AiErrorCode.PROVIDER_ERROR);
     });

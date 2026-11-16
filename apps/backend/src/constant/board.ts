@@ -1,4 +1,4 @@
-// The hiring-board CSV contract (spec C1) and its limits (spec C7).
+import { STAGE_LIMITS } from "./stage";
 
 export enum BoardColumn {
     CANDIDATE_ID = "candidate_id",
@@ -27,14 +27,29 @@ export const OPTIONAL_DATE_COLUMNS: readonly BoardColumn[] = [
 
 export const KNOWN_COLUMNS: readonly BoardColumn[] = [...REQUIRED_COLUMNS, ...OPTIONAL_DATE_COLUMNS];
 
+export const DATE_COLUMNS: readonly BoardColumn[] = [BoardColumn.STAGE_ENTERED_AT, ...OPTIONAL_DATE_COLUMNS];
+
+export const TEXT_COLUMN_LIMITS = {
+    [BoardColumn.CANDIDATE_ID]: 36,
+    [BoardColumn.NAME]: 50,
+    [BoardColumn.ROLE]: 50,
+    [BoardColumn.STAGE]: STAGE_LIMITS.MAX_NAME_LENGTH,
+    [BoardColumn.RECRUITER]: 50,
+} as const;
+
+export const INVALID_DATE_TEXT = "invalid date";
+
 export const BOARD_LIMITS = {
     MAX_FILE_BYTES: 5 * 1024 * 1024,
     MAX_RECORDS: 10_000,
-    // Matches the VARCHAR(255) columns in import_records
-    MAX_VALUE_LENGTH: 255,
+    MAX_FILE_NAME_LENGTH: 255,
+    MAX_ERROR_DETAILS: 10,
+    MIN_BOTTLENECK_STALLED: 2,
+    INSERT_BATCH_SIZE: 1000,
 } as const;
 
-// Problems that reject the whole file. Nothing is stored.
+export const LATEST_UTC_OFFSET_MS = 14 * 60 * 60 * 1000;
+
 export enum FileErrorCode {
     FILE_TOO_LARGE = "FILE_TOO_LARGE",
     UNSUPPORTED_FILE = "UNSUPPORTED_FILE",
@@ -47,7 +62,6 @@ export enum FileErrorCode {
     VALUE_TOO_LONG = "VALUE_TOO_LONG",
 }
 
-// Problems with one record. The record is left out; the rest still rank.
 export enum RowErrorCode {
     FIELD_COUNT = "FIELD_COUNT",
     MISSING_VALUE = "MISSING_VALUE",
@@ -57,11 +71,9 @@ export enum RowErrorCode {
     DUPLICATE_ID = "DUPLICATE_ID",
 }
 
-// Where follow-ups pile up: a stage or a recruiter.
 export enum BottleneckType {
     STAGE = "stage",
     RECRUITER = "recruiter",
 }
 
-// Used as the field name when the whole record is wrong (field count).
 export const RECORD_FIELD = "(record)";

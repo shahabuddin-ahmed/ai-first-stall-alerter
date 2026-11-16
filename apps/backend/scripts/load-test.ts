@@ -27,7 +27,9 @@ const makeBoard = (run: string): string => {
     for (let i = 0; i < ROWS; i += 1) {
         const month = String(1 + (i % 10)).padStart(2, "0");
         const day = String(1 + (i % 28)).padStart(2, "0");
-        lines.push(`${run}-${i},Candidate ${i},Role ${i % 12},${STAGES[i % STAGES.length]},2026-${month}-${day},Recruiter ${i % 9},,`);
+        lines.push(
+            `${run}-${i},Candidate ${i},Role ${i % 12},${STAGES[i % STAGES.length]},2026-${month}-${day},Recruiter ${i % 9},,`
+        );
     }
     return lines.join("\n");
 };
@@ -55,16 +57,27 @@ const main = async () => {
         form.append("referenceDate", REFERENCE_DATE);
         form.append("file", new Blob([board], { type: "text/csv" }), "load-test.csv");
 
-        const upload = await timed(async () => expectOk(await fetch(`${API_URL}/imports`, { method: "POST", body: form }), "upload"));
+        const upload = await timed(async () =>
+            expectOk(await fetch(`${API_URL}/imports`, { method: "POST", body: form }), "upload")
+        );
         record("upload (10,000 rows)", upload.ms);
         const id = upload.result.response.import.id;
         const query = `referenceDate=${REFERENCE_DATE}`;
 
         for (let i = 0; i < 3; i += 1) {
-            record("recalculate (GET board)", (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}?${query}`), "board"))).ms);
+            record(
+                "recalculate (GET board)",
+                (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}?${query}`), "board"))).ms
+            );
         }
-        record("row errors (GET errors)", (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}/errors?${query}`), "errors"))).ms);
-        record("export CSV", (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}/export?${query}`), "export"))).ms);
+        record(
+            "row errors (GET errors)",
+            (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}/errors?${query}`), "errors"))).ms
+        );
+        record(
+            "export CSV",
+            (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}/export?${query}`), "export"))).ms
+        );
 
         if (WITH_INSIGHTS) {
             const ask = async () =>
@@ -81,7 +94,9 @@ const main = async () => {
         }
 
         await fetch(`${API_URL}/imports/${id}`, { method: "DELETE" });
-        console.log(`run ${run}/${RUNS} done (${Buffer.byteLength(board)} bytes, stalled: ${upload.result.response.counts.stalled})`);
+        console.log(
+            `run ${run}/${RUNS} done (${Buffer.byteLength(board)} bytes, stalled: ${upload.result.response.counts.stalled})`
+        );
     }
 
     console.log(`\n| Step | Median | Slowest | Target | Result |\n|---|---|---|---|---|`);
@@ -91,11 +106,19 @@ const main = async () => {
         const slowest = sorted[sorted.length - 1];
         const target = TARGETS_MS[name];
         const result = target === undefined ? "-" : slowest <= target ? "pass" : "FAIL";
-        console.log(`| ${name} | ${median.toFixed(0)} ms | ${slowest.toFixed(0)} ms | ${target ? `≤ ${target} ms` : "-"} | ${result} |`);
+        console.log(
+            `| ${name} | ${median.toFixed(0)} ms | ${slowest.toFixed(0)} ms | ${target ? `≤ ${target} ms` : "-"} | ${result} |`
+        );
     }
 };
 
-main().catch((err) => {
-    console.error(err instanceof Error ? err.message : err);
-    process.exit(1);
-});
+const start = async (): Promise<void> => {
+    try {
+        await main();
+    } catch (err) {
+        console.error(err instanceof Error ? err.message : err);
+        process.exitCode = 1;
+    }
+};
+
+start();

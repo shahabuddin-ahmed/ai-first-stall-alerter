@@ -1,11 +1,8 @@
-import { AI_LIMITS } from "../constant/ai";
+import { AI_LIMITS, RECRUITER_KEY_PREFIX } from "../constant/ai";
 import { ActionCode, RecipientType } from "../constant/stage";
 import { BoardAnalysis, QueueItem } from "./types";
 import { BottleneckType } from "../constant/board";
 
-// The only data the AI ever sees (spec E3). Built from an allowlist:
-// no names, candidate IDs, roles, recruiter names, stage names, file names, dates or free text.
-// Candidates are "rank 1..N"; recruiters are "R1, R2..." in order of first appearance in the queue.
 export interface AlertFacts {
     rank: number;
     action_code: ActionCode;
@@ -17,9 +14,12 @@ export interface AlertFacts {
     recruiter_key: string;
 }
 
-export type BottleneckFacts =
-    | { type: BottleneckType.STAGE; action_code: ActionCode; stalled: number }
-    | { type: BottleneckType.RECRUITER; recruiter_key: string; stalled: number };
+export interface BottleneckFacts {
+    type: BottleneckType;
+    action_code?: ActionCode;
+    recruiter_key?: string;
+    stalled: number;
+}
 
 export interface InsightFacts {
     board: {
@@ -38,13 +38,11 @@ export interface InsightFacts {
     alerts: AlertFacts[];
 }
 
-// Recruiter name → "R1", "R2"... in order of first appearance in the ranked queue.
-// The server uses the same map to turn keys in AI text back into names.
 export const recruiterKeysOf = (queue: QueueItem[]): Map<string, string> => {
     const keys = new Map<string, string>();
     for (const item of queue) {
         if (!keys.has(item.recruiter)) {
-            keys.set(item.recruiter, `R${keys.size + 1}`);
+            keys.set(item.recruiter, `${RECRUITER_KEY_PREFIX}${keys.size + 1}`);
         }
     }
     return keys;
@@ -59,12 +57,13 @@ export const buildInsightFacts = (analysis: BoardAnalysis, topN: number): Insigh
     const byAction: Partial<Record<ActionCode, number>> = {};
     const byRecruiter = new Map<string, number>();
     for (const item of queue) {
+        const key = keyOf(item.recruiter);
         byAction[item.actionCode] = (byAction[item.actionCode] ?? 0) + 1;
-        byRecruiter.set(keyOf(item.recruiter), (byRecruiter.get(keyOf(item.recruiter)) ?? 0) + 1);
+        byRecruiter.set(key, (byRecruiter.get(key) ?? 0) + 1);
     }
     const recruiterCounts = [...byRecruiter]
         .map(([recruiter_key, stalled]) => ({ recruiter_key, stalled }))
-        .sort((a, b) => b.stalled - a.stalled || Number(a.recruiter_key.slice(1)) - Number(b.recruiter_key.slice(1)));
+        .sort((a, b) => b.stalled - a.stalled);
     const topRecruiters = recruiterCounts.slice(0, AI_LIMITS.TOP_RECRUITERS);
 
     const actionOfStage = new Map(queue.map((item) => [item.stage, item.actionCode]));
@@ -80,12 +79,23 @@ export const buildInsightFacts = (analysis: BoardAnalysis, topN: number): Insigh
             not_stalled: counts.notStalled,
             stalled_by_action: byAction,
             stalled_by_recruiter: topRecruiters,
-            stalled_by_other_recruiters: recruiterCounts.slice(AI_LIMITS.TOP_RECRUITERS).reduce((sum, r) => sum + r.stalled, 0),
+            stalled_by_other_recruiters: recruiterCounts
+                .slice(AI_LIMITS.TOP_RECRUITERS)
+                .reduce((sum, r) => sum + r.stalled, 0),
         },
-        bottlenecks: analysis.bottlenecks.map((bottleneck): BottleneckFacts =>
-            bottleneck.type === BottleneckType.STAGE
-                ? { type: BottleneckType.STAGE, action_code: actionOfStage.get(bottleneck.key) as ActionCode, stalled: bottleneck.stalled }
-                : { type: BottleneckType.RECRUITER, recruiter_key: keyOf(bottleneck.key), stalled: bottleneck.stalled }
+        bottlenecks: analysis.bottlenecks.map(
+            (bottleneck): BottleneckFacts =>
+                bottleneck.type === BottleneckType.STAGE
+                    ? {
+                          type: BottleneckType.STAGE,
+                          action_code: actionOfStage.get(bottleneck.key) as ActionCode,
+                          stalled: bottleneck.stalled,
+                      }
+                    : {
+                          type: BottleneckType.RECRUITER,
+                          recruiter_key: keyOf(bottleneck.key),
+                          stalled: bottleneck.stalled,
+                      }
         ),
         alerts: queue.slice(0, topN).map((item) => ({
             rank: item.rank,
@@ -99,3 +109,6 @@ export const buildInsightFacts = (analysis: BoardAnalysis, topN: number): Insigh
         })),
     };
 };
+
+export const actionsOf = (facts: InsightFacts): ActionCode[] =>
+    Object.keys(facts.board.stalled_by_action) as ActionCode[];

@@ -16,16 +16,12 @@ describe("BadRequestException", () => {
         const err = new BadRequestException(ERROR_CODES.E_INVALID_DATA);
 
         expect(retrieveErrorMessage).toHaveBeenCalledTimes(1);
-        expect(retrieveErrorMessage).toHaveBeenCalledWith(
-            ERROR_CODES.E_INVALID_DATA
-        );
+        expect(retrieveErrorMessage).toHaveBeenCalledWith(ERROR_CODES.E_INVALID_DATA);
 
         expect(err).toBeInstanceOf(Error);
         expect(err).toBeInstanceOf(BadRequestException);
 
-        expect(err.message).toBe(
-            `message for ${String(ERROR_CODES.E_INVALID_DATA)}`
-        );
+        expect(err.message).toBe(`message for ${String(ERROR_CODES.E_INVALID_DATA)}`);
         expect((err as any).statusCode).toBe(400);
 
         expect((err as any).code).toBe(ERROR_CODES.E_INVALID_DATA);
@@ -37,11 +33,7 @@ describe("BadRequestException", () => {
         const custom = "Custom error text";
         const details = ["field1 is required", "field2 must be number"];
 
-        const err = new BadRequestException(
-            ERROR_CODES.E_PAGE_NOT_FOUND,
-            custom,
-            details
-        );
+        const err = new BadRequestException(ERROR_CODES.E_PAGE_NOT_FOUND, custom, details);
 
         expect(retrieveErrorMessage).not.toHaveBeenCalled();
 
@@ -58,16 +50,12 @@ describe("NotFoundException", () => {
         const err = new NotFoundException(ERROR_CODES.E_PAGE_NOT_FOUND);
 
         expect(retrieveErrorMessage).toHaveBeenCalledTimes(1);
-        expect(retrieveErrorMessage).toHaveBeenCalledWith(
-            ERROR_CODES.E_PAGE_NOT_FOUND
-        );
+        expect(retrieveErrorMessage).toHaveBeenCalledWith(ERROR_CODES.E_PAGE_NOT_FOUND);
 
         expect(err).toBeInstanceOf(Error);
         expect(err).toBeInstanceOf(NotFoundException);
 
-        expect(err.message).toBe(
-            `message for ${String(ERROR_CODES.E_PAGE_NOT_FOUND)}`
-        );
+        expect(err.message).toBe(`message for ${String(ERROR_CODES.E_PAGE_NOT_FOUND)}`);
         expect((err as any).statusCode).toBe(404);
 
         expect((err as any).code).toBe(ERROR_CODES.E_PAGE_NOT_FOUND);
@@ -79,11 +67,7 @@ describe("NotFoundException", () => {
         const custom = "Resource not found";
         const details = ["id=12345"];
 
-        const err = new NotFoundException(
-            ERROR_CODES.E_PAGE_NOT_FOUND,
-            custom,
-            details
-        );
+        const err = new NotFoundException(ERROR_CODES.E_PAGE_NOT_FOUND, custom, details);
 
         expect(retrieveErrorMessage).not.toHaveBeenCalled();
 

@@ -1,10 +1,6 @@
 import Joi from "joi";
 import { Controller, type ResponseType } from "../../controller";
-import {
-    ApiResponseMessages,
-    ERROR_CODES,
-    errorMessages,
-} from "../../../../constant/error";
+import { ApiResponseMessages, ERROR_CODES, errorMessages } from "../../../../constant/error";
 import { BadRequestException } from "../../../exception/bad-request-exception";
 
 class TestController extends Controller {}
@@ -89,9 +85,7 @@ describe("Controller", () => {
             const out = ctrl.sendResponse(payload, 500, res as any);
 
             expect(out.code).toBe(ERROR_CODES.E_INTERNAL_SERVER_ERROR);
-            expect(out.message).toBe(
-                errorMessages.E_INTERNAL_SERVER_ERROR.message
-            );
+            expect(out.message).toBe(errorMessages.E_INTERNAL_SERVER_ERROR.message);
             expect(out.response).toBeNull();
             expect(out.errors).toEqual(["undefined"]);
         });
@@ -117,9 +111,7 @@ describe("Controller", () => {
 
             const input = {};
 
-            await expect(
-                ctrl.validateRequest(schema, input)
-            ).rejects.toBeInstanceOf(BadRequestException);
+            await expect(ctrl.validateRequest(schema, input)).rejects.toBeInstanceOf(BadRequestException);
 
             try {
                 await ctrl.validateRequest(schema, input);

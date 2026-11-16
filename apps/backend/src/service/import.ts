@@ -1,5 +1,5 @@
-import crypto from "crypto";
 import { UniqueConstraintError } from "sequelize";
+import { BOARD_LIMITS, LATEST_UTC_OFFSET_MS } from "../constant/board";
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { ImportInterface } from "../model/import";
@@ -7,17 +7,14 @@ import { ImportRepoInterface } from "../repo/import";
 import { withTransaction } from "../repo/transaction";
 import { analyseBoard } from "../rules/analyse-board";
 import { parseBoardCsv } from "../rules/csv-reader";
-import { filterQueue } from "../rules/queue-filter";
+import { filterQueue, QueueFilter } from "../rules/queue-filter";
 import { dayNumberOf, parseIsoDate, toIsoDate } from "../rules/dates";
-import { BoardAnalysis, BoardCounts, Bottleneck, ParsedBoard, QueueItem, RowError } from "../rules/types";
+import { BoardAnalysis, BoardCounts, Bottleneck, Page, ParsedBoard, QueueItem, RowError } from "../rules/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
+import { sha256Hex } from "../utils/utility";
 import { ConfigServiceInterface } from "./config";
-
-// The reference date may be any real date up to "today" anywhere on Earth (UTC+14 is the latest time zone).
-const LATEST_UTC_OFFSET_MS = 14 * 60 * 60 * 1000;
-const DUPLICATE_FILE_INDEX = "uq_imports_file_hash";
 
 export interface ImportSummary {
     id: number;
@@ -27,11 +24,11 @@ export interface ImportSummary {
     createdAt: Date;
 }
 
-export interface BoardQuery {
+export interface ReportQuery extends QueueFilter {
     referenceDate?: string;
-    stage?: string;
-    recruiter?: string;
-    search?: string;
+}
+
+export interface BoardQuery extends ReportQuery {
     page: number;
     pageSize: number;
 }
@@ -44,28 +41,36 @@ export interface BoardView {
     bottlenecks: Bottleneck[];
     stageThresholds: { name: string; thresholdDays: number; stalled: number }[];
     filterOptions: { stages: string[]; recruiters: string[] };
-    queue: { items: QueueItem[]; page: number; pageSize: number; total: number };
+    queue: Page<QueueItem>;
 }
 
 export interface UploadResult extends BoardView {
     alreadyImported: boolean;
 }
 
-export interface RowErrorsView {
+export interface RowErrorsView extends Page<RowError> {
     import: ImportSummary;
     referenceDate: string;
-    items: RowError[];
-    page: number;
-    pageSize: number;
+}
+
+export interface ImportList {
+    data: ImportSummary[];
+    offset: number;
+    limit: number;
     total: number;
+}
+
+export interface AnalysedImport {
+    summary: ImportSummary;
+    analysis: BoardAnalysis;
 }
 
 export interface ImportServiceInterface {
     upload(file: { fileName: string; bytes: Buffer }, query: BoardQuery): Promise<UploadResult>;
     getBoard(id: number, query: BoardQuery): Promise<BoardView>;
-    getRowErrors(id: number, query: { referenceDate?: string; page: number; pageSize: number }): Promise<RowErrorsView>;
-    analyse(id: number, referenceDate?: string): Promise<{ summary: ImportSummary; analysis: BoardAnalysis }>;
-    list(offset: number, limit: number): Promise<{ data: ImportSummary[]; offset: number; limit: number; total: number }>;
+    getRowErrors(id: number, query: BoardQuery): Promise<RowErrorsView>;
+    analyse(id: number, referenceDate?: string): Promise<AnalysedImport>;
+    list(offset: number, limit: number): Promise<ImportList>;
     remove(id: number): Promise<boolean>;
 }
 
@@ -77,13 +82,8 @@ const toSummary = (found: ImportInterface): ImportSummary => ({
     createdAt: found.createdAt as Date,
 });
 
-// Same file uploaded twice (even at the same moment): MySQL rejects the second insert on the unique hash.
-const isDuplicateFile = (err: unknown): boolean =>
-    err instanceof UniqueConstraintError &&
-    (Object.keys(err.fields ?? {}).some((key) => key.includes(DUPLICATE_FILE_INDEX)) ||
-        String(err.parent?.message ?? "").includes(DUPLICATE_FILE_INDEX));
-
-const paginate = <T>(items: T[], page: number, pageSize: number): T[] => items.slice((page - 1) * pageSize, page * pageSize);
+const paginate = <T>(items: T[], page: number, pageSize: number): T[] =>
+    items.slice((page - 1) * pageSize, page * pageSize);
 
 export class ImportService implements ImportServiceInterface {
     constructor(
@@ -96,12 +96,16 @@ export class ImportService implements ImportServiceInterface {
         const referenceDate = this.resolveReferenceDate(query.referenceDate);
         const parsed = parseBoardCsv(file.bytes);
         if (!parsed.ok) {
-            throw new UnprocessableEntityException(ERROR_CODES[parsed.error.code as keyof typeof ERROR_CODES], parsed.error.message, parsed.error.details);
+            throw new UnprocessableEntityException(
+                ERROR_CODES[parsed.error.code as keyof typeof ERROR_CODES],
+                parsed.error.message,
+                parsed.error.details
+            );
         }
 
         const details: ImportInterface = {
-            fileName: file.fileName.slice(0, 255),
-            fileHash: crypto.createHash("sha256").update(file.bytes).digest("hex"),
+            fileName: file.fileName.slice(0, BOARD_LIMITS.MAX_FILE_NAME_LENGTH),
+            fileHash: sha256Hex(file.bytes),
             fileSize: file.bytes.length,
             headerCount: parsed.board.headerCount,
             recordCount: parsed.board.records.length,
@@ -112,27 +116,35 @@ export class ImportService implements ImportServiceInterface {
             const created = await withTransaction((transaction) =>
                 this.importRepo.create(details, parsed.board.records, transaction)
             );
-            return { alreadyImported: false, ...this.buildView(toSummary(created), parsed.board, { ...query, referenceDate }) };
+            return {
+                alreadyImported: false,
+                ...this.buildView(toSummary(created), parsed.board, referenceDate, query),
+            };
         } catch (err) {
-            if (!isDuplicateFile(err)) {
+            if (!(err instanceof UniqueConstraintError)) {
                 throw err;
             }
             const existing = await this.importRepo.findByHash(details.fileHash);
             if (!existing) {
                 throw err;
             }
-            // Same bytes, so the stored rows are the rows we just read.
-            return { alreadyImported: true, ...this.buildView(toSummary(existing), parsed.board, { ...query, referenceDate }) };
+            return {
+                alreadyImported: true,
+                ...this.buildView(toSummary(existing), parsed.board, referenceDate, query),
+            };
         }
     }
 
     async getBoard(id: number, query: BoardQuery): Promise<BoardView> {
         const referenceDate = this.resolveReferenceDate(query.referenceDate);
         const { found, board } = await this.loadBoard(id);
-        return this.buildView(toSummary(found), board, { ...query, referenceDate });
+        return this.buildView(toSummary(found), board, referenceDate, query);
     }
 
-    async getRowErrors(id: number, query: { referenceDate?: string; page: number; pageSize: number }): Promise<RowErrorsView> {
+    async getRowErrors(
+        id: number,
+        query: { referenceDate?: string; page: number; pageSize: number }
+    ): Promise<RowErrorsView> {
         const { summary, analysis } = await this.analyse(id, query.referenceDate);
         return {
             import: summary,
@@ -144,14 +156,16 @@ export class ImportService implements ImportServiceInterface {
         };
     }
 
-    // The full analysis of a stored import (also used by insights and export).
-    async analyse(id: number, referenceDate?: string): Promise<{ summary: ImportSummary; analysis: BoardAnalysis }> {
+    async analyse(id: number, referenceDate?: string): Promise<AnalysedImport> {
         const date = this.resolveReferenceDate(referenceDate);
         const { found, board } = await this.loadBoard(id);
-        return { summary: toSummary(found), analysis: analyseBoard(board, this.configService.getSnapshot().stages, date) };
+        return {
+            summary: toSummary(found),
+            analysis: analyseBoard(board, this.configService.getSnapshot().stages, date),
+        };
     }
 
-    async list(offset: number, limit: number): Promise<{ data: ImportSummary[]; offset: number; limit: number; total: number }> {
+    async list(offset: number, limit: number): Promise<ImportList> {
         const [data, total] = await Promise.all([this.importRepo.list(offset, limit), this.importRepo.count()]);
         return { data: data.map(toSummary), offset, limit, total };
     }
@@ -173,25 +187,25 @@ export class ImportService implements ImportServiceInterface {
         return { found, board: { headerCount: found.headerCount, records } };
     }
 
-    // Default: today (UTC). Never later than today anywhere on Earth.
     private resolveReferenceDate(value?: string): string {
-        const latestDay = dayNumberOf(this.now() + LATEST_UTC_OFFSET_MS);
-        if (value === undefined || value === "") {
+        if (!value) {
             return toIsoDate(dayNumberOf(this.now()));
         }
         const day = parseIsoDate(value);
         if (day === null) {
-            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "", ["referenceDate must be a real YYYY-MM-DD date"]);
+            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "", [
+                "referenceDate must be a real YYYY-MM-DD date",
+            ]);
         }
-        if (day > latestDay) {
+        if (day > dayNumberOf(this.now() + LATEST_UTC_OFFSET_MS)) {
             throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "", ["referenceDate cannot be in the future"]);
         }
         return value;
     }
 
-    private buildView(summary: ImportSummary, board: ParsedBoard, query: BoardQuery & { referenceDate: string }): BoardView {
+    private buildView(summary: ImportSummary, board: ParsedBoard, referenceDate: string, query: BoardQuery): BoardView {
         const { stages, stagesVersion } = this.configService.getSnapshot();
-        const analysis = analyseBoard(board, stages, query.referenceDate);
+        const analysis = analyseBoard(board, stages, referenceDate);
 
         const filtered = filterQueue(analysis.queue, query);
 

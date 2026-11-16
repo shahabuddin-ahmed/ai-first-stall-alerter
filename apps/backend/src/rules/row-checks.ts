@@ -4,13 +4,21 @@ import { parseIsoDate } from "./dates";
 import { normaliseStageName } from "./stage-matcher";
 import { BoardRecord, FieldError, ParsedBoard, RowError, StageConfig } from "./types";
 
-// A record that passed every check, with its stage and dates already read.
-export interface ValidRecord {
-    record: BoardRecord;
+interface RecordDays {
     stage: StageConfig;
     enteredDay: number;
     activityDay: number | null;
     contactDay: number | null;
+}
+
+export interface ValidRecord extends RecordDays {
+    record: BoardRecord;
+}
+
+interface CheckedRecord {
+    record: BoardRecord;
+    errors: FieldError[];
+    days: RecordDays;
 }
 
 const PROBLEMS = {
@@ -22,7 +30,6 @@ const PROBLEMS = {
     duplicate: (others: number[]) => `duplicate ID (also record ${others.join(", ")})`,
 };
 
-// Checks one date column. Returns its day number, or null when empty or wrong (and records the problem).
 const checkDate = (column: BoardColumn, value: string, referenceDay: number, errors: FieldError[]): number | null => {
     if (value === "") {
         return null;
@@ -36,27 +43,28 @@ const checkDate = (column: BoardColumn, value: string, referenceDay: number, err
     return day;
 };
 
-// Row checks (spec C7). A record can have several problems but counts once as invalid.
 export const validateRecords = (
     board: ParsedBoard,
     stageLookup: Map<string, StageConfig>,
     referenceDay: number
 ): { valid: ValidRecord[]; rowErrors: RowError[] } => {
     const rowErrors: RowError[] = [];
-    const checked: { record: BoardRecord; errors: FieldError[]; candidate: Omit<ValidRecord, "record"> }[] = [];
+    const checked: CheckedRecord[] = [];
 
     for (const record of board.records) {
         if (record.fieldCount !== board.headerCount) {
             rowErrors.push({
                 recordNumber: record.recordNumber,
                 candidateId: record.candidateId,
-                errors: [{
-                    field: RECORD_FIELD,
-                    code: RowErrorCode.FIELD_COUNT,
-                    problem: PROBLEMS.fieldCount(record.fieldCount, board.headerCount),
-                }],
+                errors: [
+                    {
+                        field: RECORD_FIELD,
+                        code: RowErrorCode.FIELD_COUNT,
+                        problem: PROBLEMS.fieldCount(record.fieldCount, board.headerCount),
+                    },
+                ],
             });
-            continue; // the values are in the wrong columns, so nothing else can be checked
+            continue;
         }
 
         const errors: FieldError[] = [];
@@ -66,9 +74,13 @@ export const validateRecords = (
             }
         }
 
-        const stage = record.stage === "" ? undefined : stageLookup.get(normaliseStageName(record.stage));
+        const stage = stageLookup.get(normaliseStageName(record.stage));
         if (record.stage !== "" && !stage) {
-            errors.push({ field: BoardColumn.STAGE, code: RowErrorCode.UNKNOWN_STAGE, problem: PROBLEMS.unknownStage(record.stage) });
+            errors.push({
+                field: BoardColumn.STAGE,
+                code: RowErrorCode.UNKNOWN_STAGE,
+                problem: PROBLEMS.unknownStage(record.stage),
+            });
         }
 
         const enteredDay = checkDate(BoardColumn.STAGE_ENTERED_AT, record.stageEnteredAt, referenceDay, errors);
@@ -76,10 +88,13 @@ export const validateRecords = (
             checkDate(column, record[COLUMN_FIELDS[column]] as string, referenceDay, errors)
         );
 
-        checked.push({ record, errors, candidate: { stage: stage as StageConfig, enteredDay: enteredDay as number, activityDay, contactDay } });
+        checked.push({
+            record,
+            errors,
+            days: { stage: stage as StageConfig, enteredDay: enteredDay as number, activityDay, contactDay },
+        });
     }
 
-    // Duplicate IDs: every copy is an error. IDs are exact text (case-sensitive, leading zeros kept).
     const recordsById = new Map<string, number[]>();
     for (const { record } of checked) {
         if (record.candidateId !== "") {
@@ -88,16 +103,20 @@ export const validateRecords = (
     }
 
     const valid: ValidRecord[] = [];
-    for (const { record, errors, candidate } of checked) {
+    for (const { record, errors, days } of checked) {
         const copies = recordsById.get(record.candidateId) ?? [];
         if (copies.length > 1) {
             const others = copies.filter((number) => number !== record.recordNumber);
-            errors.push({ field: BoardColumn.CANDIDATE_ID, code: RowErrorCode.DUPLICATE_ID, problem: PROBLEMS.duplicate(others) });
+            errors.push({
+                field: BoardColumn.CANDIDATE_ID,
+                code: RowErrorCode.DUPLICATE_ID,
+                problem: PROBLEMS.duplicate(others),
+            });
         }
         if (errors.length > 0) {
             rowErrors.push({ recordNumber: record.recordNumber, candidateId: record.candidateId, errors });
         } else {
-            valid.push({ record, ...candidate });
+            valid.push({ record, ...days });
         }
     }
 

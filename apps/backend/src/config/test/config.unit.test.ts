@@ -38,6 +38,29 @@ describe("config", () => {
         expect(config.SEQUELIZE.MYSQL_DATABASE).toBe("my_tests");
     });
 
+    it("ignores other environment variables (PATH, HOME...)", () => {
+        const config = loadConfig({ NODE_ENV: "development", PATH: "/usr/bin", HOME: "/home/app" });
+
+        expect(config.APPLICATION_SERVER_PORT).toBe(4000);
+    });
+
+    it("reads the web origins as a list, and uses the local web app by default", () => {
+        const config = loadConfig({ NODE_ENV: "development", WEB_ORIGIN: "http://a.test, http://b.test," });
+
+        expect(config.SECURITY.WEB_ORIGIN).toEqual(["http://a.test", "http://b.test"]);
+        expect(loadConfig({ NODE_ENV: "development" }).SECURITY.WEB_ORIGIN).toEqual(["http://localhost:3000"]);
+    });
+
+    it("removes a trailing slash from the AI base URL", () => {
+        const config = loadConfig({ NODE_ENV: "development", AI_BASE_URL: "https://ai.test/api/v1/" });
+
+        expect(config.AI.AI_BASE_URL).toBe("https://ai.test/api/v1");
+    });
+
+    it("allows an empty database password outside production", () => {
+        expect(loadConfig({ NODE_ENV: "development", MYSQL_PASSWORD: "" }).SEQUELIZE.MYSQL_PASSWORD).toBe("");
+    });
+
     it("stops with a clear message when a value is wrong", () => {
         expect(() => loadConfig({ NODE_ENV: "development", MYSQL_PORT: "abc" })).toThrow(
             /Invalid environment settings: "MYSQL_PORT" must be a number/
@@ -46,6 +69,8 @@ describe("config", () => {
 
     it("requires a database password in production", () => {
         expect(() => loadConfig({ NODE_ENV: "production" })).toThrow(/"MYSQL_PASSWORD" is required/);
-        expect(loadConfig({ NODE_ENV: "production", MYSQL_PASSWORD: "secret" }).SEQUELIZE.PASSWORD).toBe("secret");
+        expect(loadConfig({ NODE_ENV: "production", MYSQL_PASSWORD: "secret" }).SEQUELIZE.MYSQL_PASSWORD).toBe(
+            "secret"
+        );
     });
 });

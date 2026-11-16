@@ -1,15 +1,10 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { ActionCode, StageType } from "../constant/stage";
+import { StageConfig } from "../rules/types";
+import { ActionCode, STAGE_LIMITS, StageType } from "../constant/stage";
 
-export interface StageInterface {
+export interface StageInterface extends StageConfig {
     id?: number;
-    name: string;
-    type: StageType;
-    thresholdDays: number | null;
-    position: number;
-    aliases: string[];
-    actionCode: ActionCode | null;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -34,7 +29,7 @@ Stage.init(
             primaryKey: true,
         },
         name: {
-            type: new DataTypes.STRING(40),
+            type: new DataTypes.STRING(STAGE_LIMITS.MAX_NAME_LENGTH),
             allowNull: false,
         },
         type: {

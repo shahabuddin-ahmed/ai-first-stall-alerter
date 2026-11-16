@@ -44,7 +44,13 @@ const dbValue = async <T>(sql: string): Promise<T> => {
 
 // The stages as the page would send them back (no position: the list order is the pipeline).
 const editableStages = (stages: any[]) =>
-    stages.map(({ name, type, thresholdDays, aliases, actionCode }) => ({ name, type, thresholdDays, aliases, actionCode }));
+    stages.map(({ name, type, thresholdDays, aliases, actionCode }) => ({
+        name,
+        type,
+        thresholdDays,
+        aliases,
+        actionCode,
+    }));
 
 let api: { app: Express; service: ConfigService };
 let errorLog: jest.SpyInstance;
@@ -68,11 +74,22 @@ describe("GET /api/v1/stages", () => {
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.body.response.version).toBe(1);
         expect(res.body.response.stages.map((s: any) => s.name)).toEqual([
-            "Applied", "Screening", "Interview", "Assessment", "Reference check", "Offer",
-            "On hold", "Hired", "Rejected", "Withdrawn",
+            "Applied",
+            "Screening",
+            "Interview",
+            "Assessment",
+            "Reference check",
+            "Offer",
+            "On hold",
+            "Hired",
+            "Rejected",
+            "Withdrawn",
         ]);
         expect(res.body.response.stages[0]).toMatchObject({
-            thresholdDays: 5, actionCode: "REVIEW_APPLICATION", recipient: "hiring_manager", aliases: ["New", "Sourced"],
+            thresholdDays: 5,
+            actionCode: "REVIEW_APPLICATION",
+            recipient: "hiring_manager",
+            aliases: ["New", "Sourced"],
         });
         expect(res.body.response.actions).toHaveLength(7);
     });
@@ -99,7 +116,9 @@ describe("PUT /api/v1/stages", () => {
         expect(stalled()).toBe(18);
 
         const { stages } = (await request(api.app).get("/api/v1/stages")).body.response;
-        const allSeven = editableStages(stages).map((s) => (s.type === StageType.WATCHED ? { ...s, thresholdDays: 7 } : s));
+        const allSeven = editableStages(stages).map((s) =>
+            s.type === StageType.WATCHED ? { ...s, thresholdDays: 7 } : s
+        );
         await request(api.app).put("/api/v1/stages").send({ version: 1, stages: allSeven }).expect(HttpStatus.OK);
 
         expect(stalled()).toBe(20); // the all_thresholds_7 expected result
@@ -123,7 +142,9 @@ describe("PUT /api/v1/stages", () => {
     it("refuses a save made from an old version, and changes nothing", async () => {
         const { stages } = (await request(api.app).get("/api/v1/stages")).body.response;
 
-        const res = await request(api.app).put("/api/v1/stages").send({ version: 7, stages: editableStages(stages) });
+        const res = await request(api.app)
+            .put("/api/v1/stages")
+            .send({ version: 7, stages: editableStages(stages) });
 
         expect(res.status).toBe(HttpStatus.CONFLICT);
         expect(res.body.code).toBe(ERROR_CODES.E_CONFLICT);
@@ -146,22 +167,42 @@ describe("PUT /api/v1/stages", () => {
     });
 
     it.each([
-        ["an alias used twice", (s: any[]) => s.map((x) => (x.name === "Offer" ? { ...x, aliases: ["Onsite"] } : x)),
-            '"Onsite" is used more than once (as a stage name or alias).'],
-        ["no watched stage", (s: any[]) => s.filter((x) => x.type !== StageType.WATCHED),
-            "Add at least one watched stage."],
-        ["a watched stage with no action", (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, actionCode: null } : x)),
-            '"Applied" needs a follow-up action.'],
-        ["an unknown action code", (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, actionCode: "CALL_MOM" } : x)),
-            '"stages[0].actionCode" must be one of'],
-        ["a name with symbols", (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, name: "Applied!" } : x)),
-            '"stages[0].name" can only use letters, digits, spaces and dashes'],
-        ["a threshold over 90 days", (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, thresholdDays: 91 } : x)),
-            '"stages[0].thresholdDays" must be less than or equal to 90'],
+        [
+            "an alias used twice",
+            (s: any[]) => s.map((x) => (x.name === "Offer" ? { ...x, aliases: ["Onsite"] } : x)),
+            '"Onsite" is used more than once (as a stage name or alias).',
+        ],
+        [
+            "no watched stage",
+            (s: any[]) => s.filter((x) => x.type !== StageType.WATCHED),
+            "Add at least one watched stage.",
+        ],
+        [
+            "a watched stage with no action",
+            (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, actionCode: null } : x)),
+            '"Applied" needs a follow-up action.',
+        ],
+        [
+            "an unknown action code",
+            (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, actionCode: "CALL_MOM" } : x)),
+            '"stages[0].actionCode" must be one of',
+        ],
+        [
+            "a name with symbols",
+            (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, name: "Applied!" } : x)),
+            '"stages[0].name" can only use letters, digits, spaces and dashes',
+        ],
+        [
+            "a threshold over 90 days",
+            (s: any[]) => s.map((x) => (x.name === "Applied" ? { ...x, thresholdDays: 91 } : x)),
+            '"stages[0].thresholdDays" must be less than or equal to 90',
+        ],
     ])("rejects %s with a clear message and changes nothing", async (_case, change, message) => {
         const { stages } = (await request(api.app).get("/api/v1/stages")).body.response;
 
-        const res = await request(api.app).put("/api/v1/stages").send({ version: 1, stages: change(editableStages(stages)) });
+        const res = await request(api.app)
+            .put("/api/v1/stages")
+            .send({ version: 1, stages: change(editableStages(stages)) });
 
         expect(res.status).toBe(HttpStatus.BAD_REQUEST);
         expect(res.body.code).toBe(ERROR_CODES.E_INVALID_DATA);

@@ -1,4 +1,3 @@
-// The export CSV columns (spec C8), in file order.
 export enum ExportColumn {
     RANK = "rank",
     CANDIDATE_ID = "candidate_id",
@@ -21,7 +20,12 @@ export enum ExportColumn {
 
 export const EXPORT_COLUMNS: readonly ExportColumn[] = Object.values(ExportColumn);
 
-// A cell that starts with one of these could run as a formula in Excel or Sheets, so it gets a ' in front.
 export const FORMULA_START = /^[=+\-@\t\r]/;
 
 export const CSV_CONTENT_TYPE = "text/csv; charset=utf-8";
+
+export const CSV_BOM = "\uFEFF";
+
+export const CSV_LINE_END = "\r\n";
+
+export const EXPORT_FILE_PREFIX = "stallalert";

@@ -1,3 +1,5 @@
+import { BOARD_LIMITS } from "./board";
+
 export enum ERROR_CODES {
     E_PAGE_NOT_FOUND = "E_PAGE_NOT_FOUND",
     E_INVALID_DATA = "E_INVALID_DATA",
@@ -7,8 +9,6 @@ export enum ERROR_CODES {
     E_NOT_FOUND = "E_NOT_FOUND",
     E_TOO_MANY_REQUESTS = "E_TOO_MANY_REQUESTS",
     E_PAYLOAD_TOO_LARGE = "E_PAYLOAD_TOO_LARGE",
-    // File errors (spec C7): the whole upload is rejected and nothing is stored.
-    // Same values as FileErrorCode in constant/board.ts.
     FILE_TOO_LARGE = "FILE_TOO_LARGE",
     UNSUPPORTED_FILE = "UNSUPPORTED_FILE",
     INVALID_ENCODING = "INVALID_ENCODING",
@@ -27,7 +27,6 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
     E_INVALID_DATA: {
         message: "Please provide valid data",
     },
-
     E_INTERNAL_SERVER_ERROR: {
         message: "Internal Server Error",
     },
@@ -47,7 +46,7 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The request body is too large.",
     },
     FILE_TOO_LARGE: {
-        message: "The file is larger than 5 MB.",
+        message: `The file is larger than ${BOARD_LIMITS.MAX_FILE_BYTES / 1024 / 1024} MB.`,
     },
     UNSUPPORTED_FILE: {
         message: "Upload a .csv file.",
@@ -59,7 +58,7 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The file is empty.",
     },
     TOO_MANY_ROWS: {
-        message: "The file has more than 10,000 candidates.",
+        message: `The file has more than ${BOARD_LIMITS.MAX_RECORDS.toLocaleString("en-US")} candidates.`,
     },
     MISSING_HEADERS: {
         message: "Required columns are missing.",
@@ -71,11 +70,12 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The file is not valid CSV.",
     },
     VALUE_TOO_LONG: {
-        message: "Some values are longer than 255 characters.",
+        message: "Some values are too long.",
     },
 };
 
 export enum ApiResponseMessages {
     SUCCESS = "SUCCESS",
     INTERNAL_SERVER_ERROR = "Internal Server Error",
+    SUCCESS_MESSAGE = "Success",
 }

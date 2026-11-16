@@ -26,7 +26,10 @@ const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "s
 const REFERENCE_DATE = "2026-11-13";
 
 const makeApi = async (): Promise<Express> => {
-    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), { configured: false, model: null });
+    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), {
+        configured: false,
+        model: null,
+    });
     const importService = await newImportService(await newImportRepo(), configService);
     const app = express();
     app.use(express.json());
@@ -43,7 +46,9 @@ const upload = (app: Express, bytes: Buffer, fileName = "sample-b.csv", contentT
         .attach("file", bytes, { filename: fileName, contentType });
 
 const countRows = async (table: string): Promise<number> => {
-    const [row] = await sequelize.query<{ total: number }>(`SELECT COUNT(*) AS total FROM ${table}`, { type: QueryTypes.SELECT });
+    const [row] = await sequelize.query<{ total: number }>(`SELECT COUNT(*) AS total FROM ${table}`, {
+        type: QueryTypes.SELECT,
+    });
     return Number(row.total);
 };
 
@@ -70,7 +75,15 @@ describe("POST /api/v1/imports", () => {
         const view = res.body.response;
         expect(view.alreadyImported).toBe(false);
         expect(view.import).toMatchObject({ fileName: "sample-b.csv", recordCount: 43, fileSize: SAMPLE_B.length });
-        expect(view.counts).toEqual({ total: 43, valid: 32, invalid: 11, terminal: 5, onHold: 0, stalled: 18, notStalled: 9 });
+        expect(view.counts).toEqual({
+            total: 43,
+            valid: 32,
+            invalid: 11,
+            terminal: 5,
+            onHold: 0,
+            stalled: 18,
+            notStalled: 9,
+        });
         expect(view.queue.total).toBe(18);
         expect(view.queue.items.map((item: any) => item.candidateId)).toEqual(
             EXPECTED_B.default_stages.queue.map((item: any) => item.candidate_id)
@@ -101,10 +114,28 @@ describe("POST /api/v1/imports", () => {
 
     it.each([
         ["an empty file", Buffer.from(""), "empty.csv", HttpStatus.UNPROCESSABLE_ENTITY, ERROR_CODES.EMPTY_FILE],
-        ["missing columns", Buffer.from("candidate_id,name\n001,Ana"), "board.csv", HttpStatus.UNPROCESSABLE_ENTITY, ERROR_CODES.MISSING_HEADERS],
-        ["text that is not UTF-8", Buffer.from([0x61, 0xff, 0x0a]), "board.csv", HttpStatus.UNPROCESSABLE_ENTITY, ERROR_CODES.INVALID_ENCODING],
+        [
+            "missing columns",
+            Buffer.from("candidate_id,name\n001,Ana"),
+            "board.csv",
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            ERROR_CODES.MISSING_HEADERS,
+        ],
+        [
+            "text that is not UTF-8",
+            Buffer.from([0x61, 0xff, 0x0a]),
+            "board.csv",
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            ERROR_CODES.INVALID_ENCODING,
+        ],
         ["a spreadsheet file", SAMPLE_B, "board.xlsx", HttpStatus.UNSUPPORTED_MEDIA_TYPE, ERROR_CODES.UNSUPPORTED_FILE],
-        ["a file over 5 MB", Buffer.alloc(5 * 1024 * 1024 + 1, "a"), "big.csv", HttpStatus.PAYLOAD_TOO_LARGE, ERROR_CODES.FILE_TOO_LARGE],
+        [
+            "a file over 5 MB",
+            Buffer.alloc(5 * 1024 * 1024 + 1, "a"),
+            "big.csv",
+            HttpStatus.PAYLOAD_TOO_LARGE,
+            ERROR_CODES.FILE_TOO_LARGE,
+        ],
     ])("rejects %s and stores nothing", async (_case, bytes, fileName, status, code) => {
         const res = await upload(app, bytes, fileName);
 
@@ -169,13 +200,19 @@ describe("GET /api/v1/imports/:id", () => {
     });
 
     it("filters by recruiter and search text, and pages the queue", async () => {
-        const byRecruiter = await request(app).get(`/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&recruiter=Recruiter A`);
+        const byRecruiter = await request(app).get(
+            `/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&recruiter=Recruiter A`
+        );
         expect(byRecruiter.body.response.queue.total).toBe(7);
 
-        const bySearch = await request(app).get(`/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&search=hana`);
+        const bySearch = await request(app).get(
+            `/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&search=hana`
+        );
         expect(bySearch.body.response.queue.items.map((item: any) => item.candidateId)).toEqual(["127"]);
 
-        const page2 = await request(app).get(`/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&page=2&pageSize=5`);
+        const page2 = await request(app).get(
+            `/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}&page=2&pageSize=5`
+        );
         expect(page2.body.response.queue.items.map((item: any) => item.rank)).toEqual([6, 7, 8, 9, 10]);
         expect(page2.body.response.queue.total).toBe(18);
     });
@@ -183,9 +220,16 @@ describe("GET /api/v1/imports/:id", () => {
     it("uses new stage thresholds straight away", async () => {
         const stages = (await request(app).get("/api/v1/stages")).body.response;
         const allSeven = stages.stages.map(({ name, type, thresholdDays, aliases, actionCode }: any) => ({
-            name, type, aliases, actionCode, thresholdDays: type === "watched" ? 7 : thresholdDays,
+            name,
+            type,
+            aliases,
+            actionCode,
+            thresholdDays: type === "watched" ? 7 : thresholdDays,
         }));
-        await request(app).put("/api/v1/stages").send({ version: stages.version, stages: allSeven }).expect(HttpStatus.OK);
+        await request(app)
+            .put("/api/v1/stages")
+            .send({ version: stages.version, stages: allSeven })
+            .expect(HttpStatus.OK);
 
         const res = await request(app).get(`/api/v1/imports/${importId}?referenceDate=${REFERENCE_DATE}`);
         expect(res.body.response.counts.stalled).toBe(20);
@@ -215,6 +259,38 @@ describe("GET /api/v1/imports/:id", () => {
     });
 });
 
+describe("stored dates", () => {
+    it("keeps real dates as DATE, a wrong date as a flag, and still reports the wrong date", async () => {
+        const board = Buffer.from(
+            "candidate_id,name,role,stage,stage_entered_at,recruiter,last_activity_at,last_contacted_at\n" +
+                "501,Ana Ruiz,QA,Offer,2026-11-01,Lee,2026-02-30,\n"
+        );
+        const importId = (await upload(app, board, "dates.csv")).body.response.import.id;
+
+        const [stored] = await sequelize.query<Record<string, unknown>>(
+            `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
+                    last_contacted_at AS contacted, invalid_dates AS invalid
+             FROM import_records WHERE import_id = ?`,
+            { replacements: [importId], type: QueryTypes.SELECT }
+        );
+        expect(stored).toEqual({
+            entered: "2026-11-01",
+            activity: null,
+            contacted: null,
+            invalid: ["last_activity_at"],
+        });
+
+        const errors = await request(app).get(`/api/v1/imports/${importId}/errors?referenceDate=${REFERENCE_DATE}`);
+        expect(errors.body.response.items).toEqual([
+            {
+                recordNumber: 2,
+                candidateId: "501",
+                errors: [{ field: "last_activity_at", code: "INVALID_DATE", problem: "not a real YYYY-MM-DD date" }],
+            },
+        ]);
+    });
+});
+
 describe("other import endpoints", () => {
     let importId: number;
 
@@ -225,9 +301,13 @@ describe("other import endpoints", () => {
     it("GET /:id/errors lists the 11 row errors, in pages", async () => {
         const all = await request(app).get(`/api/v1/imports/${importId}/errors?referenceDate=${REFERENCE_DATE}`);
         expect(all.body.response.total).toBe(11);
-        expect(all.body.response.items.map((row: any) => row.recordNumber)).toEqual([3, 16, 17, 19, 20, 21, 27, 29, 30, 37, 42]);
+        expect(all.body.response.items.map((row: any) => row.recordNumber)).toEqual([
+            3, 16, 17, 19, 20, 21, 27, 29, 30, 37, 42,
+        ]);
 
-        const page = await request(app).get(`/api/v1/imports/${importId}/errors?referenceDate=${REFERENCE_DATE}&page=3&pageSize=5`);
+        const page = await request(app).get(
+            `/api/v1/imports/${importId}/errors?referenceDate=${REFERENCE_DATE}&page=3&pageSize=5`
+        );
         expect(page.body.response.items.map((row: any) => row.recordNumber)).toEqual([42]);
     });
 

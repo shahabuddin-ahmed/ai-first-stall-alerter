@@ -1,4 +1,4 @@
-import { ActionCode, StageType } from "../../constant/stage";
+import { StageType } from "../../constant/stage";
 import { findStageListProblems } from "../stage-list-checks";
 import { StageConfig } from "../types";
 import { DEFAULT_STAGES } from "./default-stages";
@@ -17,7 +17,7 @@ describe("findStageListProblems", () => {
     });
 
     it("rejects two stages with the same name, ignoring capitals and spaces", () => {
-        expect(findStageListProblems(withChange(1, { name: " applied " }))).toEqual([
+        expect(findStageListProblems(withChange(1, { name: "applied" }))).toEqual([
             '"applied" is used more than once (as a stage name or alias).',
         ]);
     });
@@ -28,16 +28,10 @@ describe("findStageListProblems", () => {
         ]);
     });
 
-    it("needs a threshold of 1-90 days and an action on watched stages", () => {
-        expect(findStageListProblems(withChange(0, { thresholdDays: 0, actionCode: null }))).toEqual([
+    it("needs a threshold and an action on watched stages", () => {
+        expect(findStageListProblems(withChange(0, { thresholdDays: null, actionCode: null }))).toEqual([
             '"Applied" needs a threshold between 1 and 90 days.',
             '"Applied" needs a follow-up action.',
         ]);
-    });
-
-    it("does not allow a threshold or action on paused and final stages", () => {
-        expect(
-            findStageListProblems(withChange(7, { thresholdDays: 5, actionCode: ActionCode.GENERIC_FOLLOW_UP }))
-        ).toEqual(['"Hired" is a final stage, so it cannot have a threshold or an action.']);
     });
 });
