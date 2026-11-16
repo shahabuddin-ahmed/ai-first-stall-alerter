@@ -78,9 +78,11 @@ Redis would only be needed if the API ran as several copies (README "next steps"
 ```
 web/        routes + controllers (Joi validation, error mapping)          ← presentation
 service/    use cases: import board, get queue, export, insights, stages, settings  ← application
-rules/      pure rules: csv-reader · row-checks · dates · stage-matcher · analyse-board · messages · bottlenecks · facts · export
-repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) ← infrastructure
-ai/         HTTP insights generator · fake generator · guardrails · prompt         ← infrastructure
+  ai.ts           AI service: answer check, error codes, 30-min model list cache
+  ai-provider.ts  AI provider: OpenRouter chat + model list; prompt text in constant/ai-prompt.ts
+  pipeline-csv.ts · pipeline-analysis.ts · pipeline-messages.ts · pipeline-types.ts   pure pipeline logic: read/write CSV · row errors, stalls, rank, bottlenecks · messages, AI facts
+repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) + stored-record mapping ← infrastructure
+utils/      general helpers: dates, hashing, http (shared axios request)
 infra/      MySQL connection, config cache
 ```
 
@@ -217,15 +219,16 @@ Regenerate from the repo root with `python3 scripts/generate_expected.py --write
 ## Part E: AI layer
 
 ### E1. When AI runs
-AI runs only when **both**: the server has `AI_API_KEY` and `AI_MODEL` (`.env`) **and** the team setting
-**Use AI drafts** is on (Settings page, stored in the DB). One provider call per distinct report (import + reference
+AI runs only when **both**: the server has `AI_API_KEY` (`.env`) **and** the team setting
+**Use AI drafts** is on (Settings page, stored in the DB). The model is also picked on the Settings page, from the
+OpenRouter models that support JSON output (list saved in the DB, refreshed every 30 minutes). One provider call per distinct report (import + reference
 date + stage config version + N + prompt version + model); repeats come from the cache; simultaneous requests share
 one call. Zero calls when AI is off or not set up, the file is rejected, nothing is stalled, or the user filters,
 sorts or exports. No automatic retries; a **Retry** button for recoverable failures. `/insights` is rate-limited.
 
 ### E2. Backend `.env` (server setup and secrets only)
-`AI_API_KEY` · `AI_MODEL` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
-`AI_MAX_OUTPUT_TOKENS` · `AI_MODE` (`live` | `fake` for tests) · `MYSQL_*`. Validated at startup.
+`AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
+`AI_MAX_OUTPUT_TOKENS` · `MYSQL_*`. Validated at startup.
 
 ### E3. Facts sent (allowlist, nothing else)
 Per rank 1…N: `rank`, `action_code`, `stage_threshold`, `days_in_stage`, `overdue_days`, `days_since_contact` or null,
@@ -243,7 +246,7 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
 - Cache only validated, unfilled output; fill names for the current report on every hit; never cache failures.
 
 ### E5. Testing the AI layer
-A fake generator in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown rank, too long, digits,
+A mock AI provider in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown rank, too long, digits,
 URL, bad placeholder, timeout, refusal, rate limit, no key, setting off, cache hit (0 calls), two simultaneous requests
 (1 call), failure not cached, same facts with different names. Day 1 smoke test with a real key; manual `npm run eval`
 on fictional cases, target ≥ 95% guardrail pass, defects and fixes logged.
@@ -260,7 +263,8 @@ on fictional cases, target ≥ 95% guardrail pass, defects and fixes logged.
 | GET | `/imports/:id/export` | CSV download |
 | DELETE | `/imports/:id` | Delete the import, its rows and cached AI results |
 | GET · PUT | `/stages` | Read or save the hiring stages |
-| GET · PUT | `/settings` | Read or save team settings; shows whether AI is set up (never the key) |
+| GET · PUT | `/settings` | Read or save team settings (AI on/off, AI model); shows whether AI is set up (never the key) |
+| GET | `/settings/models` | AI models to pick from (cached for 30 minutes) |
 | GET | `/health` | API and database status (200 or 503) |
 
 Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7 or `E_INVALID_DATA` (400).
@@ -273,7 +277,8 @@ Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7 
 | `imports` | id, file_name, file_hash (UNIQUE), record_count, created_at |
 | `import_records` | import_id (FK cascade), record_number, field_count, the 5 text columns, the 3 dates as DATE, invalid_dates (which dates were not real dates) |
 | `stages` | name, type, threshold, position, aliases (JSON), action_code; plus a `config_version` |
-| `settings` | use_ai_drafts, updated_at |
+| `settings` | use_ai_drafts, ai_model, stages_version, updated_at |
+| `ai_models` | model_id (unique), name, context_length; refreshed every 30 minutes |
 | `ai_insights` | cache_key (UNIQUE), model, prompt_version, unfilled rank-keyed output (JSON), created_at |
 | `llm_calls` | cache_key, requested/served model, tokens, cost, latency, status, error code (never text) |
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/async-hander";
+import { asyncHandler } from "../../middleware/async-handler";
 import { InsightControllerInterface } from "../../controller/v1/insight";
 
 export const newInsightRouter = async (insightController: InsightControllerInterface): Promise<Router> => {
@@ -9,5 +9,3 @@ export const newInsightRouter = async (insightController: InsightControllerInter
 
     return router;
 };
-
-export default newInsightRouter;

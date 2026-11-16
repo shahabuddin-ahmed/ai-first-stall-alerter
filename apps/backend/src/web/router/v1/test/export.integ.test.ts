@@ -3,11 +3,12 @@ import fs from "fs";
 import path from "path";
 import request from "supertest";
 import { parse } from "csv-parse/sync";
-import { AiErrorCode, AiNoteStatus, MessageSource } from "../../../../constant/ai";
+import { AiErrorCode, AiNoteStatus, MessageSource, DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { EXPORT_COLUMNS } from "../../../../constant/export";
 import { HttpStatus } from "../../../../constant/http";
-import { FakeAiGenerator } from "../../../../ai/fake-generator";
-import { AiError, AiGenerator, GenerationResult } from "../../../../ai/generator";
+import { AiService } from "../../../../service/ai";
+import { AiError, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
+import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { newAiInsightRepo } from "../../../../repo/ai-insight";
@@ -15,7 +16,8 @@ import { newImportRepo } from "../../../../repo/import";
 import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
-import { InsightFacts } from "../../../../rules/ai-facts";
+import { InsightFacts } from "../../../../service/pipeline-messages";
+import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newExportService } from "../../../../service/export";
 import { newImportService } from "../../../../service/import";
@@ -38,29 +40,30 @@ const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "s
     .default_stages;
 const REFERENCE_DATE = "2026-11-13";
 
-class CountingGenerator implements AiGenerator {
-    readonly model = "test-model";
+class CountingGenerator implements AiProviderInterface {
     calls = 0;
-    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) => new FakeAiGenerator().generate(facts);
+    behaviour: (facts: InsightFacts) => Promise<CompletionResult> = async (facts) => mockCompletion(facts);
 
-    async generate(facts: InsightFacts): Promise<GenerationResult> {
+    async createCompletion(facts: InsightFacts): Promise<CompletionResult> {
         this.calls += 1;
         return this.behaviour(facts);
     }
+
+    async fetchModels() {
+        return new MockAiProvider().fetchModels();
+    }
 }
 
-const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
-    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), {
-        configured: generator !== null,
-        model: generator?.model ?? null,
-    });
+const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
+    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
         importService,
         configService,
         await newAiInsightRepo(),
         await newLlmCallRepo(),
-        generator,
+        aiService,
         5
     );
     const exportService = await newExportService(importService, insightService);
@@ -69,7 +72,7 @@ const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
     app.use("/api/v1/imports/:id/insights", await newInsightRouter(await newInsightV1Controller(insightService)));
     app.use("/api/v1/imports/:id/export", await newExportRouter(await newExportV1Controller(exportService)));
     app.use("/api/v1/imports", await newImportRouter(await newImportV1Controller(importService)));
-    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService)));
+    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService, aiService)));
     app.use(globalErrorHandler);
     return app;
 };
@@ -157,20 +160,32 @@ describe("GET /api/v1/imports/:id/export", () => {
         rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
-    it("reuses one AI draft per action for every row, with each candidate's name filled in", async () => {
-        await request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate: REFERENCE_DATE });
+    it("uses AI drafts for the top 5 like the insights screen, and templates for the rest", async () => {
+        const insights = await request(app)
+            .post(`/api/v1/imports/${importId}/insights`)
+            .send({ referenceDate: REFERENCE_DATE });
 
         const rows = readCsv((await download(app, importId)).body);
+        const top = rows.filter((row) => Number(row.rank) <= 5);
+        const rest = rows.filter((row) => Number(row.rank) > 5);
 
         expect(rows).toHaveLength(EXPECTED_B.queue.length);
-        rows.forEach((row) => {
+        expect(top.map((row) => row.message_draft)).toEqual(
+            insights.body.response.drafts.map((draft: { text: string }) => draft.text)
+        );
+        top.forEach((row) => {
             expect([row.ai_note_status, row.message_source]).toEqual([AiNoteStatus.AI_DRAFT, MessageSource.AI_DRAFT]);
             expect(row.message_draft).toContain(row.recruiter);
             expect(row.message_draft).not.toContain("{{");
         });
-        const offers = rows.filter((row) => row.stage === "Offer");
-        expect(offers.length).toBeGreaterThan(1);
-        offers.forEach((row) => expect(row.message_draft).toMatch(/^Hi .+, I wanted to check in on the .+ offer\./));
+        expect(rest.length).toBeGreaterThan(0);
+        rest.forEach((row) => {
+            expect([row.ai_note_status, row.message_source]).toEqual([
+                AiNoteStatus.NOT_IN_TOP_N,
+                MessageSource.TEMPLATE,
+            ]);
+            expect(row.message_draft).not.toContain("I am following up about");
+        });
         expect(generator.calls).toBe(1);
     });
 
@@ -187,7 +202,10 @@ describe("GET /api/v1/imports/:id/export", () => {
     });
 
     it("marks every row as disabled when the team turned AI drafts off", async () => {
-        await request(app).put("/api/v1/settings").send({ useAiDrafts: false }).expect(HttpStatus.OK);
+        await request(app)
+            .put("/api/v1/settings")
+            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .expect(HttpStatus.OK);
 
         const rows = readCsv((await download(app, importId)).body);
 

@@ -1,28 +1,26 @@
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
-import { SettingRepoInterface } from "../repo/setting";
+import { SettingRepoInterface, SettingsUpdate } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
-import { findStageListProblems } from "../rules/stage-list-checks";
-import { StageConfig, StageInput } from "../rules/types";
+import { findStageListProblems } from "./pipeline-analysis";
+import { StageConfig, StageInput } from "./pipeline-types";
+import { StageInterface } from "../model/stage";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
+import { AiServiceInterface } from "./ai";
 
 export interface ConfigSnapshot {
     stages: StageConfig[];
     stagesVersion: number;
     useAiDrafts: boolean;
-}
-
-export interface AiSetup {
-    configured: boolean;
-    model: string | null;
+    aiModel: string;
 }
 
 export interface SettingsView {
     useAiDrafts: boolean;
     aiConfigured: boolean;
-    aiModel: string | null;
+    aiModel: string;
     stagesVersion: number;
 }
 
@@ -31,8 +29,17 @@ export interface ConfigServiceInterface {
     getSnapshot(): ConfigSnapshot;
     saveStages(stages: StageInput[], expectedVersion: number): Promise<ConfigSnapshot>;
     getSettings(): SettingsView;
-    updateSettings(update: { useAiDrafts: boolean }): Promise<SettingsView>;
+    updateSettings(update: SettingsUpdate): Promise<SettingsView>;
 }
+
+const toStageConfig = (stage: StageInterface): StageConfig => ({
+    name: stage.name,
+    type: stage.type,
+    thresholdDays: stage.thresholdDays,
+    position: stage.position,
+    aliases: stage.aliases,
+    actionCode: stage.actionCode,
+});
 
 export class ConfigService implements ConfigServiceInterface {
     private snapshot!: ConfigSnapshot;
@@ -41,15 +48,20 @@ export class ConfigService implements ConfigServiceInterface {
     constructor(
         private stageRepo: StageRepoInterface,
         private settingRepo: SettingRepoInterface,
-        private aiSetup: AiSetup
+        private aiService: AiServiceInterface
     ) {}
 
     async load(): Promise<void> {
         const [stages, settings] = await Promise.all([this.stageRepo.list(), this.settingRepo.get()]);
-        if (!settings || stages.length === 0) {
+        if (!settings || !stages.length) {
             throw new Error("No hiring stages or settings in the database. Run `yarn db:seed` first.");
         }
-        this.snapshot = { stages, stagesVersion: settings.stagesVersion, useAiDrafts: settings.useAiDrafts };
+        this.snapshot = {
+            stages: stages.map(toStageConfig),
+            stagesVersion: settings.stagesVersion,
+            useAiDrafts: settings.useAiDrafts,
+            aiModel: settings.aiModel,
+        };
     }
 
     getSnapshot(): ConfigSnapshot {
@@ -76,8 +88,8 @@ export class ConfigService implements ConfigServiceInterface {
 
         return this.oneAtATime(async () => {
             await withTransaction(async (transaction) => {
-                const stillCurrent = await this.settingRepo.bumpStagesVersion(expectedVersion, transaction);
-                if (!stillCurrent) {
+                const [updated] = await this.settingRepo.bumpStagesVersion(expectedVersion, transaction);
+                if (updated !== 1) {
                     throw new ConflictException(ERROR_CODES.E_CONFLICT, "", [
                         "The hiring stages were changed by someone else. Reload the page and try again.",
                     ]);
@@ -90,18 +102,18 @@ export class ConfigService implements ConfigServiceInterface {
     }
 
     getSettings(): SettingsView {
-        const { useAiDrafts, stagesVersion } = this.getSnapshot();
-        return {
-            useAiDrafts,
-            aiConfigured: this.aiSetup.configured,
-            aiModel: this.aiSetup.model,
-            stagesVersion,
-        };
+        const { useAiDrafts, aiModel, stagesVersion } = this.getSnapshot();
+        return { useAiDrafts, aiConfigured: this.aiService.isConfigured(), aiModel, stagesVersion };
     }
 
-    async updateSettings(update: { useAiDrafts: boolean }): Promise<SettingsView> {
+    async updateSettings(update: SettingsUpdate): Promise<SettingsView> {
+        if (update.aiModel !== this.snapshot.aiModel && !(await this.aiService.isModelAvailable(update.aiModel))) {
+            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "The settings cannot be saved", [
+                `"${update.aiModel}" is not an available AI model.`,
+            ]);
+        }
         return this.oneAtATime(async () => {
-            await this.settingRepo.setUseAiDrafts(update.useAiDrafts);
+            await this.settingRepo.update(update);
             await this.load();
             return this.getSettings();
         });
@@ -126,9 +138,9 @@ export class ConfigService implements ConfigServiceInterface {
 export const newConfigService = async (
     stageRepo: StageRepoInterface,
     settingRepo: SettingRepoInterface,
-    aiSetup: AiSetup
+    aiService: AiServiceInterface
 ): Promise<ConfigService> => {
-    const service = new ConfigService(stageRepo, settingRepo, aiSetup);
+    const service = new ConfigService(stageRepo, settingRepo, aiService);
     await service.load();
     return service;
 };

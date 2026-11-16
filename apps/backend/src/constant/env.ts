@@ -6,6 +6,10 @@ export enum NodeEnv {
 
 export const TEST_DATABASE_SUFFIX = "_test";
 
+export const DATABASE_CHARSET = "utf8mb4";
+
+export const DATABASE_COLLATION = "utf8mb4_0900_ai_ci";
+
 export enum DbCommand {
     MIGRATE = "migrate",
     MIGRATE_DOWN = "migrate:down",

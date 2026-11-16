@@ -1,8 +1,8 @@
 import "dotenv/config";
 import Joi from "joi";
 import { Options } from "sequelize";
-import { AiMode, ReasoningEffort } from "../constant/ai";
-import { NodeEnv, TEST_DATABASE_SUFFIX } from "../constant/env";
+import { ReasoningEffort } from "../constant/ai";
+import { DATABASE_CHARSET, DATABASE_COLLATION, NodeEnv, TEST_DATABASE_SUFFIX } from "../constant/env";
 
 interface AppConfig {
     NODE_ENV: NodeEnv;
@@ -21,12 +21,10 @@ interface DatabaseConfig {
 
 export interface AiConfig {
     AI_API_KEY: string;
-    AI_MODEL: string;
     AI_BASE_URL: string;
     AI_TOP_N: number;
     AI_TIMEOUT_MS: number;
     AI_MAX_OUTPUT_TOKENS: number;
-    AI_MODE: AiMode;
     AI_REASONING_EFFORT: ReasoningEffort;
 }
 
@@ -64,7 +62,6 @@ const envSchema = Joi.object<Env>({
         .when("NODE_ENV", { is: NodeEnv.PRODUCTION, then: Joi.required(), otherwise: Joi.string().default("root") }),
 
     AI_API_KEY: Joi.string().allow("").default(""),
-    AI_MODEL: Joi.string().allow("").default(""),
     AI_BASE_URL: Joi.string()
         .uri({ scheme: ["https", "http"] })
         .replace(/\/+$/, "")
@@ -72,9 +69,6 @@ const envSchema = Joi.object<Env>({
     AI_TOP_N: Joi.number().integer().min(1).max(20).default(5),
     AI_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(15000),
     AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(1500),
-    AI_MODE: Joi.string()
-        .valid(...Object.values(AiMode))
-        .default(AiMode.LIVE),
     AI_REASONING_EFFORT: Joi.string()
         .valid(...Object.values(ReasoningEffort))
         .default(ReasoningEffort.LOW),
@@ -114,17 +108,15 @@ const config: Config = {
         port: env.MYSQL_PORT,
         dialect: "mysql",
         pool: { max: 20, min: 5, idle: 10000 },
-        define: { timestamps: false, charset: "utf8mb4", collate: "utf8mb4_0900_ai_ci" },
+        define: { timestamps: false, charset: DATABASE_CHARSET, collate: DATABASE_COLLATION },
         logging: false,
     },
     AI: {
         AI_API_KEY: env.AI_API_KEY,
-        AI_MODEL: env.AI_MODEL,
         AI_BASE_URL: env.AI_BASE_URL,
         AI_TOP_N: env.AI_TOP_N,
         AI_TIMEOUT_MS: env.AI_TIMEOUT_MS,
         AI_MAX_OUTPUT_TOKENS: env.AI_MAX_OUTPUT_TOKENS,
-        AI_MODE: env.AI_MODE,
         AI_REASONING_EFFORT: env.AI_REASONING_EFFORT,
     },
     SECURITY: {

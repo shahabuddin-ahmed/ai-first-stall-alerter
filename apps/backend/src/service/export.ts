@@ -1,9 +1,9 @@
 import { AiNoteStatus, MessageSource } from "../constant/ai";
 import { EXPORT_FILE_PREFIX, ExportColumn } from "../constant/export";
-import { buildExportCsv, ExportRow } from "../rules/export-csv";
-import { fillPlaceholders, RECIPIENT_LABELS } from "../rules/messages";
-import { filterQueue } from "../rules/queue-filter";
-import { QueueItem } from "../rules/types";
+import { buildExportCsv, ExportRow } from "./pipeline-csv";
+import { fillPlaceholders, RECIPIENT_LABELS } from "./pipeline-messages";
+import { filterQueue } from "./pipeline-analysis";
+import { QueueItem } from "./pipeline-types";
 import { ImportServiceInterface, ReportQuery } from "./import";
 import { InsightServiceInterface, SavedDrafts } from "./insight";
 
@@ -18,10 +18,16 @@ export interface ExportServiceInterface {
 }
 
 const noteStatusOf = (item: QueueItem, saved: SavedDrafts): AiNoteStatus => {
-    if (saved.status === AiNoteStatus.AI_DRAFT && !saved.draftsByAction.has(item.actionCode)) {
+    if (saved.status !== AiNoteStatus.AI_DRAFT) {
+        return saved.status;
+    }
+    if (item.rank > saved.topN) {
+        return AiNoteStatus.NOT_IN_TOP_N;
+    }
+    if (!saved.draftsByAction.has(item.actionCode)) {
         return AiNoteStatus.UNAVAILABLE;
     }
-    return saved.status;
+    return AiNoteStatus.AI_DRAFT;
 };
 
 export class ExportService implements ExportServiceInterface {

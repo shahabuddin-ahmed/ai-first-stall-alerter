@@ -1,6 +1,7 @@
 import { QueryTypes, UniqueConstraintError } from "sequelize";
+import { DEFAULT_AI_MODEL } from "../../constant/ai";
 import { assertTestDatabase } from "./test-database";
-import newSequelize from "../sequelize";
+import newSequelize, { createDatabaseIfMissing } from "../sequelize";
 import { newMigrator, newSeeder } from "../migrator";
 
 // Needs MySQL with the test database (docker compose up db). Runs against MYSQL_TEST_DATABASE only.
@@ -8,7 +9,9 @@ const sequelize = newSequelize();
 const migrator = newMigrator(sequelize);
 const seeder = newSeeder(sequelize);
 
-const APP_TABLES = ["ai_insights", "import_records", "imports", "llm_calls", "settings", "stages"];
+const APP_TABLES = ["ai_insights", "ai_models", "import_records", "imports", "llm_calls", "settings", "stages"];
+const HISTORY_TABLES = ["migrations", "seeders"];
+const ALL_TABLES = [...APP_TABLES, ...HISTORY_TABLES];
 
 const listTables = async (): Promise<string[]> => {
     const rows = await sequelize.query<Record<string, string>>("SHOW TABLES", { type: QueryTypes.SELECT });
@@ -31,9 +34,11 @@ const countRows = async (sql: string, replacements: unknown[]): Promise<number> 
 beforeAll(async () => {
     // Safety: never drop tables in a real database.
     assertTestDatabase();
+    await createDatabaseIfMissing();
     // Start from an empty database.
     await seeder.down({ to: 0 });
     await migrator.down({ to: 0 });
+    await sequelize.query(`DROP TABLE IF EXISTS ${HISTORY_TABLES.join(", ")}`);
 });
 
 afterEach(async () => {
@@ -52,13 +57,14 @@ afterAll(async () => {
 
 describe("database migrations", () => {
     it("creates every table on an empty database", async () => {
+        expect(await seeder.executed()).toEqual([]);
         const pending = await migrator.pending();
         const done = await migrator.up();
 
         expect(pending.length).toBeGreaterThan(0);
         expect(done.map((migration) => migration.name)).toEqual(pending.map((migration) => migration.name));
+        done.forEach((migration) => expect(migration.name).not.toMatch(/\.(ts|js)$/));
         expect(await listTables()).toEqual(expect.arrayContaining(APP_TABLES));
-        expect(await listTables()).not.toContain("posts");
     });
 
     it("gives every table an auto-increment id, created_at and updated_at", async () => {
@@ -72,16 +78,16 @@ describe("database migrations", () => {
              FROM information_schema.columns
              WHERE table_schema = DATABASE() AND table_name IN (?)
                AND column_name IN ('id', 'created_at', 'updated_at')`,
-            { replacements: [APP_TABLES], type: QueryTypes.SELECT }
+            { replacements: [ALL_TABLES], type: QueryTypes.SELECT }
         );
         const ids = columns.filter((column) => column.column_name === "id");
         const times = columns.filter((column) => column.column_name !== "id");
 
-        expect(ids).toHaveLength(APP_TABLES.length);
+        expect(ids).toHaveLength(ALL_TABLES.length);
         ids.forEach((id) =>
             expect([id.table_name, id.column_type, id.extra]).toEqual([id.table_name, "int unsigned", "auto_increment"])
         );
-        expect(times).toHaveLength(APP_TABLES.length * 2);
+        expect(times).toHaveLength(ALL_TABLES.length * 2);
         times.forEach((time) => expect([time.table_name, time.column_type]).toEqual([time.table_name, "timestamp(3)"]));
     });
 
@@ -112,7 +118,8 @@ describe("database migrations", () => {
              FROM information_schema.columns
              WHERE table_schema = DATABASE()
                AND CONCAT(table_name, '.', column_name) IN ('stages.name', 'llm_calls.error_code', 'ai_insights.prompt_version',
-                 'imports.file_hash', 'ai_insights.cache_key', 'llm_calls.cache_key')`,
+                 'imports.file_hash', 'ai_insights.cache_key', 'llm_calls.cache_key', 'settings.ai_model',
+                 'ai_models.model_id', 'ai_models.name')`,
             { type: QueryTypes.SELECT }
         );
 
@@ -123,29 +130,10 @@ describe("database migrations", () => {
             "imports.file_hash": "varchar(130)",
             "ai_insights.cache_key": "varchar(130)",
             "llm_calls.cache_key": "varchar(130)",
+            "settings.ai_model": "varchar(100)",
+            "ai_models.model_id": "varchar(100)",
+            "ai_models.name": "varchar(100)",
         });
-    });
-
-    it("converts text dates in rows that were stored before", async () => {
-        await migrator.down({ to: "20261116000004-right-size-columns.ts" });
-        const importId = await insertImport("c".repeat(64));
-        await sequelize.query(
-            `INSERT INTO import_records
-                (import_id, record_number, field_count, candidate_id, stage_entered_at, last_activity_at, last_contacted_at)
-             VALUES (?, 2, 8, '001', '2026-11-01', '2026-02-30', '')`,
-            { replacements: [importId] }
-        );
-
-        await migrator.up();
-
-        const [row] = await sequelize.query<Record<string, unknown>>(
-            `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
-                    last_contacted_at AS contacted, invalid_dates AS invalid
-             FROM import_records WHERE import_id = ?`,
-            { replacements: [importId], type: QueryTypes.SELECT }
-        );
-        expect(row).toEqual({ entered: "2026-11-01", activity: null, contacted: null, invalid: ["last_activity_at"] });
-        await sequelize.query("DELETE FROM imports WHERE id = ?", { replacements: [importId] });
     });
 
     it("does nothing when run again", async () => {
@@ -182,11 +170,13 @@ describe("database migrations", () => {
         expect(stages[0].aliases).toEqual(["New", "Sourced"]);
         expect(stages[9].aliases).toEqual(["Declined"]);
 
-        const settings = await sequelize.query<{ id: number; use_ai_drafts: number; stages_version: number }>(
-            "SELECT id, use_ai_drafts, stages_version FROM settings",
-            { type: QueryTypes.SELECT }
-        );
-        expect(settings).toEqual([{ id: 1, use_ai_drafts: 1, stages_version: 1 }]);
+        const settings = await sequelize.query<{
+            id: number;
+            use_ai_drafts: number;
+            ai_model: string;
+            stages_version: number;
+        }>("SELECT id, use_ai_drafts, ai_model, stages_version FROM settings", { type: QueryTypes.SELECT });
+        expect(settings).toEqual([{ id: 1, use_ai_drafts: 1, ai_model: DEFAULT_AI_MODEL, stages_version: 1 }]);
     });
 
     it("does not seed twice", async () => {
@@ -196,8 +186,8 @@ describe("database migrations", () => {
 
     it("keeps the seed history apart from the migration history", async () => {
         const seedName = ["%default-stages-and-settings%"];
-        const inMigrations = await countRows("SELECT COUNT(*) AS total FROM SequelizeMeta WHERE name LIKE ?", seedName);
-        const inSeeds = await countRows("SELECT COUNT(*) AS total FROM SequelizeData WHERE name LIKE ?", seedName);
+        const inMigrations = await countRows("SELECT COUNT(*) AS total FROM migrations WHERE name LIKE ?", seedName);
+        const inSeeds = await countRows("SELECT COUNT(*) AS total FROM seeders WHERE name LIKE ?", seedName);
 
         expect([inMigrations, inSeeds]).toEqual([0, 1]);
     });

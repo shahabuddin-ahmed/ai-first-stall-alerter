@@ -22,12 +22,18 @@ export abstract class Controller {
             code: isServerError ? ERROR_CODES.E_INTERNAL_SERVER_ERROR : ApiResponseMessages.SUCCESS,
             message: requestedData.message || defaultMessage,
             response: requestedData.response || null,
-            errors: requestedData.errors?.length
-                ? requestedData.errors
-                : isServerError
-                  ? [`${requestedData.message}`]
-                  : [],
+            errors: this.errorsOf(requestedData, isServerError),
         } as ResponseType);
+    }
+
+    private errorsOf(requestedData: ResponseType, isServerError: boolean): string[] {
+        if (requestedData.errors?.length) {
+            return requestedData.errors;
+        }
+        if (isServerError) {
+            return [`${requestedData.message}`];
+        }
+        return [];
     }
 
     async validateRequest(schema: ObjectSchema, data: any): Promise<{ value?: any }> {
