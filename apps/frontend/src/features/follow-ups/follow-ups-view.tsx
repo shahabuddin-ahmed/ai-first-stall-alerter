@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { NoBoard } from '@/components/shared/no-board';
 import { PageState } from '@/components/shared/page-state';
 import { Pager } from '@/components/shared/pager';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -28,18 +29,6 @@ enum Tab {
 }
 
 const NO_FILTERS: Filters = { stage: '', recruiter: '', search: '' };
-
-function NoBoard() {
-  return (
-    <Card className="flex flex-col items-center gap-3 p-10 text-center">
-      <h1 className="text-lg font-semibold">No board is open</h1>
-      <p className="text-sm text-muted-foreground">Import a hiring-board CSV, or open one of your recent imports.</p>
-      <Link href="/imports" className={buttonVariants()}>
-        Go to Imports
-      </Link>
-    </Card>
-  );
-}
 
 function QueueEmpty({ view, onShowErrors }: { view: PipelineView; onShowErrors: () => void }) {
   if (view.counts.valid === 0) {

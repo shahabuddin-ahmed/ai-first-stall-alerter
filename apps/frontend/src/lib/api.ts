@@ -1,5 +1,6 @@
 import type {
   ApiEnvelope,
+  CsvFile,
   HealthReport,
   ImportList,
   InsightsView,
@@ -12,6 +13,7 @@ import type {
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const FILE_NAME = /filename="([^"]+)"/;
 
 export class ApiError extends Error {
   constructor(
@@ -27,6 +29,11 @@ export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Could not reach the StallAlert API.';
 }
 
+function apiErrorOf(payload: ApiEnvelope<unknown> | null): ApiError {
+  const message = payload?.message || payload?.errors?.[0] || 'Request failed';
+  return new ApiError(message, payload?.code ?? 'REQUEST_FAILED', payload?.errors ?? []);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // A FormData body sets its own multipart Content-Type
   const headers = new Headers(init?.headers);
@@ -38,8 +45,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const payload: ApiEnvelope<T> | null = await response.json().catch(() => null);
 
   if (!response.ok || !payload) {
-    const message = payload?.message || payload?.errors?.[0] || 'Request failed';
-    throw new ApiError(message, payload?.code ?? 'REQUEST_FAILED', payload?.errors ?? []);
+    throw apiErrorOf(payload);
   }
 
   return payload.response;
@@ -67,6 +73,18 @@ export const api = {
     request<Page<RowError>>(`/imports/${id}/errors?${new URLSearchParams({ referenceDate, page: String(page) })}`),
   getInsights: (id: number, referenceDate: string, retry: boolean) =>
     request<InsightsView>(`/imports/${id}/insights`, { method: 'POST', body: JSON.stringify({ referenceDate, retry }) }),
+  // The CSV is not a JSON envelope: keep the raw bytes (with the BOM Excel needs) and the text for the preview
+  getExport: async (id: number, referenceDate: string): Promise<CsvFile> => {
+    const response = await fetch(`${API_URL}/imports/${id}/export?${new URLSearchParams({ referenceDate })}`, {
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      throw apiErrorOf(await response.json().catch(() => null));
+    }
+    const bytes = await response.arrayBuffer();
+    const fileName = response.headers.get('Content-Disposition')?.match(FILE_NAME)?.[1] ?? 'stallalert-export.csv';
+    return { fileName, bytes, text: new TextDecoder().decode(bytes) };
+  },
   uploadImport: (file: File, referenceDate: string) => {
     const body = new FormData();
     body.append('file', file);
