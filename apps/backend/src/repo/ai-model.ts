@@ -9,12 +9,7 @@ export interface AiModelRepoInterface {
 
 export class AiModelRepo implements AiModelRepoInterface {
     public async list(): Promise<AiModelInterface[]> {
-        const models = await AiModel.findAll({
-            attributes: ["modelId", "name", "contextLength"],
-            order: [["name", "ASC"]],
-            raw: true,
-        });
-        return models as unknown as AiModelInterface[];
+        return AiModel.findAll({ attributes: ["modelId", "name", "contextLength"], order: [["name", "ASC"]] });
     }
 
     public async lastRefreshedAt(): Promise<Date | null> {

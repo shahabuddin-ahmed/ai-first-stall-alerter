@@ -8,27 +8,25 @@ export interface SettingsUpdate {
 }
 
 export interface SettingRepoInterface {
-    get(transaction?: Transaction): Promise<SettingInterface | null>;
-    update(update: SettingsUpdate): Promise<void>;
-    bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<boolean>;
+    get(): Promise<SettingInterface | null>;
+    update(update: SettingsUpdate): Promise<[number]>;
+    bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<[number]>;
 }
 
 export class SettingRepo implements SettingRepoInterface {
-    public async get(transaction?: Transaction): Promise<SettingInterface | null> {
-        const setting = await Setting.findByPk(SETTINGS_ID, { transaction });
-        return setting ? (setting.get({ plain: true }) as SettingInterface) : null;
+    public async get(): Promise<SettingInterface | null> {
+        return Setting.findByPk(SETTINGS_ID);
     }
 
-    public async update(update: SettingsUpdate): Promise<void> {
-        await Setting.update(update, { where: { id: SETTINGS_ID } });
+    public async update(update: SettingsUpdate): Promise<[number]> {
+        return Setting.update(update, { where: { id: SETTINGS_ID } });
     }
 
-    public async bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<boolean> {
-        const [affectedRows] = await Setting.update(
-            { stagesVersion: literal("stages_version + 1") as unknown as number },
+    public async bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<[number]> {
+        return Setting.update(
+            { stagesVersion: literal("stages_version + 1") },
             { where: { id: SETTINGS_ID, stagesVersion: expectedVersion }, transaction }
         );
-        return affectedRows === 1;
     }
 }
 

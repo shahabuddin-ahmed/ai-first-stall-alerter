@@ -5,6 +5,7 @@ import { SettingRepoInterface, SettingsUpdate } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
 import { findStageListProblems } from "../rules/stage-list-checks";
 import { StageConfig, StageInput } from "../rules/types";
+import { StageInterface } from "../model/stage";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
 import { AiModelServiceInterface } from "./ai-model";
@@ -31,6 +32,15 @@ export interface ConfigServiceInterface {
     updateSettings(update: SettingsUpdate): Promise<SettingsView>;
 }
 
+const toStageConfig = (stage: StageInterface): StageConfig => ({
+    name: stage.name,
+    type: stage.type,
+    thresholdDays: stage.thresholdDays,
+    position: stage.position,
+    aliases: stage.aliases,
+    actionCode: stage.actionCode,
+});
+
 export class ConfigService implements ConfigServiceInterface {
     private snapshot!: ConfigSnapshot;
     private saving: Promise<void> = Promise.resolve();
@@ -48,7 +58,7 @@ export class ConfigService implements ConfigServiceInterface {
             throw new Error("No hiring stages or settings in the database. Run `yarn db:seed` first.");
         }
         this.snapshot = {
-            stages,
+            stages: stages.map(toStageConfig),
             stagesVersion: settings.stagesVersion,
             useAiDrafts: settings.useAiDrafts,
             aiModel: settings.aiModel,
@@ -79,8 +89,8 @@ export class ConfigService implements ConfigServiceInterface {
 
         return this.oneAtATime(async () => {
             await withTransaction(async (transaction) => {
-                const stillCurrent = await this.settingRepo.bumpStagesVersion(expectedVersion, transaction);
-                if (!stillCurrent) {
+                const [updated] = await this.settingRepo.bumpStagesVersion(expectedVersion, transaction);
+                if (updated !== 1) {
                     throw new ConflictException(ERROR_CODES.E_CONFLICT, "", [
                         "The hiring stages were changed by someone else. Reload the page and try again.",
                     ]);

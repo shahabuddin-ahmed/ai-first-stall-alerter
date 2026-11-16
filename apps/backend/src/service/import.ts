@@ -14,6 +14,7 @@ import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
 import { sha256Hex } from "../utils/utility";
+import { toBoardRecord, toStoredRecord } from "../rules/stored-record";
 import { ConfigServiceInterface } from "./config";
 
 export interface ImportSummary {
@@ -113,9 +114,12 @@ export class ImportService implements ImportServiceInterface {
 
         try {
             // Insert, never "check then insert": the unique hash decides, even for two uploads at once.
-            const created = await withTransaction((transaction) =>
-                this.importRepo.create(details, parsed.board.records, transaction)
-            );
+            const created = await withTransaction(async (transaction) => {
+                const saved = await this.importRepo.create(details, transaction);
+                const records = parsed.board.records.map((record) => toStoredRecord(record, saved.id as number));
+                await this.importRepo.createRecords(records, transaction);
+                return saved;
+            });
             return {
                 alreadyImported: false,
                 ...this.buildView(toSummary(created), parsed.board, referenceDate, query),
@@ -172,10 +176,10 @@ export class ImportService implements ImportServiceInterface {
 
     async remove(id: number): Promise<boolean> {
         const removed = await this.importRepo.delete(id);
-        if (!removed) {
+        if (removed === 0) {
             throw new NotFoundException(ERROR_CODES.E_NOT_FOUND, "Import not found");
         }
-        return removed;
+        return true;
     }
 
     private async loadBoard(id: number): Promise<{ found: ImportInterface; board: ParsedBoard }> {
@@ -184,7 +188,7 @@ export class ImportService implements ImportServiceInterface {
             throw new NotFoundException(ERROR_CODES.E_NOT_FOUND, "Import not found");
         }
         const records = await this.importRepo.listRecords(id);
-        return { found, board: { headerCount: found.headerCount, records } };
+        return { found, board: { headerCount: found.headerCount, records: records.map(toBoardRecord) } };
     }
 
     private resolveReferenceDate(value?: string): string {

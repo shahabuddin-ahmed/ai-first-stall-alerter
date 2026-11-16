@@ -1,3 +1,4 @@
+import { UniqueConstraintError } from "sequelize";
 import {
     AiErrorCode,
     AiNoteStatus,
@@ -90,7 +91,7 @@ export class InsightService implements InsightServiceInterface {
 
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            return this.aiView(importId, analysis, aiModel, cached, true);
+            return this.aiView(importId, analysis, aiModel, cached.output, true);
         }
 
         const attempt = await this.callOnce(cacheKey, importId, facts, aiModel);
@@ -115,7 +116,10 @@ export class InsightService implements InsightServiceInterface {
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            return saved(AiNoteStatus.AI_DRAFT, new Map(cached.drafts.map((draft) => [draft.action_code, draft.text])));
+            return saved(
+                AiNoteStatus.AI_DRAFT,
+                new Map(cached.output.drafts.map((draft) => [draft.action_code, draft.text]))
+            );
         }
 
         const lastCall = await this.llmCallRepo.findLatest(cacheKey);
@@ -204,10 +208,13 @@ export class InsightService implements InsightServiceInterface {
         return result;
     }
 
-    private async safely(what: string, work: () => Promise<void>): Promise<void> {
+    private async safely(what: string, work: () => Promise<unknown>): Promise<void> {
         try {
             await work();
         } catch (err) {
+            if (err instanceof UniqueConstraintError) {
+                return;
+            }
             logger.error(`Could not ${what}`, { error: err instanceof Error ? err.name : "Error" });
         }
     }
