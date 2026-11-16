@@ -21,3 +21,49 @@ export interface Board {
   fileName: string;
   referenceDate: string;
 }
+
+export enum StageType {
+  WATCHED = 'watched',
+  PAUSED = 'paused',
+  FINAL = 'final'
+}
+
+export interface Stage {
+  name: string;
+  type: StageType;
+  thresholdDays: number | null;
+  position: number;
+  aliases: string[];
+  actionCode: string;
+  actionLabel: string;
+  recipient: string;
+}
+
+export interface StageList {
+  version: number;
+  stages: Stage[];
+}
+
+export interface ImportSummary {
+  id: number;
+  fileName: string;
+  fileSize: number;
+  recordCount: number;
+  createdAt: string;
+}
+
+export interface ImportList {
+  data: ImportSummary[];
+  offset: number;
+  limit: number;
+  total: number;
+}
+
+export interface PipelineView {
+  import: ImportSummary;
+  referenceDate: string;
+}
+
+export interface UploadResult extends PipelineView {
+  alreadyImported: boolean;
+}

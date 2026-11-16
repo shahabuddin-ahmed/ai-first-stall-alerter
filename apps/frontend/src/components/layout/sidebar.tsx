@@ -4,6 +4,8 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { useAppSelector } from '@/hooks/use-app-redux';
+import { boardHref, isBoardPage } from '@/lib/board-link';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -36,6 +38,7 @@ const sections: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const board = useAppSelector((state) => state.board.current);
 
   return (
     <aside className="flex flex-col gap-0.5 border-b bg-card px-3 py-4 lg:fixed lg:inset-y-0 lg:left-0 lg:w-60 lg:border-r lg:border-b-0">
@@ -58,7 +61,7 @@ export function Sidebar() {
             {section.items.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={isBoardPage(item.href) ? boardHref(item.href, board) : item.href}
                 className={cn(
                   'rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-muted hover:text-foreground',
                   pathname === item.href && 'bg-accent font-semibold text-accent-foreground hover:bg-accent'

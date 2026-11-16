@@ -1,4 +1,5 @@
-import type { PropsWithChildren } from 'react';
+import { Suspense, type PropsWithChildren } from 'react';
+import { BoardFromUrl } from '@/components/layout/board-from-url';
 import { Footer } from '@/components/layout/footer';
 import { Sidebar } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/top-bar';
@@ -6,6 +7,9 @@ import { TopBar } from '@/components/layout/top-bar';
 export function AppShell({ children }: PropsWithChildren) {
   return (
     <div className="min-h-screen">
+      <Suspense>
+        <BoardFromUrl />
+      </Suspense>
       <Sidebar />
       <div className="flex min-h-screen flex-col lg:pl-60">
         <TopBar />
