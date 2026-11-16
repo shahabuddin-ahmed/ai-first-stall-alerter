@@ -2,6 +2,7 @@ import type {
   ApiEnvelope,
   HealthReport,
   ImportList,
+  InsightsView,
   Page,
   PipelineView,
   QueueQuery,
@@ -64,6 +65,8 @@ export const api = {
   },
   getRowErrors: (id: number, referenceDate: string, page: number) =>
     request<Page<RowError>>(`/imports/${id}/errors?${new URLSearchParams({ referenceDate, page: String(page) })}`),
+  getInsights: (id: number, referenceDate: string, retry: boolean) =>
+    request<InsightsView>(`/imports/${id}/insights`, { method: 'POST', body: JSON.stringify({ referenceDate, retry }) }),
   uploadImport: (file: File, referenceDate: string) => {
     const body = new FormData();
     body.append('file', file);

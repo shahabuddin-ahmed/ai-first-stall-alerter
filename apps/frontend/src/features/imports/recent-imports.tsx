@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useAppDispatch, useAppSelector } from '@/hooks/use-app-redux';
 import { api } from '@/lib/api';
 import { boardHref } from '@/lib/board-link';
-import { formatDate, formatFileSize, todayIso } from '@/lib/format';
+import { formatDate, formatFileSize, localIsoDate } from '@/lib/format';
 import { selectBoard } from '@/stores/slices/board-slice';
 import type { ImportSummary } from '@/types';
 
@@ -30,7 +30,8 @@ export function RecentImports() {
   }, []);
 
   const open = (item: ImportSummary) => {
-    const board = { importId: item.id, fileName: item.fileName, referenceDate: todayIso() };
+    // The upload day: reopening shows the same list and the same saved AI notes
+    const board = { importId: item.id, fileName: item.fileName, referenceDate: localIsoDate(item.createdAt) };
     dispatch(selectBoard(board));
     router.push(boardHref('/follow-ups', board));
   };
@@ -55,7 +56,7 @@ export function RecentImports() {
                 <span className="text-sm font-semibold">{item.fileName}</span>
                 <span className="text-[13px] text-gray-600">
                   {item.recordCount.toLocaleString('en-US')} rows · {formatFileSize(item.fileSize)} · uploaded{' '}
-                  {formatDate(item.createdAt)}
+                  {formatDate(localIsoDate(item.createdAt))}
                 </span>
               </div>
               {item.id === openId ? (

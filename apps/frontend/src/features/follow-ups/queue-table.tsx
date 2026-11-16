@@ -2,12 +2,18 @@
 
 import { useState } from 'react';
 import { QueueRow } from '@/features/follow-ups/queue-row';
-import type { QueueItem } from '@/types';
+import type { InsightDraft, QueueItem } from '@/types';
 
 const COLUMNS = ['#', 'Candidate', 'Role', 'Stage', 'Recruiter', 'Days', 'Threshold', 'Overdue', 'Message'];
 
-export function QueueTable({ items }: { items: QueueItem[] }) {
+interface QueueTableProps {
+  items: QueueItem[];
+  drafts: InsightDraft[];
+}
+
+export function QueueTable({ items, drafts }: QueueTableProps) {
   const [openRank, setOpenRank] = useState<number | null>(null);
+  const draftsByRank = new Map(drafts.map((draft) => [draft.rank, draft]));
 
   return (
     <div className="@container overflow-x-auto">
@@ -26,6 +32,7 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
             <QueueRow
               key={item.rank}
               item={item}
+              draft={draftsByRank.get(item.rank)}
               open={openRank === item.rank}
               onToggle={() => setOpenRank(openRank === item.rank ? null : item.rank)}
             />

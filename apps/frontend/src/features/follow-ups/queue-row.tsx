@@ -1,11 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Recipient, TimerSource, type QueueItem } from '@/types';
+import { MessageSource, Recipient, TimerSource, type InsightDraft, type QueueItem } from '@/types';
 
 const RECIPIENT_LABEL: Record<Recipient, (firstName: string) => string> = {
   [Recipient.HIRING_MANAGER]: () => 'the hiring manager',
@@ -39,14 +39,20 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 
 interface QueueRowProps {
   item: QueueItem;
+  draft: InsightDraft | undefined;
   open: boolean;
   onToggle: () => void;
 }
 
-export function QueueRow({ item, open, onToggle }: QueueRowProps) {
+export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
+  const [useTemplate, setUseTemplate] = useState(false);
+  const aiDraft = draft?.source === MessageSource.AI_DRAFT ? draft.text : null;
+  const showAi = aiDraft !== null && !useTemplate;
+  const message = showAi ? aiDraft : item.templateMessage;
+
   const copyMessage = () => {
     navigator.clipboard
-      .writeText(item.templateMessage)
+      .writeText(message)
       .then(() => toast.success('Message copied'))
       .catch(() => toast.error('Copy failed. Select the text and copy it.'));
   };
@@ -75,7 +81,7 @@ export function QueueRow({ item, open, onToggle }: QueueRowProps) {
         <td className="px-3 py-2.5 text-gray-600">{item.stageThreshold}d</td>
         <td className={cn('px-3 py-2.5', item.overdueDays > 0 && 'font-bold')}>{item.overdueDays}</td>
         <td className="px-3 py-2.5">
-          <Badge variant="template">Template</Badge>
+          {showAi ? <Badge variant="ai">AI draft</Badge> : <Badge variant="template">Template</Badge>}
         </td>
       </tr>
 
@@ -102,14 +108,23 @@ export function QueueRow({ item, open, onToggle }: QueueRowProps) {
                   <span className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">
                     Message to {RECIPIENT_LABEL[item.recipient](item.firstName)}
                   </span>
-                  <Badge variant="template">Template</Badge>
+                  {showAi ? (
+                    <Badge variant="ai">AI draft · review before use</Badge>
+                  ) : (
+                    <Badge variant="template">Template</Badge>
+                  )}
                 </div>
-                <p className="rounded-[10px] border bg-card px-3.5 py-3 leading-relaxed whitespace-pre-line">
-                  {item.templateMessage}
-                </p>
-                <Button size="sm" className="self-start" onClick={copyMessage}>
-                  Copy message
-                </Button>
+                <p className="rounded-[10px] border bg-card px-3.5 py-3 leading-relaxed whitespace-pre-line">{message}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={copyMessage}>
+                    Copy message
+                  </Button>
+                  {aiDraft !== null && (
+                    <Button variant="outline" size="sm" onClick={() => setUseTemplate(!useTemplate)}>
+                      {useTemplate ? 'Use AI draft' : 'Use template instead'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </td>

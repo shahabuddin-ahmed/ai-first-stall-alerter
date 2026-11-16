@@ -6,9 +6,9 @@ export function formatDate(isoDate: string): string {
   return DATE_FORMAT.format(new Date(`${isoDate.slice(0, 10)}T00:00:00Z`));
 }
 
-// Today on the user's own clock, as YYYY-MM-DD
-export function todayIso(): string {
-  return new Date().toLocaleDateString('en-CA');
+// The day of a moment on the user's own clock, as YYYY-MM-DD (today by default)
+export function localIsoDate(moment: string | Date = new Date()): string {
+  return new Date(moment).toLocaleDateString('en-CA');
 }
 
 export function formatFileSize(bytes: number): string {
