@@ -1,4 +1,4 @@
-# StallAlert: Final Proposal (v5.2)
+# StallAlert: Final Proposal (v5.3)
 
 **Five-day assessment · Option C: Stall Alerter** · Repository `ai-first-stall-alerter`
 
@@ -331,6 +331,9 @@ in parallel and expects one row and one shared ID.
   insights panel, ranked queue with AI/Template badges and filters, row details with reason, action, timer start and
   the message with its recipient, Row errors tab) · Export (preview read from the real file; Download saves the same
   bytes) · Hiring stages (editor) · Settings (Use AI drafts, model, stored imports) · How it works.
+- **Queue in the words of a hiring app:** a "Waiting on" column (Candidate or Hiring team, from the recipient), the wait
+  in plain words ("1 month", with the exact days below), the date the follow-up was due (timer start + threshold), and
+  "Step 2 of 6" under the stage (its place among the watched stages; the backend sends `stageStep` and `stageSteps`).
 - **The open board lives in the address** (`?import=…&date=…`), so a reload or a shared link opens the same board.
   Open in Recent imports uses the upload day, so the saved AI notes are reused.
 - **AI runs once when a board opens** (right after an upload), with an "AI is writing" status. A failure shows templates
@@ -400,3 +403,4 @@ invitation is the authority for formats and deadlines.
   `.env` kept out of Docker images; AI checks described as limited safeguards.
 - **v5.2:** the frontend is built (Part H). A failed AI try is not repeated until Retry AI; the open board lives in the
   page address.
+- **v5.3:** the queue shows "Waiting on", the wait in plain words, the due date and "Step X of Y", in the words of Match Hire.

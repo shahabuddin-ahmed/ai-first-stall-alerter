@@ -118,6 +118,8 @@ export interface QueueItem {
   firstName: string;
   role: string;
   stage: string;
+  stageStep: number;
+  stageSteps: number;
   recruiter: string;
   timerFrom: string;
   timerSource: TimerSource;

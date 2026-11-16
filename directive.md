@@ -6,7 +6,7 @@
 >
 > Labels: **[Brief]** = mandated by the assessment. **[Decision]** = my implementation choice, with its reason.
 >
-> Version: v5.2
+> Version: v5.3
 
 ---
 
@@ -332,6 +332,9 @@ in parallel and expects one row and one shared ID.
   insights panel, ranked queue with AI/Template badges and filters, row details with reason, action, timer start and
   the message with its recipient, Row errors tab) · Export (preview read from the real file; Download saves the same
   bytes) · Hiring stages (editor) · Settings (Use AI drafts, model, stored imports) · How it works.
+- **Queue in the words of a hiring app:** a "Waiting on" column (Candidate or Hiring team, from the recipient), the wait
+  in plain words ("1 month", with the exact days below), the date the follow-up was due (timer start + threshold), and
+  "Step 2 of 6" under the stage (its place among the watched stages; the backend sends `stageStep` and `stageSteps`).
 - **The open board lives in the address** (`?import=…&date=…`), so a reload or a shared link opens the same board.
   Open in Recent imports uses the upload day, so the saved AI notes are reused.
 - **AI runs once when a board opens** (right after an upload), with an "AI is writing" status. A failure shows templates
@@ -463,3 +466,7 @@ invitation is the authority for formats and deadlines.
 - **v5.2:** the frontend is built; Part H now describes what ships. A failed AI try is remembered from the call log:
   the same report makes no new call until **Retry AI** sends `retry: true`. The open board lives in the page address.
   *Reason:* with a free key, every visit after a failed answer cost a new call; a reload must not lose the board.
+- **v5.3:** the queue shows "Waiting on" (candidate or hiring team), the wait in plain words, the due date, and "Step X of Y" for the stage.
+  Display only; no rule changed.
+  *Reason:* MUST's own job-seeker app (Match Hire) speaks in these terms ("waiting on you", "with the hiring team",
+  "3 months"); the recruiter side should match.

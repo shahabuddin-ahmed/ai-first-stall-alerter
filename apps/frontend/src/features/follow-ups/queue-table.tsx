@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { QueueRow } from '@/features/follow-ups/queue-row';
 import type { InsightDraft, QueueItem } from '@/types';
 
-const COLUMNS = ['#', 'Candidate', 'Role', 'Stage', 'Recruiter', 'Days', 'Threshold', 'Overdue', 'Message'];
+const COLUMNS = ['#', 'Candidate', 'Role', 'Stage', 'Recruiter', 'Waiting on', 'Waiting', 'Threshold', 'Overdue', 'Message'];
 
 interface QueueTableProps {
   items: QueueItem[];
@@ -17,7 +17,7 @@ export function QueueTable({ items, drafts }: QueueTableProps) {
 
   return (
     <div className="@container overflow-x-auto">
-      <table className="w-full min-w-[960px] text-left text-sm">
+      <table className="w-full min-w-[1080px] text-left text-sm">
         <thead>
           <tr className="border-b">
             {COLUMNS.map((column) => (

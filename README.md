@@ -7,6 +7,11 @@ ranks who to follow up first, and gives each one a reason, an action and a ready
 tests. The AI (OpenRouter) only writes the briefing and message drafts for the top 5. Every AI answer is checked by
 code, and any problem falls back to template messages.
 
+**Where it fits.** A job-seeker app like Match Hire shows each application as "waiting on you" or "with the hiring
+team", with a follow-up cadence. Without a limit per stage, an application can sit in review for months and still look
+"on track". StallAlert is the employer-side engine for that screen: every stage has its own limit, so a long wait is
+flagged, ranked, and given a message for whoever has to act (the candidate or the hiring team).
+
 Five-day assessment, Option C (Stall Alerter). Built AI-first.
 
 ## Status

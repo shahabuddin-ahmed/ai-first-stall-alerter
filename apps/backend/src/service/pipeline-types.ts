@@ -85,6 +85,8 @@ export interface StalledCandidate extends MessageFacts, ReasonFacts {
 
 export interface QueueItem extends StalledCandidate {
     rank: number;
+    stageStep: number;
+    stageSteps: number;
     reason: string;
     templateMessage: string;
 }

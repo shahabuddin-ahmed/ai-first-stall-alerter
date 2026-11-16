@@ -278,9 +278,16 @@ export const analysePipeline = (
         stalled.push(candidate);
     }
 
+    const watched = stages
+        .filter((stage) => stage.type === StageType.WATCHED)
+        .sort((a, b) => a.position - b.position);
+    const stepOf = new Map(watched.map((stage, index) => [stage.position, index + 1]));
+
     const queue: QueueItem[] = stalled.sort(byUrgency).map((item, index) => ({
         ...item,
         rank: index + 1,
+        stageStep: stepOf.get(item.stagePosition) as number,
+        stageSteps: watched.length,
         reason: explainReason(item),
         templateMessage: templateMessage(item.actionCode, item),
     }));
