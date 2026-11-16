@@ -8,6 +8,7 @@ import { HttpStatus } from "../../../../constant/http";
 import { AiService } from "../../../../service/ai";
 import { AiError, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
 import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
+import logger from "../../../../infra/logger";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { AiInsightRepoInterface, newAiInsightRepo } from "../../../../repo/ai-insight";
@@ -197,6 +198,27 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
 
         expect(results.every((res) => res.body.response.aiStatus === AiStatus.AI_DRAFT)).toBe(true);
         expect(generator.calls).toBe(1);
+    });
+
+    it("still returns the AI answer when saving it fails (e.g. the import was just deleted)", async () => {
+        const realRepo = await newAiInsightRepo();
+        const failingRepo: AiInsightRepoInterface = {
+            findByKey: (cacheKey) => realRepo.findByKey(cacheKey),
+            save: async () => {
+                throw new Error("database is down");
+            },
+        };
+        const failingApp = await makeApi(generator, failingRepo);
+        const loggerWarn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
+
+        const first = await insights(failingApp, importId);
+        const second = await insights(failingApp, importId);
+
+        expect([first.status, first.body.response.aiStatus]).toEqual([HttpStatus.OK, AiStatus.AI_DRAFT]);
+        expect(second.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
+        expect(generator.calls).toBe(2);
+        expect(loggerWarn).toHaveBeenCalledWith("Could not save the AI answer", { error: "Error" });
+        loggerWarn.mockRestore();
     });
 
     it("asks again for a new reference date (a different report)", async () => {

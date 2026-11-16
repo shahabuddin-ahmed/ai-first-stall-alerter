@@ -99,6 +99,25 @@ match `data/expected/*.json` exactly. No test calls a real AI.
 The AI only gets ranks, day counts, action codes and keys like `R1`: never names, candidate IDs, roles, stage names,
 dates or CSV text. Names are filled into the drafts on the server. All sample data is fictional.
 
+## Known limits
+
+This is a local, single-user assessment build with fictional data. Before a public launch with real hiring data it
+would need:
+
+-   **Login and roles**, so only the right people see or change a team's imports and settings.
+-   **One shared store** (for example Redis) if the API runs as several copies. Today the settings, the model list and
+    "one AI call at a time" live in the memory of one API process.
+-   **AI spending limits** per team (today: rate limits per IP, and one call per report).
+-   **Data retention rules**: imports stay until someone deletes them.
+
+Also good to know:
+
+-   The AI checks are limited safeguards, not a proof that a draft is true. Every AI draft is labelled
+    **AI draft · review before use**.
+-   The model list is cached for 30 minutes. If OpenRouter cannot be reached, the last saved list is shown.
+-   A database set up before migration names lost their `.ts` ending needs a one-time rename of its `migrations` and
+    `seeders` rows. A fresh clone does not.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

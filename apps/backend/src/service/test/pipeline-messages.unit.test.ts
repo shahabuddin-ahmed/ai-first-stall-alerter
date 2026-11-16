@@ -1,5 +1,5 @@
 import { ActionCode, RecipientType, TimerSource } from "../../constant/stage";
-import { ACTIONS, explainReason, templateMessage, buildInsightFacts } from "../pipeline-messages";
+import { ACTIONS, explainReason, fillPlaceholders, templateMessage, buildInsightFacts } from "../pipeline-messages";
 import fs from "fs";
 import path from "path";
 import { AI_LIMITS } from "../../constant/ai";
@@ -68,6 +68,13 @@ describe("templateMessage", () => {
         expect(templateMessage(ActionCode.REVIEW_APPLICATION, facts)).toBe(
             "Hi, could you review Amara Okafor's application for the Backend Engineer role? " +
                 "It needs a decision on the next step. Thanks, Recruiter A"
+        );
+    });
+
+    it("puts values in as plain text, never as another placeholder or a $ pattern", () => {
+        const tricky = { name: "Jo $& Lee", firstName: "Jo", role: "Sales {{name}}", recruiter: "$1 Team" };
+        expect(fillPlaceholders("Hi {{first_name}}: {{name}}, {{role}}. {{recruiter}}", tricky)).toBe(
+            "Hi Jo: Jo $& Lee, Sales {{name}}. $1 Team"
         );
     });
 

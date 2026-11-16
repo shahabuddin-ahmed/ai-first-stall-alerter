@@ -6,6 +6,7 @@ import { AiModelInterface } from "../../model/ai-model";
 import { AiModelRepoInterface } from "../../repo/ai-model";
 import { AiOutput, AiService } from "../ai";
 import { BottleneckType } from "../../constant/pipeline";
+import logger from "../../infra/logger";
 
 const FACTS: InsightFacts = {
     board: {
@@ -227,6 +228,22 @@ describe("AiService answer check", () => {
 
         expect((await failing(new AxiosError("timeout", "ECONNABORTED"))).errorCode).toBe(AiErrorCode.TIMEOUT);
         expect((await failing(new Error("network down"))).errorCode).toBe(AiErrorCode.PROVIDER_ERROR);
+    });
+
+    it("logs only how many problems there were, never the AI text", async () => {
+        const loggerWarn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
+        const drafts = [
+            VALID.drafts[0],
+            { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}, reply by Friday. {{secret}}" },
+        ];
+
+        await check(withChange({ drafts }));
+
+        expect(loggerWarn).toHaveBeenCalledWith("AI answer failed the checks", {
+            model: "test/model",
+            problemCount: 2,
+        });
+        expect(JSON.stringify(loggerWarn.mock.calls)).not.toMatch(/Friday|secret/);
     });
 
     it("needs one note per bottleneck", async () => {

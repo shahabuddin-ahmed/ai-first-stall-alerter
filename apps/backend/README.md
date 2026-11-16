@@ -30,6 +30,20 @@ yarn db:migrate && yarn db:seed   # db:migrate creates the database if it is mis
 yarn dev
 ```
 
+## Run the built API (production)
+
+```bash
+yarn install --frozen-lockfile
+yarn build                 # TypeScript → dist/
+yarn db:migrate:prod       # same migrations, from dist/
+yarn db:seed:prod
+yarn start                 # node dist/server.js (no ts-node needed)
+```
+
+The `Dockerfile` does the same in two steps: it builds in the first, and the run image has only the production
+packages and `dist/`. It runs the migrations and the seed, then starts the API. Settings and secrets (`MYSQL_*`,
+`AI_API_KEY`, ...) are passed in when the container starts; `.env` files are never copied into an image.
+
 ## Settings (`.env`)
 
 | Setting                                                                      | Default                        | What it does                                                                             |
@@ -79,7 +93,8 @@ Two CSV rules worth knowing (both match `scripts/generate_expected.py`):
 
 AI drafts are checked by code before use: the right person (`{{first_name}}` for the candidate, `{{name}}` for anyone
 else), no digits, dates, weekdays or other timing promises, no links, only known placeholders. Any failure means the
-whole report uses templates.
+whole report uses templates. These are limited safeguards: they cannot catch every unsupported claim (such as "your
+offer is approved"), so code makes every decision and each AI draft is labelled for a person to review before sending.
 
 ## Database
 

@@ -75,6 +75,22 @@ describe("parsePipelineCsv: reading records", () => {
         expect(JSON.stringify(pipeline.records[0])).not.toContain("private note");
     });
 
+    it("trims spaces inside quotes too, in headers and values", () => {
+        const pipeline = parse(
+            '" candidate_id ",name,role," stage ",stage_entered_at,recruiter\n' +
+                '" 0142 "," Wei Zhang ",Data Analyst," Applied ",2026-11-05," Recruiter A "\n' +
+                '"   ",Ana Ruiz,QA Engineer,Applied,2026-11-01,Recruiter A'
+        );
+
+        expect(pipeline.records[0]).toMatchObject({
+            candidateId: "0142",
+            name: "Wei Zhang",
+            stage: "Applied",
+            recruiter: "Recruiter A",
+        });
+        expect(pipeline.records[1].candidateId).toBe("");
+    });
+
     it("skips blank records but keeps the record numbers of the file", () => {
         const pipeline = parse(`${HEADER}\n${ROW}\n\n,,,,,\n${ROW.replace("001", "002")}`);
         expect(pipeline.records.map((record) => record.recordNumber)).toEqual([2, 5]);

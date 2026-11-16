@@ -9,6 +9,7 @@ import {
 } from "../constant/ai";
 import { BottleneckType } from "../constant/pipeline";
 import { ActionCode, RecipientType } from "../constant/stage";
+import logger from "../infra/logger";
 import { AiInsightRepoInterface } from "../repo/ai-insight";
 import { LlmCallRepoInterface } from "../repo/llm-call";
 import { sha256Hex } from "../utils/utility";
@@ -177,28 +178,37 @@ export class InsightService implements InsightServiceInterface {
         const attempt = await this.aiService.generateText(facts, model);
         const { usage } = attempt;
 
-        await this.llmCallRepo.log({
-            importId,
-            cacheKey,
-            requestedModel: model,
-            servedModel: usage.servedModel,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-            costUsd: usage.costUsd,
-            latencyMs: Date.now() - startedAt,
-            status: attempt.output ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
-            errorCode: attempt.errorCode,
-        });
-        if (attempt.output) {
-            await this.aiInsightRepo.save({
+        await this.saveSafely("the AI call log", () =>
+            this.llmCallRepo.log({
                 importId,
                 cacheKey,
-                model,
-                promptVersion: PROMPT_VERSION,
-                output: attempt.output,
-            });
+                requestedModel: model,
+                servedModel: usage.servedModel,
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                costUsd: usage.costUsd,
+                latencyMs: Date.now() - startedAt,
+                status: attempt.output ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
+                errorCode: attempt.errorCode,
+            })
+        );
+        if (attempt.output) {
+            const output = attempt.output;
+            await this.saveSafely("the AI answer", () =>
+                this.aiInsightRepo.save({ importId, cacheKey, model, promptVersion: PROMPT_VERSION, output })
+            );
         }
         return attempt;
+    }
+
+    // The AI answer is already here, so a failed save (e.g. the import was just deleted) must not turn it into an error.
+    // The error name only: database errors can contain row values.
+    private async saveSafely(what: string, save: () => Promise<unknown>): Promise<void> {
+        try {
+            await save();
+        } catch (err) {
+            logger.warn(`Could not save ${what}`, { error: err instanceof Error ? err.name : "Error" });
+        }
     }
 
     private aiView(

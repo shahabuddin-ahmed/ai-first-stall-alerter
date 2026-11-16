@@ -195,7 +195,8 @@ export class AiService implements AiServiceInterface {
         const { value: answer, error } = answerSchema(facts).validate(generated.output, ANSWER_CHECK_OPTIONS);
         const problems = error ? error.details.map((detail) => detail.message) : answerProblems(answer, facts);
         if (problems.length > 0) {
-            logger.warn("AI answer failed the checks", { problems: problems.join("; ") });
+            // Only the count: the problem text can quote parts of the AI answer
+            logger.warn("AI answer failed the checks", { model, problemCount: problems.length });
             return { output: null, errorCode: AiErrorCode.INVALID_OUTPUT, problems, usage: generated };
         }
         return { output: this.sortDrafts(answer, facts), errorCode: null, problems: [], usage: generated };

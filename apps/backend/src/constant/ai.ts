@@ -62,11 +62,12 @@ export const AI_COLUMN_LIMITS = {
 export const SENDER_PLACEHOLDER = "{{recruiter}}";
 export const FIRST_NAME_PLACEHOLDER = "{{first_name}}";
 export const NAME_PLACEHOLDER = "{{name}}";
+export const ROLE_PLACEHOLDER = "{{role}}";
 
 export const DRAFT_PLACEHOLDERS: readonly string[] = [
     FIRST_NAME_PLACEHOLDER,
     NAME_PLACEHOLDER,
-    "{{role}}",
+    ROLE_PLACEHOLDER,
     SENDER_PLACEHOLDER,
 ];
 
@@ -93,7 +94,8 @@ export const AI_REQUEST = {
     SCHEMA_NAME: "stall_insights",
 } as const;
 
-export const PROMPT_VERSION = "v5";
+// Part of the AI cache key: change it when the prompt or the answer checks change, so old saved answers are not reused
+export const PROMPT_VERSION = "v6";
 
 export const DEFAULT_AI_MODEL = "inclusionai/ling-3.2-flash:free";
 

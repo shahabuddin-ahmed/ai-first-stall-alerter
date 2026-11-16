@@ -36,12 +36,15 @@ const decodeUtf8 = (bytes: Uint8Array): string | null => {
     }
 };
 
-const readRows = (text: string): string[][] =>
-    parse(text, {
+const readRows = (text: string): string[][] => {
+    const rows = parse(text, {
         relax_column_count: true,
         skip_empty_lines: false, // blank lines still count for record numbers
         trim: true,
     }) as string[][];
+    // trim: true keeps spaces inside quotes (" Applied "), so trim every value again
+    return rows.map((fields) => fields.map((field) => field.trim()));
+};
 
 const errorLineOf = (err: unknown): number => Number((err as { lines?: number }).lines) || 1;
 

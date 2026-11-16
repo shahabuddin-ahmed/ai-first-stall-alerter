@@ -122,7 +122,7 @@ infra/      MySQL connection, migrations, seeders, logger
 | `last_contacted_at` | No | Real `YYYY-MM-DD`, not after the reference date. Information only. |
 
 Parsing: UTF-8, optional BOM, one header row, headers matched exactly after trimming, columns in any order, extra
-columns ignored and not stored, blank records ignored, RFC 4180 quoting, LF or CRLF, values trimmed. Only `YYYY-MM-DD`
+columns ignored and not stored, blank records ignored, RFC 4180 quoting, LF or CRLF, headers and values trimmed (also inside quotes). Only `YYYY-MM-DD`
 counts as a date. Record numbers count the header as 1. A blank header is an extra column (ignored), because
 spreadsheets often add a trailing comma.
 
@@ -194,7 +194,7 @@ column) — 422 unless noted.
 
 **Row errors** exclude the record; the rest still rank; the excluded count is shown. A record lists every error but
 counts once as invalid: field count differs · required value missing · date not a real `YYYY-MM-DD` · date after the
-reference date · stage not in the hiring stages ("add it, or add it as an alias") · duplicate `candidate_id` (every copy).
+reference date · stage not in the hiring stages ("add it, or add it as an alias") · duplicate `candidate_id` (every copy; lists up to 5 other records, then "and N more").
 A record with the wrong field count gets only that error and is left out of the duplicate-ID check: its columns may be
 shifted, so its ID cannot be trusted (same rule in `scripts/generate_expected.py`). Row error details come from
 `GET /imports/:id/errors`; the upload answer has the counts.
@@ -264,6 +264,10 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
   in drafts (weekdays, months except "May", today, tomorrow, tonight, this week, next week), no action codes in text,
   numbers in the briefing and notes must exist in the facts, no URLs/HTML/markdown links. Any failure → the whole
   report uses templates.
+- These checks are **limited safeguards**, not a proof that a draft is true. They catch the shape, placeholders,
+  recipient, numbers, links and common timing words, but not every unsupported claim (for example "your offer is
+  approved"). So code keeps every decision (who, rank, action, recipient, counts), and every AI draft stays labelled
+  **AI draft · review before use** for a person to check before sending.
 - Cache only validated, unfilled output; fill names for the current report on every hit; never cache failures.
 
 ### E5. Testing the AI layer
@@ -338,7 +342,8 @@ in parallel and expects one row and one shared ID.
 - **I1 Tests:** domain unit tests against all three expected files and both scenarios; repo and API tests (supertest,
   MySQL); AI tests (E5); the concurrency test (G). Planned: a Playwright flow for the build gate, with the frontend.
 - **I2 Security:** upload size/type/row limits; Joi validation; CORS to the web origin; rate limit on `/insights`;
-  parameterised queries only; formula guard; secrets only in `.env`; no stack traces or candidate data in logs; no auth
+  parameterised queries only; formula guard; secrets only in `.env`; no stack traces, candidate data or AI answer text in logs;
+  `.env` never copied into a Docker image; no auth
   (single-user, local, fictional data) stated as a known limit.
 - **I3 Performance (measure, never invent):** 10,000 rows → queue ≤ 3 s; recalculation ≤ 300 ms; insights ≤ 15 s (cache hit
   ≤ 200 ms); prompt ≤ 8 KiB. Three runs per size, the bottleneck and before/after numbers recorded.
@@ -440,3 +445,11 @@ invitation is the authority for formats and deadlines.
   *Reason:* an independent review ran the API end to end and found real gaps (built app saw pending migrations,
   screen and export disagreed on AI drafts, a draft to the wrong person passed, a slow cache lookup allowed a second
   call); the model choice belongs to the team, not the deploy; the spec must describe what ships.
+- **v5.1:** a second review. Headers and values are trimmed inside quotes too (matches the expected-results script).
+  `PROMPT_VERSION` v6, so AI answers saved under the old checks are asked again. A duplicate-ID error lists up to 5
+  other records, then "and N more" (10,000 copies of one ID took 2.2 s and 562 MB of error text; now 19 ms).
+  Placeholders are filled in one pass as plain text. A failed save of the AI call log or answer keeps the answer.
+  Logs hold only the number of AI problems, never the text. `yarn start` and the production image run the built code
+  (`db:migrate:prod`, `db:seed:prod`), and `.env` is kept out of Docker images. AI checks described as limited
+  safeguards. Kept as is: the 30-minute model list cache with the `ai_models` fallback.
+  *Reason:* each was a real gap found by reading the code; the model-list case is rare and already has a fallback.

@@ -136,6 +136,18 @@ describe("row errors", () => {
         ]);
     });
 
+    it("lists at most 5 other copies of a duplicate ID, then a count", () => {
+        const rows = Array.from({ length: 10_000 }, () => "001,Ana Ruiz,QA,Offer,2026-11-01,Recruiter A,,");
+        const result = analyse(...rows);
+
+        expect(result.rowErrors).toHaveLength(10_000);
+        expect(result.rowErrors[0].errors[0].problem).toBe("duplicate ID (also record 3, 4, 5, 6, 7 and 9,994 more)");
+        expect(result.rowErrors[3].errors[0].problem).toBe("duplicate ID (also record 2, 3, 4, 6, 7 and 9,994 more)");
+        expect(result.rowErrors[9_999].errors[0].problem).toBe(
+            "duplicate ID (also record 2, 3, 4, 5, 6 and 9,994 more)"
+        );
+    });
+
     it("explains an unknown stage", () => {
         const [row] = analyse("001,Ana Ruiz,QA,Technical Test,2026-11-01,Recruiter A,,").rowErrors;
         expect(row.errors).toEqual([

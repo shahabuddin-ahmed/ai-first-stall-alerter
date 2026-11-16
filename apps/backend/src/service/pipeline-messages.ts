@@ -1,7 +1,14 @@
 import { ActionCode, RecipientType, TimerSource } from "../constant/stage";
 import { PipelineAnalysis, Bottleneck, MessageFacts, ReasonFacts, QueueItem } from "./pipeline-types";
 import { BottleneckType } from "../constant/pipeline";
-import { AI_LIMITS, RECRUITER_KEY_PREFIX } from "../constant/ai";
+import {
+    AI_LIMITS,
+    FIRST_NAME_PLACEHOLDER,
+    NAME_PLACEHOLDER,
+    RECRUITER_KEY_PREFIX,
+    ROLE_PLACEHOLDER,
+    SENDER_PLACEHOLDER,
+} from "../constant/ai";
 
 interface ActionDetails {
     label: string;
@@ -85,12 +92,18 @@ export const explainReason = (facts: ReasonFacts): string => {
     );
 };
 
-export const fillPlaceholders = (text: string, facts: MessageFacts): string =>
-    text
-        .replace(/\{\{first_name\}\}/g, facts.firstName)
-        .replace(/\{\{name\}\}/g, facts.name)
-        .replace(/\{\{role\}\}/g, facts.role)
-        .replace(/\{\{recruiter\}\}/g, facts.recruiter);
+const PLACEHOLDER = /\{\{[a-z_]+\}\}/g;
+
+// One pass, and each value is put in as plain text, so a name or role can never fill in another placeholder
+export const fillPlaceholders = (text: string, facts: MessageFacts): string => {
+    const values: Record<string, string> = {
+        [FIRST_NAME_PLACEHOLDER]: facts.firstName,
+        [NAME_PLACEHOLDER]: facts.name,
+        [ROLE_PLACEHOLDER]: facts.role,
+        [SENDER_PLACEHOLDER]: facts.recruiter,
+    };
+    return text.replace(PLACEHOLDER, (placeholder) => values[placeholder] ?? placeholder);
+};
 
 export const templateMessage = (actionCode: ActionCode, facts: MessageFacts): string =>
     fillPlaceholders(ACTIONS[actionCode].template, facts);

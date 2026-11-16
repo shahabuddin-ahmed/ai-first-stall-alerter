@@ -23,7 +23,7 @@ import { compareText } from "../utils/utility";
 import { ActionCode, StageType, TimerSource, STAGE_LIMITS } from "../constant/stage";
 import { ACTIONS, explainReason, firstNameOf, templateMessage } from "./pipeline-messages";
 
-export const normaliseStageName = (value: string): string => value.replace(/\s+/g, " ").toLowerCase();
+export const normaliseStageName = (value: string): string => value.trim().replace(/\s+/g, " ").toLowerCase();
 
 export const buildStageLookup = (stages: StageConfig[]): Map<string, StageConfig> => {
     const lookup = new Map<string, StageConfig>();
@@ -58,7 +58,10 @@ const PROBLEMS = {
     futureDate: "after the reference date",
     unknownStage: (stage: string) => `"${stage}" is not in your hiring stages`,
     fieldCount: (found: number, expected: number) => `${found} fields, expected ${expected}`,
-    duplicate: (others: number[]) => `duplicate ID (also record ${others.join(", ")})`,
+    duplicate: (shown: number[], more: number) => {
+        const moreText = more > 0 ? ` and ${more.toLocaleString("en-US")} more` : "";
+        return `duplicate ID (also record ${shown.join(", ")}${moreText})`;
+    },
 };
 
 const checkDate = (
@@ -152,12 +155,17 @@ export const validateRecords = (
     const numbersById = recordNumbersById(checked);
     const valid: ValidRecord[] = [];
     for (const { record, errors, days } of checked) {
-        const others = (numbersById.get(record.candidateId) ?? []).filter((number) => number !== record.recordNumber);
-        if (others.length > 0) {
+        const copies = numbersById.get(record.candidateId) ?? [];
+        if (copies.length > 1) {
+            // Only look at the first few copies: a file with one ID on every row must stay fast
+            const shown = copies
+                .slice(0, PIPELINE_LIMITS.MAX_DUPLICATE_RECORDS + 1)
+                .filter((number) => number !== record.recordNumber)
+                .slice(0, PIPELINE_LIMITS.MAX_DUPLICATE_RECORDS);
             errors.push({
                 field: PipelineColumn.CANDIDATE_ID,
                 code: RowErrorCode.DUPLICATE_ID,
-                problem: PROBLEMS.duplicate(others),
+                problem: PROBLEMS.duplicate(shown, copies.length - 1 - shown.length),
             });
         }
         if (errors.length > 0) {
