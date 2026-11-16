@@ -8,6 +8,7 @@ import type {
   PipelineView,
   QueueQuery,
   RowError,
+  StageInput,
   StageList,
   UploadResult
 } from '@/types';
@@ -55,6 +56,8 @@ export const api = {
   health: () => request<HealthReport>('/health'),
 
   getStages: () => request<StageList>('/stages'),
+  saveStages: (version: number, stages: StageInput[]) =>
+    request<StageList>('/stages', { method: 'PUT', body: JSON.stringify({ version, stages }) }),
 
   getImports: () => request<ImportList>('/imports'),
   getImport: (id: number, referenceDate: string) =>

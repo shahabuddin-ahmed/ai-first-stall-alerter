@@ -32,8 +32,8 @@ export function QueueFilters({ filters, stages, recruiters, onChange }: QueueFil
       <div className="flex flex-[1_1_220px] gap-2">
         <Input
           type="search"
-          aria-label="Search by name, ID or role"
-          placeholder="Search by name, ID or role"
+          aria-label="Search by name or ID"
+          placeholder="Search by name or ID"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
