@@ -273,7 +273,7 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
 ### E5. Testing the AI layer
 A mock AI provider in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown action, too long, digits,
 timing words, wrong recipient, URL, bad placeholder, timeout, refusal, provider errors (rate limit, auth, no credits),
-no key, setting off, cache hit (0 calls), simultaneous requests and a slow cache lookup (1 call), failure not cached,
+no key, setting off, cache hit (0 calls), simultaneous requests and a slow cache lookup (1 call), a failure is not repeated until Retry,
 a new model (new call). Day 1 smoke test with a real key. **Not built yet:** the manual `npm run eval` on fictional
 cases (target ≥ 95% guardrail pass, defects and fixes logged).
 

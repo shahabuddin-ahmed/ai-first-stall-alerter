@@ -85,8 +85,8 @@ const uploadSampleB = async (app: Express): Promise<number> => {
     return res.body.response.import.id;
 };
 
-const insights = (app: Express, importId: number, referenceDate = REFERENCE_DATE) =>
-    request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate });
+const insights = (app: Express, importId: number, referenceDate = REFERENCE_DATE, retry = false) =>
+    request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate, retry });
 
 const llmCalls = () =>
     sequelize.query<{ status: string; error_code: string | null; requested_model: string }>(
@@ -242,7 +242,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         ["a timeout", AiErrorCode.TIMEOUT],
         ["a rate limit", AiErrorCode.RATE_LIMITED],
         ["a refusal", AiErrorCode.REFUSED],
-    ])("on %s, logs it and does not cache the failure", async (_case, code) => {
+    ])("on %s, logs it, does not ask again by itself, and asks again on Retry", async (_case, code) => {
         generator.behaviour = async () => {
             throw new AiError(code);
         };
@@ -251,9 +251,14 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         expect(first.body.response).toMatchObject({ aiStatus: AiStatus.FAILED, errorCode: code });
         expectTemplates(first.body.response);
 
-        // Retry works: the failure was not cached, so the AI is asked again
+        // Opening the page again: the failure is remembered, so no new AI call
         generator.behaviour = async (facts) => mockCompletion(facts);
-        const retry = await insights(app, importId);
+        const again = await insights(app, importId);
+        expect(again.body.response).toMatchObject({ aiStatus: AiStatus.FAILED, errorCode: code });
+        expect(generator.calls).toBe(1);
+
+        // Retry asks the AI again
+        const retry = await insights(app, importId, REFERENCE_DATE, true);
         expect(retry.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
         expect(generator.calls).toBe(2);
         expect((await llmCalls()).map((call) => [call.status, call.error_code])).toEqual([

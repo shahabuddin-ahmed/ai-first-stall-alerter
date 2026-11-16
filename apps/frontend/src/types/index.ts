@@ -168,3 +168,52 @@ export interface RowError {
 export interface UploadResult extends PipelineView {
   alreadyImported: boolean;
 }
+
+export enum AiStatus {
+  AI_DRAFT = 'ai_draft',
+  DISABLED = 'disabled',
+  NOT_CONFIGURED = 'not_configured',
+  FAILED = 'failed',
+  NOTHING_STALLED = 'nothing_stalled'
+}
+
+export enum AiErrorCode {
+  TIMEOUT = 'TIMEOUT',
+  RATE_LIMITED = 'RATE_LIMITED',
+  AUTH_FAILED = 'AUTH_FAILED',
+  NO_CREDITS = 'NO_CREDITS',
+  PROVIDER_ERROR = 'PROVIDER_ERROR',
+  REFUSED = 'REFUSED',
+  INVALID_JSON = 'INVALID_JSON',
+  INVALID_OUTPUT = 'INVALID_OUTPUT'
+}
+
+export enum MessageSource {
+  AI_DRAFT = 'ai_draft',
+  TEMPLATE = 'template'
+}
+
+export interface InsightDraft {
+  rank: number;
+  candidateId: string;
+  name: string;
+  text: string;
+  source: MessageSource;
+}
+
+export interface BottleneckNote extends Bottleneck {
+  text: string;
+  source: MessageSource;
+}
+
+export interface InsightsView {
+  referenceDate: string;
+  aiStatus: AiStatus;
+  errorCode: AiErrorCode | null;
+  model: string | null;
+  cached: boolean;
+  topN: number;
+  briefing: { text: string; source: MessageSource };
+  bottleneckNotes: BottleneckNote[];
+  drafts: InsightDraft[];
+}

@@ -62,7 +62,7 @@ interface InsightResult {
 }
 
 export interface InsightServiceInterface {
-    getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
+    getInsights(importId: number, referenceDate?: string, retry?: boolean): Promise<InsightsView>;
     getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
 
@@ -88,7 +88,7 @@ export class InsightService implements InsightServiceInterface {
         private topN: number
     ) {}
 
-    async getInsights(importId: number, referenceDate?: string): Promise<InsightsView> {
+    async getInsights(importId: number, referenceDate?: string, retry = false): Promise<InsightsView> {
         const { analysis } = await this.importService.analyse(importId, referenceDate);
         const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
         const model = this.aiService.isConfigured() ? aiModel : null;
@@ -108,7 +108,7 @@ export class InsightService implements InsightServiceInterface {
         const facts = buildInsightFacts(analysis, this.topN);
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
 
-        const result = await this.callOnce(cacheKey, importId, facts, aiModel);
+        const result = await this.callOnce(cacheKey, importId, facts, aiModel, retry);
         return result.output
             ? this.aiView(importId, analysis, aiModel, result.output, result.cached)
             : templates(AiStatus.FAILED, result.errorCode);
@@ -147,12 +147,18 @@ export class InsightService implements InsightServiceInterface {
         return { status, draftsByAction, topN: this.topN };
     }
 
-    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<InsightResult> {
+    private callOnce(
+        cacheKey: string,
+        importId: number,
+        facts: InsightFacts,
+        model: string,
+        retry: boolean
+    ): Promise<InsightResult> {
         const running = this.inFlight.get(cacheKey);
         if (running) {
             return running;
         }
-        const result = this.loadOrGenerate(cacheKey, importId, facts, model).finally(() =>
+        const result = this.loadOrGenerate(cacheKey, importId, facts, model, retry).finally(() =>
             this.inFlight.delete(cacheKey)
         );
         this.inFlight.set(cacheKey, result);
@@ -163,11 +169,19 @@ export class InsightService implements InsightServiceInterface {
         cacheKey: string,
         importId: number,
         facts: InsightFacts,
-        model: string
+        model: string,
+        retry: boolean
     ): Promise<InsightResult> {
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
             return { output: cached.output, errorCode: null, cached: true };
+        }
+        // A failed try is not repeated on its own: only a Retry asks the AI again
+        if (!retry) {
+            const lastCall = await this.llmCallRepo.findLatest(cacheKey);
+            if (lastCall?.status === LlmCallStatus.FAILED) {
+                return { output: null, errorCode: lastCall.errorCode, cached: false };
+            }
         }
         const attempt = await this.attempt(cacheKey, importId, facts, model);
         return { output: attempt.output, errorCode: attempt.errorCode, cached: false };

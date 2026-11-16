@@ -77,7 +77,7 @@ answered in 9 seconds and passed every check.
 | GET       | `/imports`                                                              | List imports, newest first                                                                                                    |
 | GET       | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Counts, bottlenecks and the ranked queue, recalculated                                                                        |
 | GET       | `/imports/:id/errors?referenceDate=&page=`                              | Row errors with record number, field and fix. The upload answer only has counts, so the screen gets the details here          |
-| POST      | `/imports/:id/insights`                                                 | Briefing, bottleneck notes and AI drafts for the top N (or templates)                                                         |
+| POST      | `/imports/:id/insights`                                                 | Briefing, bottleneck notes and AI drafts for the top N (or templates). After a failed try, only `{"retry": true}` asks again |
 | GET       | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=`          | CSV download (never calls the AI). Top N rows use the saved AI drafts, the rest templates (`ai_note_status` = `not_in_top_n`) |
 | DELETE    | `/imports/:id`                                                          | Delete an import, its rows and its cached AI answers                                                                          |
 
@@ -167,6 +167,6 @@ fast enough, so no extra in-memory cache was added.
 -   **No sign-in.** Single team, local use, fictional data.
 -   **One API process.** Stages, settings, rate-limit counts and "AI call in progress" live in memory. Several API
     processes would need a shared store (for example Redis) and a database lock for AI calls.
--   Free AI models can be slow or busy. When they fail or time out, templates are used and Retry works.
+-   Free AI models can be slow or busy. When they fail or time out, templates are used. The failure is remembered, so the AI is asked again only on Retry.
 
 Local development only. The credentials in `docker-compose.yml` and `.env.example` are placeholders for fictional data.

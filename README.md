@@ -70,7 +70,8 @@ curl -o stallalert.csv "http://localhost:4000/api/v1/imports/1/export?referenceD
    first import (`alreadyImported: true`).
 2. `errors` lists every bad row with its record number, field and problem.
 3. `insights` writes the briefing and AI drafts for the top 5. With a key this makes **one** AI call; asking again
-   uses the saved answer. Without a key, or if the AI fails, you get templates and `aiStatus` says why.
+   uses the saved answer. Without a key, or if the AI fails, you get templates and `aiStatus` says why. A failed try
+   is not repeated on its own: send `"retry": true` to ask the AI again.
 4. The CSV has every stalled candidate. Ranks 1 to 5 use the AI drafts, the rest use templates (`ai_note_status`).
 
 To see the template fallback with a key set, turn AI off and ask again:

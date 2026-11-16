@@ -13,7 +13,7 @@ import { StageThresholds } from '@/features/imports/stage-thresholds';
 import { useAppDispatch } from '@/hooks/use-app-redux';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { boardHref } from '@/lib/board-link';
-import { todayIso } from '@/lib/format';
+import { localIsoDate } from '@/lib/format';
 import { clearBoard, selectBoard } from '@/stores/slices/board-slice';
 
 export interface Rejection {
@@ -28,7 +28,7 @@ interface ImportFormProps {
 export function ImportForm({ onRejected }: ImportFormProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const today = todayIso();
+  const today = localIsoDate();
   const [file, setFile] = useState<File | null>(null);
   const [referenceDate, setReferenceDate] = useState(today);
   const [uploading, setUploading] = useState(false);

@@ -8,6 +8,7 @@ import { Pager } from '@/components/shared/pager';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BoardSettings } from '@/features/follow-ups/board-settings';
+import { InsightsCard } from '@/features/follow-ups/insights-card';
 import { QueueFilters, type Filters } from '@/features/follow-ups/queue-filters';
 import { QueueTable } from '@/features/follow-ups/queue-table';
 import { RowErrorsTable } from '@/features/follow-ups/row-errors-table';
@@ -16,7 +17,7 @@ import { useAppDispatch } from '@/hooks/use-app-redux';
 import { useApiData } from '@/hooks/use-api-data';
 import { api } from '@/lib/api';
 import { BOARD_PARAMS, boardHref } from '@/lib/board-link';
-import { todayIso } from '@/lib/format';
+import { localIsoDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { selectBoard } from '@/stores/slices/board-slice';
 import type { PipelineView } from '@/types';
@@ -80,12 +81,24 @@ export function FollowUpsView() {
   const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState(Tab.QUEUE);
+  const [retry, setRetry] = useState<{ board: string; count: number } | null>(null);
+  const boardKey = `${importId}|${referenceDate}`;
 
   const load = useMemo(
     () => (importId && referenceDate ? () => api.getQueue(importId, { referenceDate, page, ...filters }) : null),
     [importId, referenceDate, page, filters]
   );
   const { data: view, error, loading } = useApiData(load);
+
+  // Runs once when the board opens. After a failure the backend does not ask the AI again: only Retry does
+  const loadInsights = useMemo(
+    () =>
+      importId && referenceDate ? () => api.getInsights(importId, referenceDate, retry?.board === boardKey) : null,
+    [importId, referenceDate, retry, boardKey]
+  );
+  const insights = useApiData(loadInsights);
+  // Drafts from the last board or date must not show next to a new queue
+  const freshInsights = insights.loading ? null : insights.data;
 
   if (!importId || !referenceDate) {
     return <NoBoard />;
@@ -139,7 +152,7 @@ export function FollowUpsView() {
 
       <BoardSettings
         referenceDate={referenceDate}
-        maxDate={todayIso()}
+        maxDate={localIsoDate()}
         thresholds={view.stageThresholds}
         onDateChange={changeDate}
       />
@@ -156,6 +169,15 @@ export function FollowUpsView() {
             See row errors
           </Button>
         </div>
+      )}
+
+      {view.counts.stalled > 0 && (
+        <InsightsCard
+          insights={freshInsights}
+          error={insights.error}
+          stalled={view.counts.stalled}
+          onRetry={() => setRetry({ board: boardKey, count: (retry?.count ?? 0) + 1 })}
+        />
       )}
 
       <Card className="flex flex-col">
@@ -191,8 +213,9 @@ export function FollowUpsView() {
               <>
                 <span className="px-1.5 pt-1 text-[13px] text-gray-600">
                   Click a candidate to see the reason, the action and the message.
+                  {insights.loading && ' AI drafts for the top alerts are still being written; templates show until then.'}
                 </span>
-                <QueueTable items={view.queue.items} />
+                <QueueTable items={view.queue.items} drafts={freshInsights?.drafts ?? []} />
                 <Pager page={view.queue.page} pageSize={view.queue.pageSize} total={view.queue.total} onChange={setPage} />
               </>
             ) : (
