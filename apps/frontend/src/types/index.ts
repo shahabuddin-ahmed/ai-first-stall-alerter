@@ -28,20 +28,30 @@ export enum StageType {
   FINAL = 'final'
 }
 
-export interface Stage {
+export interface StageInput {
   name: string;
   type: StageType;
   thresholdDays: number | null;
-  position: number;
   aliases: string[];
-  actionCode: string;
-  actionLabel: string;
-  recipient: string;
+  actionCode: string | null;
+}
+
+export interface Stage extends StageInput {
+  position: number;
+  actionLabel: string | null;
+  recipient: Recipient | null;
+}
+
+export interface StageAction {
+  code: string;
+  label: string;
+  recipient: Recipient;
 }
 
 export interface StageList {
   version: number;
   stages: Stage[];
+  actions: StageAction[];
 }
 
 export interface ImportSummary {

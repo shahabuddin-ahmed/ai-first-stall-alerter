@@ -1,10 +1,11 @@
 import { AppShell } from '@/components/layout/app-shell';
-import { EmptyState } from '@/components/shared/empty-state';
+import { StagesEditor } from '@/features/stages/stages-editor';
 
 export default function StagesPage() {
   return (
     <AppShell>
-      <EmptyState title="Hiring stages" description="This page is built in phase 6." />
+      <span className="text-[13px] text-gray-600">StallAlert / Hiring stages</span>
+      <StagesEditor />
     </AppShell>
   );
 }
