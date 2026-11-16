@@ -20,10 +20,10 @@ export class ImportRepo implements ImportRepoInterface {
     }
 
     public async createRecords(records: ImportRecordInterface[], transaction: Transaction): Promise<void> {
-        for (let start = 0; start < records.length; start += PIPELINE_LIMITS.INSERT_BATCH_SIZE) {
-            await ImportRecord.bulkCreate(records.slice(start, start + PIPELINE_LIMITS.INSERT_BATCH_SIZE), {
-                transaction,
-            });
+        const batchSize = PIPELINE_LIMITS.INSERT_BATCH_SIZE;
+        for (let start = 0; start < records.length; start += batchSize) {
+            const batch = records.slice(start, start + batchSize);
+            await ImportRecord.bulkCreate(batch, { transaction });
         }
     }
 

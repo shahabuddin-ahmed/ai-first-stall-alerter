@@ -7,23 +7,23 @@ import {
     PROMPT_VERSION,
     RECRUITER_KEY_PATTERN,
 } from "../constant/ai";
+import { BottleneckType } from "../constant/pipeline";
 import { ActionCode, RecipientType } from "../constant/stage";
-import { AiAttempt, AiOutput, AiServiceInterface } from "./ai";
 import { AiInsightRepoInterface } from "../repo/ai-insight";
 import { LlmCallRepoInterface } from "../repo/llm-call";
+import { sha256Hex } from "../utils/utility";
+import { AiAttempt, AiOutput, AiServiceInterface } from "./ai";
+import { ConfigServiceInterface } from "./config";
+import { ImportServiceInterface } from "./import";
 import {
     buildInsightFacts,
+    fillPlaceholders,
     InsightFacts,
     recruiterKeysOf,
-    fillPlaceholders,
     templateBottleneckNote,
     templateBriefing,
 } from "./pipeline-messages";
-import { PipelineAnalysis } from "./pipeline-types";
-import { sha256Hex } from "../utils/utility";
-import { ConfigServiceInterface } from "./config";
-import { ImportServiceInterface } from "./import";
-import { BottleneckType } from "../constant/pipeline";
+import { PipelineAnalysis, QueueItem } from "./pipeline-types";
 
 export interface InsightDraft {
     rank: number;
@@ -57,6 +57,21 @@ export interface InsightServiceInterface {
     getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
     getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
+
+const savedDrafts = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
+    status,
+    draftsByAction,
+});
+
+const toDraft = (item: QueueItem, text: string, source: MessageSource): InsightDraft => ({
+    rank: item.rank,
+    candidateId: item.candidateId,
+    name: item.name,
+    actionCode: item.actionCode,
+    recipient: item.recipient,
+    text,
+    source,
+});
 
 export class InsightService implements InsightServiceInterface {
     private inFlight = new Map<string, Promise<AiAttempt>>();
@@ -102,29 +117,25 @@ export class InsightService implements InsightServiceInterface {
     }
 
     async getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts> {
-        const saved = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
-            status,
-            draftsByAction,
-        });
         const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
         if (!this.aiService.isConfigured()) {
-            return saved(AiNoteStatus.UNAVAILABLE);
+            return savedDrafts(AiNoteStatus.UNAVAILABLE);
         }
         if (!useAiDrafts) {
-            return saved(AiNoteStatus.DISABLED);
+            return savedDrafts(AiNoteStatus.DISABLED);
         }
 
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            return saved(
+            return savedDrafts(
                 AiNoteStatus.AI_DRAFT,
                 new Map(cached.output.drafts.map((draft) => [draft.action_code, draft.text]))
             );
         }
 
         const lastCall = await this.llmCallRepo.findLatest(cacheKey);
-        return saved(lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING);
+        return savedDrafts(lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING);
     }
 
     cacheKey(importId: number, referenceDate: string, stagesVersion: number, model: string): string {
@@ -137,22 +148,9 @@ export class InsightService implements InsightServiceInterface {
         if (running) {
             return running;
         }
-        const attempt = this.attemptAndForget(cacheKey, importId, facts, model);
+        const attempt = this.attempt(cacheKey, importId, facts, model).finally(() => this.inFlight.delete(cacheKey));
         this.inFlight.set(cacheKey, attempt);
         return attempt;
-    }
-
-    private async attemptAndForget(
-        cacheKey: string,
-        importId: number,
-        facts: InsightFacts,
-        model: string
-    ): Promise<AiAttempt> {
-        try {
-            return await this.attempt(cacheKey, importId, facts, model);
-        } finally {
-            this.inFlight.delete(cacheKey);
-        }
     }
 
     private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
@@ -209,15 +207,15 @@ export class InsightService implements InsightServiceInterface {
                 text: withNames(output.bottleneck_notes[index]),
                 source: MessageSource.AI_DRAFT,
             })),
-            drafts: analysis.queue.slice(0, this.topN).map((item) => ({
-                rank: item.rank,
-                candidateId: item.candidateId,
-                name: item.name,
-                actionCode: item.actionCode,
-                recipient: item.recipient,
-                text: fillPlaceholders(draftByAction.get(item.actionCode) as string, item),
-                source: MessageSource.AI_DRAFT,
-            })),
+            drafts: analysis.queue
+                .slice(0, this.topN)
+                .map((item) =>
+                    toDraft(
+                        item,
+                        fillPlaceholders(draftByAction.get(item.actionCode) as string, item),
+                        MessageSource.AI_DRAFT
+                    )
+                ),
         };
     }
 
@@ -242,15 +240,9 @@ export class InsightService implements InsightServiceInterface {
                 text: templateBottleneckNote(bottleneck),
                 source: MessageSource.TEMPLATE,
             })),
-            drafts: analysis.queue.slice(0, this.topN).map((item) => ({
-                rank: item.rank,
-                candidateId: item.candidateId,
-                name: item.name,
-                actionCode: item.actionCode,
-                recipient: item.recipient,
-                text: item.templateMessage,
-                source: MessageSource.TEMPLATE,
-            })),
+            drafts: analysis.queue
+                .slice(0, this.topN)
+                .map((item) => toDraft(item, item.templateMessage, MessageSource.TEMPLATE)),
         };
     }
 }

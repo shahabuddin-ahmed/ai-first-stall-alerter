@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/async-hander";
+import { asyncHandler } from "../../middleware/async-handler";
 import { csvUpload } from "../../middleware/csv-upload";
 import { ImportControllerInterface } from "../../controller/v1/import";
 
@@ -14,5 +14,3 @@ export const newImportRouter = async (importController: ImportControllerInterfac
 
     return router;
 };
-
-export default newImportRouter;

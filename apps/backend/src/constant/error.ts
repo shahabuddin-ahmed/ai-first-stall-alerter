@@ -76,6 +76,5 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
 
 export enum ApiResponseMessages {
     SUCCESS = "SUCCESS",
-    INTERNAL_SERVER_ERROR = "Internal Server Error",
     SUCCESS_MESSAGE = "Success",
 }

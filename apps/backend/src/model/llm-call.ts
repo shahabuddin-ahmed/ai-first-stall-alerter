@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
 import { AiUsage } from "../service/ai-provider";
-import { AI_COLUMN_LIMITS, LlmCallStatus } from "../constant/ai";
+import { AI_COLUMN_LIMITS, AiErrorCode, LlmCallStatus } from "../constant/ai";
 import { HASH_COLUMN_LENGTH } from "../constant/hash";
 
 export interface LlmCallInterface extends AiUsage {
@@ -11,7 +11,7 @@ export interface LlmCallInterface extends AiUsage {
     requestedModel: string;
     latencyMs: number;
     status: LlmCallStatus;
-    errorCode: string | null;
+    errorCode: AiErrorCode | null;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -27,7 +27,7 @@ class LlmCall extends Model<LlmCallInterface> implements LlmCallInterface {
     public costUsd!: number | null;
     public latencyMs!: number;
     public status!: LlmCallStatus;
-    public errorCode!: string | null;
+    public errorCode!: AiErrorCode | null;
     public readonly createdAt?: Date;
     public readonly updatedAt?: Date;
 }

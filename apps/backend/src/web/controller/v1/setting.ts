@@ -26,21 +26,22 @@ export class SettingController extends Controller implements SettingControllerIn
     }
 
     get = async (_req: Request, res: Response): Promise<any> => {
-        return this.sendResponse({ response: this.configService.getSettings() }, HttpStatus.OK, res);
+        const data = this.configService.getSettings();
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
     update = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(updateSchema, req.body);
-        const settings = await this.configService.updateSettings({
+        const data = await this.configService.updateSettings({
             useAiDrafts: value.useAiDrafts,
             aiModel: value.aiModel,
         });
-        return this.sendResponse({ response: settings }, HttpStatus.OK, res);
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
     listModels = async (_req: Request, res: Response): Promise<any> => {
-        const models = await this.aiService.listModels();
-        return this.sendResponse({ response: models }, HttpStatus.OK, res);
+        const data = await this.aiService.listModels();
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 }
 

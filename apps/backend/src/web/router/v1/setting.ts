@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/async-hander";
+import { asyncHandler } from "../../middleware/async-handler";
 import { SettingControllerInterface } from "../../controller/v1/setting";
 
 export const newSettingRouter = async (settingController: SettingControllerInterface): Promise<Router> => {
@@ -11,5 +11,3 @@ export const newSettingRouter = async (settingController: SettingControllerInter
 
     return router;
 };
-
-export default newSettingRouter;

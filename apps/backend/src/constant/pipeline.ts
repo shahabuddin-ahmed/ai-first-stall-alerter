@@ -20,14 +20,11 @@ export const REQUIRED_COLUMNS: readonly PipelineColumn[] = [
     PipelineColumn.RECRUITER,
 ];
 
-export const OPTIONAL_DATE_COLUMNS: readonly PipelineColumn[] = [
+export const DATE_COLUMNS: readonly PipelineColumn[] = [
+    PipelineColumn.STAGE_ENTERED_AT,
     PipelineColumn.LAST_ACTIVITY_AT,
     PipelineColumn.LAST_CONTACTED_AT,
 ];
-
-export const KNOWN_COLUMNS: readonly PipelineColumn[] = [...REQUIRED_COLUMNS, ...OPTIONAL_DATE_COLUMNS];
-
-export const DATE_COLUMNS: readonly PipelineColumn[] = [PipelineColumn.STAGE_ENTERED_AT, ...OPTIONAL_DATE_COLUMNS];
 
 export const TEXT_COLUMN_LIMITS = {
     [PipelineColumn.CANDIDATE_ID]: 36,

@@ -32,6 +32,8 @@ export const CSV_MIME_TYPES: readonly string[] = [
 
 export const MS_PER_SECOND = 1000;
 
+export const NS_PER_MS = 1_000_000;
+
 export const RATE_LIMIT_WINDOW_MS = 60 * MS_PER_SECOND;
 
 export const CORS_METHODS = ["GET", "POST", "PUT", "DELETE"];

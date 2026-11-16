@@ -3,11 +3,10 @@ import {
     PIPELINE_LIMITS,
     PipelineColumn,
     FileErrorCode,
-    KNOWN_COLUMNS,
     REQUIRED_COLUMNS,
     TEXT_COLUMN_LIMITS,
 } from "../constant/pipeline";
-import { PipelineRecord, FileError, ParseResult } from "./pipeline-types";
+import { ParseResult, PipelineRecord } from "./pipeline-types";
 import { CSV_BOM, CSV_LINE_END, EXPORT_COLUMNS, ExportColumn, FORMULA_START } from "../constant/export";
 
 export const COLUMN_FIELDS: Record<PipelineColumn, keyof PipelineRecord> = {
@@ -21,9 +20,12 @@ export const COLUMN_FIELDS: Record<PipelineColumn, keyof PipelineRecord> = {
     [PipelineColumn.LAST_CONTACTED_AT]: "lastContactedAt",
 };
 
+export const columnValue = (record: PipelineRecord, column: PipelineColumn): string =>
+    record[COLUMN_FIELDS[column]] as string;
+
 const fail = (code: FileErrorCode, message: string, details: string[] = []): ParseResult => ({
     ok: false,
-    error: { code, message, details: details.slice(0, PIPELINE_LIMITS.MAX_ERROR_DETAILS) } as FileError,
+    error: { code, message, details: details.slice(0, PIPELINE_LIMITS.MAX_ERROR_DETAILS) },
 });
 
 const decodeUtf8 = (bytes: Uint8Array): string | null => {
@@ -34,16 +36,73 @@ const decodeUtf8 = (bytes: Uint8Array): string | null => {
     }
 };
 
-const readRows = (text: string): string[][] | { line: number } => {
-    try {
-        return parse(text, {
-            relax_column_count: true,
-            skip_empty_lines: false, // blank lines still count for record numbers
-            trim: true,
-        }) as string[][];
-    } catch (err) {
-        return { line: Number((err as { lines?: number }).lines) || 1 };
+const readRows = (text: string): string[][] =>
+    parse(text, {
+        relax_column_count: true,
+        skip_empty_lines: false, // blank lines still count for record numbers
+        trim: true,
+    }) as string[][];
+
+const errorLineOf = (err: unknown): number => Number((err as { lines?: number }).lines) || 1;
+
+const findDuplicates = (names: string[]): string[] => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const name of names) {
+        if (seen.has(name)) {
+            duplicates.add(name);
+        }
+        seen.add(name);
     }
+    return [...duplicates];
+};
+
+const checkHeader = (header: string[]): ParseResult | null => {
+    const duplicates = findDuplicates(header.filter(Boolean));
+    if (duplicates.length > 0) {
+        return fail(FileErrorCode.DUPLICATE_HEADERS, "Some column names appear more than once.", duplicates);
+    }
+
+    const missing = REQUIRED_COLUMNS.filter((column) => !header.includes(column));
+    if (missing.length > 0) {
+        return fail(FileErrorCode.MISSING_HEADERS, `Required columns are missing: ${missing.join(", ")}.`, missing);
+    }
+    return null;
+};
+
+const toRecords = (header: string[], lines: string[][]): PipelineRecord[] => {
+    const records: PipelineRecord[] = [];
+    lines.forEach((fields, index) => {
+        if (fields.every((field) => field === "")) {
+            return;
+        }
+        const valueOf = (column: PipelineColumn): string => fields[header.indexOf(column)] ?? "";
+        records.push({
+            recordNumber: index + 2,
+            fieldCount: fields.length,
+            candidateId: valueOf(PipelineColumn.CANDIDATE_ID),
+            name: valueOf(PipelineColumn.NAME),
+            role: valueOf(PipelineColumn.ROLE),
+            stage: valueOf(PipelineColumn.STAGE),
+            stageEnteredAt: valueOf(PipelineColumn.STAGE_ENTERED_AT),
+            recruiter: valueOf(PipelineColumn.RECRUITER),
+            lastActivityAt: valueOf(PipelineColumn.LAST_ACTIVITY_AT),
+            lastContactedAt: valueOf(PipelineColumn.LAST_CONTACTED_AT),
+        });
+    });
+    return records;
+};
+
+const findTooLongValues = (records: PipelineRecord[]): string[] => {
+    const tooLong: string[] = [];
+    for (const record of records) {
+        for (const [column, maxLength] of Object.entries(TEXT_COLUMN_LIMITS)) {
+            if (columnValue(record, column as PipelineColumn).length > maxLength) {
+                tooLong.push(`record ${record.recordNumber}, column ${column} (max ${maxLength})`);
+            }
+        }
+    }
+    return tooLong;
 };
 
 export const parsePipelineCsv = (bytes: Uint8Array): ParseResult => {
@@ -58,49 +117,25 @@ export const parsePipelineCsv = (bytes: Uint8Array): ParseResult => {
         return fail(FileErrorCode.EMPTY_FILE, "The file is empty.");
     }
 
-    const rows = readRows(text);
-    if (!Array.isArray(rows)) {
+    let rows: string[][];
+    try {
+        rows = readRows(text);
+    } catch (err) {
+        const line = errorLineOf(err);
         return fail(
             FileErrorCode.INVALID_CSV,
-            `The file is not valid CSV near line ${rows.line}. Check for a missing closing quote.`,
-            [`line ${rows.line}`]
+            `The file is not valid CSV near line ${line}. Check for a missing closing quote.`,
+            [`line ${line}`]
         );
     }
 
-    const header = rows[0];
-    const seen = new Set<string>();
-    const duplicates = new Set<string>();
-    header.filter(Boolean).forEach((name) => (seen.has(name) ? duplicates.add(name) : seen.add(name)));
-    if (duplicates.size > 0) {
-        return fail(FileErrorCode.DUPLICATE_HEADERS, "Some column names appear more than once.", [...duplicates]);
+    const [header, ...lines] = rows;
+    const headerError = checkHeader(header);
+    if (headerError) {
+        return headerError;
     }
 
-    const missing = REQUIRED_COLUMNS.filter((column) => !seen.has(column));
-    if (missing.length > 0) {
-        return fail(FileErrorCode.MISSING_HEADERS, `Required columns are missing: ${missing.join(", ")}.`, missing);
-    }
-
-    const columnIndex = KNOWN_COLUMNS.map((column) => [column, header.indexOf(column)] as const);
-    const records: PipelineRecord[] = [];
-    const tooLong: string[] = [];
-
-    rows.slice(1).forEach((fields, index) => {
-        if (fields.every((field) => field === "")) {
-            return;
-        }
-        const recordNumber = index + 2;
-        const record = { recordNumber, fieldCount: fields.length } as PipelineRecord;
-        for (const [column, position] of columnIndex) {
-            (record[COLUMN_FIELDS[column]] as string) = fields[position] ?? "";
-        }
-        for (const [column, maxLength] of Object.entries(TEXT_COLUMN_LIMITS)) {
-            if ((record[COLUMN_FIELDS[column as PipelineColumn]] as string).length > maxLength) {
-                tooLong.push(`record ${recordNumber}, column ${column} (max ${maxLength})`);
-            }
-        }
-        records.push(record);
-    });
-
+    const records = toRecords(header, lines);
     if (records.length === 0) {
         return fail(FileErrorCode.EMPTY_FILE, "The file has a header row but no candidates.");
     }
@@ -110,6 +145,8 @@ export const parsePipelineCsv = (bytes: Uint8Array): ParseResult => {
             `The file has ${records.length} candidates. The limit is ${PIPELINE_LIMITS.MAX_RECORDS}.`
         );
     }
+
+    const tooLong = findTooLongValues(records);
     if (tooLong.length > 0) {
         return fail(FileErrorCode.VALUE_TOO_LONG, "Some values are too long.", tooLong);
     }

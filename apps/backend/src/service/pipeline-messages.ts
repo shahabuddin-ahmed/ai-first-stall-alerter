@@ -190,8 +190,19 @@ export const buildInsightFacts = (analysis: PipelineAnalysis, topN: number): Ins
         .map(([recruiter_key, stalled]) => ({ recruiter_key, stalled }))
         .sort((a, b) => b.stalled - a.stalled);
     const topRecruiters = recruiterCounts.slice(0, AI_LIMITS.TOP_RECRUITERS);
+    const otherRecruiters = recruiterCounts.slice(AI_LIMITS.TOP_RECRUITERS);
 
     const actionOfStage = new Map(queue.map((item) => [item.stage, item.actionCode]));
+    const bottlenecks = analysis.bottlenecks.map((bottleneck): BottleneckFacts => {
+        if (bottleneck.type === BottleneckType.STAGE) {
+            return {
+                type: BottleneckType.STAGE,
+                action_code: actionOfStage.get(bottleneck.key) as ActionCode,
+                stalled: bottleneck.stalled,
+            };
+        }
+        return { type: BottleneckType.RECRUITER, recruiter_key: keyOf(bottleneck.key), stalled: bottleneck.stalled };
+    });
 
     return {
         board: {
@@ -204,24 +215,9 @@ export const buildInsightFacts = (analysis: PipelineAnalysis, topN: number): Ins
             not_stalled: counts.notStalled,
             stalled_by_action: byAction,
             stalled_by_recruiter: topRecruiters,
-            stalled_by_other_recruiters: recruiterCounts
-                .slice(AI_LIMITS.TOP_RECRUITERS)
-                .reduce((sum, r) => sum + r.stalled, 0),
+            stalled_by_other_recruiters: otherRecruiters.reduce((sum, recruiter) => sum + recruiter.stalled, 0),
         },
-        bottlenecks: analysis.bottlenecks.map(
-            (bottleneck): BottleneckFacts =>
-                bottleneck.type === BottleneckType.STAGE
-                    ? {
-                          type: BottleneckType.STAGE,
-                          action_code: actionOfStage.get(bottleneck.key) as ActionCode,
-                          stalled: bottleneck.stalled,
-                      }
-                    : {
-                          type: BottleneckType.RECRUITER,
-                          recruiter_key: keyOf(bottleneck.key),
-                          stalled: bottleneck.stalled,
-                      }
-        ),
+        bottlenecks,
         alerts: queue.slice(0, topN).map((item) => ({
             rank: item.rank,
             action_code: item.actionCode,

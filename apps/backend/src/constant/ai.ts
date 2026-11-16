@@ -43,8 +43,12 @@ export enum ChatRole {
 }
 
 export enum FinishReason {
-    STOP = "stop",
     LENGTH = "length",
+}
+
+export enum LlmCallStatus {
+    SUCCESS = "success",
+    FAILED = "failed",
 }
 
 export const AI_COLUMN_LIMITS = {
@@ -53,11 +57,6 @@ export const AI_COLUMN_LIMITS = {
     MODEL_ID: 100,
     MODEL_NAME: 100,
 } as const;
-
-export enum LlmCallStatus {
-    SUCCESS = "success",
-    FAILED = "failed",
-}
 
 export const SENDER_PLACEHOLDER = "{{recruiter}}";
 
@@ -90,5 +89,5 @@ export const AI_MODEL_LIST = {
     PATH: "/models",
     REQUIRED_PARAMETER: "structured_outputs",
     CACHE_MS: 30 * 60 * 1000,
-    TIMEOUT_MS: 10000,
+    TIMEOUT_MS: 10_000,
 } as const;

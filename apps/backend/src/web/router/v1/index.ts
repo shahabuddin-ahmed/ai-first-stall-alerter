@@ -1,17 +1,25 @@
 import { Router } from "express";
-import { NotFoundException } from "../../exception/not-found-exception";
 import { ERROR_CODES } from "../../../constant/error";
-import { newHealthRouter } from "./health";
-import { StageController } from "../../controller/v1/stage";
-import { SettingController } from "../../controller/v1/setting";
-import { newStageRouter } from "./stage";
-import { newSettingRouter } from "./setting";
-import { ImportController } from "../../controller/v1/import";
-import { newImportRouter } from "./import";
-import { InsightController } from "../../controller/v1/insight";
-import { newInsightRouter } from "./insight";
-import { ExportController } from "../../controller/v1/export";
+import { ExportControllerInterface } from "../../controller/v1/export";
+import { ImportControllerInterface } from "../../controller/v1/import";
+import { InsightControllerInterface } from "../../controller/v1/insight";
+import { SettingControllerInterface } from "../../controller/v1/setting";
+import { StageControllerInterface } from "../../controller/v1/stage";
+import { NotFoundException } from "../../exception/not-found-exception";
 import { newExportRouter } from "./export";
+import { newHealthRouter } from "./health";
+import { newImportRouter } from "./import";
+import { newInsightRouter } from "./insight";
+import { newSettingRouter } from "./setting";
+import { newStageRouter } from "./stage";
+
+export interface V1Controllers {
+    stageController: StageControllerInterface;
+    settingController: SettingControllerInterface;
+    importController: ImportControllerInterface;
+    insightController: InsightControllerInterface;
+    exportController: ExportControllerInterface;
+}
 
 export const newV1Router = async ({
     stageController,
@@ -19,13 +27,7 @@ export const newV1Router = async ({
     importController,
     insightController,
     exportController,
-}: {
-    stageController: StageController;
-    settingController: SettingController;
-    importController: ImportController;
-    insightController: InsightController;
-    exportController: ExportController;
-}): Promise<Router> => {
+}: V1Controllers): Promise<Router> => {
     const v1 = Router();
     v1.use("/health", await newHealthRouter());
     v1.use("/stages", await newStageRouter(stageController));

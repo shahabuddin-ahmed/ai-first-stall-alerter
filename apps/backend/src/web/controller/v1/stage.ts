@@ -47,11 +47,10 @@ const saveSchema = Joi.object({
 
 const toResponse = (snapshot: ConfigSnapshot) => ({
     version: snapshot.stagesVersion,
-    stages: snapshot.stages.map((stage) => ({
-        ...stage,
-        actionLabel: stage.actionCode ? ACTIONS[stage.actionCode].label : null,
-        recipient: stage.actionCode ? ACTIONS[stage.actionCode].recipient : null,
-    })),
+    stages: snapshot.stages.map((stage) => {
+        const action = stage.actionCode ? ACTIONS[stage.actionCode] : null;
+        return { ...stage, actionLabel: action?.label ?? null, recipient: action?.recipient ?? null };
+    }),
     actions: Object.values(ActionCode).map((code) => ({
         code,
         label: ACTIONS[code].label,
@@ -65,13 +64,15 @@ export class StageController extends Controller implements StageControllerInterf
     }
 
     list = async (_req: Request, res: Response): Promise<any> => {
-        return this.sendResponse({ response: toResponse(this.configService.getSnapshot()) }, HttpStatus.OK, res);
+        const data = toResponse(this.configService.getSnapshot());
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
     save = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(saveSchema, req.body);
         const snapshot = await this.configService.saveStages(value.stages, value.version);
-        return this.sendResponse({ response: toResponse(snapshot) }, HttpStatus.OK, res);
+        const data = toResponse(snapshot);
+        return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 }
 

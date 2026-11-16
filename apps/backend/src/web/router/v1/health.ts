@@ -15,9 +15,9 @@ const checkDatabase = async (): Promise<DatabaseStatus> => {
 };
 
 export const newHealthRouter = async (): Promise<Router> => {
-    const healthRouter = Router();
+    const router = Router();
 
-    healthRouter.get("/", async (_req, res) => {
+    router.get("/", async (_req, res) => {
         const database = await checkDatabase();
         const healthy = database === DatabaseStatus.UP;
 
@@ -37,5 +37,5 @@ export const newHealthRouter = async (): Promise<Router> => {
         return res.status(healthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).send(body);
     });
 
-    return healthRouter;
+    return router;
 };
