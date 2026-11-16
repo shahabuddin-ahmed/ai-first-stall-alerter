@@ -1,4 +1,5 @@
 import type {
+  AiModel,
   ApiEnvelope,
   CsvFile,
   HealthReport,
@@ -8,6 +9,7 @@ import type {
   PipelineView,
   QueueQuery,
   RowError,
+  Settings,
   StageInput,
   StageList,
   UploadResult
@@ -59,7 +61,13 @@ export const api = {
   saveStages: (version: number, stages: StageInput[]) =>
     request<StageList>('/stages', { method: 'PUT', body: JSON.stringify({ version, stages }) }),
 
+  getSettings: () => request<Settings>('/settings'),
+  saveSettings: (settings: Pick<Settings, 'useAiDrafts' | 'aiModel'>) =>
+    request<Settings>('/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  getModels: () => request<AiModel[]>('/settings/models'),
+
   getImports: () => request<ImportList>('/imports'),
+  deleteImport: (id: number) => request<{ deleted: boolean }>(`/imports/${id}`, { method: 'DELETE' }),
   getImport: (id: number, referenceDate: string) =>
     request<PipelineView>(`/imports/${id}?${new URLSearchParams({ referenceDate, pageSize: '1' })}`),
   getQueue: (id: number, query: QueueQuery) => {

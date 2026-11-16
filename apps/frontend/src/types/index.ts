@@ -233,3 +233,16 @@ export interface CsvFile {
   bytes: ArrayBuffer;
   text: string;
 }
+
+export interface Settings {
+  useAiDrafts: boolean;
+  aiConfigured: boolean;
+  aiModel: string;
+  stagesVersion: number;
+}
+
+export interface AiModel {
+  modelId: string;
+  name: string;
+  contextLength: number | null;
+}
