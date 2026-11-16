@@ -1,12 +1,7 @@
 import { Migration } from "../migrator";
 
 export const up: Migration = async ({ context: queryInterface }) => {
-    const run = (sql: string) => queryInterface.sequelize.query(sql);
-
-    await run(
-        "ALTER TABLE settings ADD COLUMN ai_model VARCHAR(100) NOT NULL DEFAULT 'inclusionai/ling-3.2-flash:free' AFTER use_ai_drafts"
-    );
-    await run(
+    await queryInterface.sequelize.query(
         `CREATE TABLE ai_models (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             model_id VARCHAR(100) NOT NULL,
@@ -21,8 +16,5 @@ export const up: Migration = async ({ context: queryInterface }) => {
 };
 
 export const down: Migration = async ({ context: queryInterface }) => {
-    const run = (sql: string) => queryInterface.sequelize.query(sql);
-
-    await run("DROP TABLE ai_models");
-    await run("ALTER TABLE settings DROP COLUMN ai_model");
+    await queryInterface.dropTable("ai_models");
 };

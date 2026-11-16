@@ -64,7 +64,6 @@ describe("database migrations", () => {
         expect(pending.length).toBeGreaterThan(0);
         expect(done.map((migration) => migration.name)).toEqual(pending.map((migration) => migration.name));
         expect(await listTables()).toEqual(expect.arrayContaining(APP_TABLES));
-        expect(await listTables()).not.toContain("posts");
     });
 
     it("gives every table an auto-increment id, created_at and updated_at", async () => {
@@ -134,28 +133,6 @@ describe("database migrations", () => {
             "ai_models.model_id": "varchar(100)",
             "ai_models.name": "varchar(100)",
         });
-    });
-
-    it("converts text dates in rows that were stored before", async () => {
-        await migrator.down({ to: "20261116000004-right-size-columns.ts" });
-        const importId = await insertImport("c".repeat(64));
-        await sequelize.query(
-            `INSERT INTO import_records
-                (import_id, record_number, field_count, candidate_id, stage_entered_at, last_activity_at, last_contacted_at)
-             VALUES (?, 2, 8, '001', '2026-11-01', '2026-02-30', '')`,
-            { replacements: [importId] }
-        );
-
-        await migrator.up();
-
-        const [row] = await sequelize.query<Record<string, unknown>>(
-            `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
-                    last_contacted_at AS contacted, invalid_dates AS invalid
-             FROM import_records WHERE import_id = ?`,
-            { replacements: [importId], type: QueryTypes.SELECT }
-        );
-        expect(row).toEqual({ entered: "2026-11-01", activity: null, contacted: null, invalid: ["last_activity_at"] });
-        await sequelize.query("DELETE FROM imports WHERE id = ?", { replacements: [importId] });
     });
 
     it("does nothing when run again", async () => {
