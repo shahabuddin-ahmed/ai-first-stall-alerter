@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
 import { StageConfig } from "../rules/types";
-import { ActionCode, StageType } from "../constant/stage";
+import { ActionCode, STAGE_LIMITS, StageType } from "../constant/stage";
 
 export interface StageInterface extends StageConfig {
     id?: number;
@@ -29,7 +29,7 @@ Stage.init(
             primaryKey: true,
         },
         name: {
-            type: new DataTypes.STRING(40),
+            type: new DataTypes.STRING(STAGE_LIMITS.MAX_NAME_LENGTH),
             allowNull: false,
         },
         type: {

@@ -104,7 +104,7 @@ export class ImportService implements ImportServiceInterface {
         }
 
         const details: ImportInterface = {
-            fileName: file.fileName.slice(0, BOARD_LIMITS.MAX_VALUE_LENGTH),
+            fileName: file.fileName.slice(0, BOARD_LIMITS.MAX_FILE_NAME_LENGTH),
             fileHash: sha256Hex(file.bytes),
             fileSize: file.bytes.length,
             headerCount: parsed.board.headerCount,

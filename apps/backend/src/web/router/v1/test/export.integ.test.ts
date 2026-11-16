@@ -150,34 +150,31 @@ describe("GET /api/v1/imports/:id/export", () => {
         expect(generator.calls).toBe(0);
     });
 
-    it("marks the top 5 as pending and the rest as outside AI scope before AI insights are requested", async () => {
+    it("marks every row as pending before AI insights are requested", async () => {
         const rows = readCsv((await download(app, importId)).body);
 
-        expect(rows.slice(0, 5).map((row) => row.ai_note_status)).toEqual(Array(5).fill(AiNoteStatus.PENDING));
-        expect(new Set(rows.slice(5).map((row) => row.ai_note_status))).toEqual(
-            new Set([AiNoteStatus.OUTSIDE_AI_SCOPE])
-        );
+        expect(new Set(rows.map((row) => row.ai_note_status))).toEqual(new Set([AiNoteStatus.PENDING]));
         rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
-    it("uses the saved AI drafts for the top 5 after insights were requested", async () => {
+    it("reuses one AI draft per action for every row, with each candidate's name filled in", async () => {
         await request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate: REFERENCE_DATE });
 
         const rows = readCsv((await download(app, importId)).body);
 
-        expect(rows.slice(0, 5).map((row) => [row.ai_note_status, row.message_source])).toEqual(
-            Array(5).fill([AiNoteStatus.AI_DRAFT, MessageSource.AI_DRAFT])
-        );
-        expect(rows[0].message_draft).toContain("Hana Novak"); // names filled in
-        expect(rows[0].message_draft).not.toContain("{{");
-        expect(rows[5]).toMatchObject({
-            ai_note_status: AiNoteStatus.OUTSIDE_AI_SCOPE,
-            message_source: MessageSource.TEMPLATE,
+        expect(rows).toHaveLength(EXPECTED_B.queue.length);
+        rows.forEach((row) => {
+            expect([row.ai_note_status, row.message_source]).toEqual([AiNoteStatus.AI_DRAFT, MessageSource.AI_DRAFT]);
+            expect(row.message_draft).toContain(row.recruiter);
+            expect(row.message_draft).not.toContain("{{");
         });
-        expect(generator.calls).toBe(1); // only the insights request
+        const offers = rows.filter((row) => row.stage === "Offer");
+        expect(offers.length).toBeGreaterThan(1);
+        offers.forEach((row) => expect(row.message_draft).toMatch(/^Hi .+, I wanted to check in on the .+ offer\./));
+        expect(generator.calls).toBe(1);
     });
 
-    it("marks the top 5 as unavailable when the last AI call failed", async () => {
+    it("marks every row as unavailable when the last AI call failed", async () => {
         generator.behaviour = async () => {
             throw new AiError(AiErrorCode.TIMEOUT);
         };
@@ -185,8 +182,8 @@ describe("GET /api/v1/imports/:id/export", () => {
 
         const rows = readCsv((await download(app, importId)).body);
 
-        expect(rows.slice(0, 5).map((row) => row.ai_note_status)).toEqual(Array(5).fill(AiNoteStatus.UNAVAILABLE));
-        expect(rows[0].message_source).toBe(MessageSource.TEMPLATE);
+        expect(new Set(rows.map((row) => row.ai_note_status))).toEqual(new Set([AiNoteStatus.UNAVAILABLE]));
+        rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
     it("marks every row as disabled when the team turned AI drafts off", async () => {
@@ -197,10 +194,10 @@ describe("GET /api/v1/imports/:id/export", () => {
         expect(new Set(rows.map((row) => row.ai_note_status))).toEqual(new Set([AiNoteStatus.DISABLED]));
     });
 
-    it("marks the top 5 as unavailable when AI is not set up on the server", async () => {
+    it("marks every row as unavailable when AI is not set up on the server", async () => {
         const rows = readCsv((await download(await makeApi(null), importId)).body);
 
-        expect(rows.slice(0, 5).map((row) => row.ai_note_status)).toEqual(Array(5).fill(AiNoteStatus.UNAVAILABLE));
+        expect(new Set(rows.map((row) => row.ai_note_status))).toEqual(new Set([AiNoteStatus.UNAVAILABLE]));
     });
 
     it("follows the screen's filters and keeps the original ranks", async () => {

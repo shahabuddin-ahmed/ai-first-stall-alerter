@@ -133,10 +133,23 @@ describe("parseBoardCsv: file errors", () => {
         expect(parse(`${HEADER}\n${rows.join("\n")}`).records).toHaveLength(BOARD_LIMITS.MAX_RECORDS);
     });
 
-    it("rejects a value longer than 255 characters in a known column", () => {
-        const error = fileError(`${HEADER}\n001,${"x".repeat(256)},QA,Applied,2026-11-01,Recruiter A`);
+    it("rejects a name longer than 50 characters, and accepts exactly 50", () => {
+        const error = fileError(`${HEADER}\n001,${"x".repeat(51)},QA,Applied,2026-11-01,Recruiter A`);
         expect(error.code).toBe(FileErrorCode.VALUE_TOO_LONG);
-        expect(error.details).toEqual(["record 2, column name"]);
+        expect(error.details).toEqual(["record 2, column name (max 50)"]);
+        expect(parse(`${HEADER}\n001,${"x".repeat(50)},QA,Applied,2026-11-01,Recruiter A`).records).toHaveLength(1);
+    });
+
+    it("checks each text column against its own limit", () => {
+        const error = fileError(
+            `${HEADER}\n${"1".repeat(37)},Ana,${"r".repeat(51)},${"s".repeat(31)},2026-11-01,${"p".repeat(51)}`
+        );
+        expect(error.details).toEqual([
+            "record 2, column candidate_id (max 36)",
+            "record 2, column role (max 50)",
+            "record 2, column stage (max 30)",
+            "record 2, column recruiter (max 50)",
+        ]);
     });
 
     it("ignores long values in columns it does not store", () => {

@@ -1,5 +1,12 @@
 import { parse } from "csv-parse/sync";
-import { BOARD_LIMITS, BoardColumn, FileErrorCode, KNOWN_COLUMNS, REQUIRED_COLUMNS } from "../constant/board";
+import {
+    BOARD_LIMITS,
+    BoardColumn,
+    FileErrorCode,
+    KNOWN_COLUMNS,
+    REQUIRED_COLUMNS,
+    TEXT_COLUMN_LIMITS,
+} from "../constant/board";
 import { BoardRecord, FileError, ParseResult } from "./types";
 
 export const COLUMN_FIELDS: Record<BoardColumn, keyof BoardRecord> = {
@@ -83,11 +90,12 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
         const recordNumber = index + 2;
         const record = { recordNumber, fieldCount: fields.length } as BoardRecord;
         for (const [column, position] of columnIndex) {
-            const value = fields[position] ?? "";
-            if (value.length > BOARD_LIMITS.MAX_VALUE_LENGTH) {
-                tooLong.push(`record ${recordNumber}, column ${column}`);
+            (record[COLUMN_FIELDS[column]] as string) = fields[position] ?? "";
+        }
+        for (const [column, maxLength] of Object.entries(TEXT_COLUMN_LIMITS)) {
+            if ((record[COLUMN_FIELDS[column as BoardColumn]] as string).length > maxLength) {
+                tooLong.push(`record ${recordNumber}, column ${column} (max ${maxLength})`);
             }
-            (record[COLUMN_FIELDS[column]] as string) = value;
         }
         records.push(record);
     });
@@ -102,11 +110,7 @@ export const parseBoardCsv = (bytes: Uint8Array): ParseResult => {
         );
     }
     if (tooLong.length > 0) {
-        return fail(
-            FileErrorCode.VALUE_TOO_LONG,
-            `Some values are longer than ${BOARD_LIMITS.MAX_VALUE_LENGTH} characters.`,
-            tooLong
-        );
+        return fail(FileErrorCode.VALUE_TOO_LONG, "Some values are too long.", tooLong);
     }
 
     return { ok: true, board: { headerCount: header.length, records } };

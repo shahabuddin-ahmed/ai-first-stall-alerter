@@ -70,7 +70,7 @@ export const errorMessages: Record<ERROR_CODES, { message: string }> = {
         message: "The file is not valid CSV.",
     },
     VALUE_TOO_LONG: {
-        message: `Some values are longer than ${BOARD_LIMITS.MAX_VALUE_LENGTH} characters.`,
+        message: "Some values are too long.",
     },
 };
 

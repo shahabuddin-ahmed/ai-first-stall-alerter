@@ -24,7 +24,7 @@ export enum RecipientType {
 export const STAGE_LIMITS = {
     MIN_THRESHOLD_DAYS: 1,
     MAX_THRESHOLD_DAYS: 90,
-    MAX_NAME_LENGTH: 40,
+    MAX_NAME_LENGTH: 30,
     MAX_STAGES: 30,
     MAX_ALIASES: 10,
 } as const;

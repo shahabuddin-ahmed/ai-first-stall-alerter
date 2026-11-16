@@ -9,7 +9,6 @@ export enum AiStatus {
 export enum AiNoteStatus {
     AI_DRAFT = "ai_draft",
     DISABLED = "disabled",
-    OUTSIDE_AI_SCOPE = "outside_ai_scope",
     PENDING = "pending",
     UNAVAILABLE = "unavailable",
 }
@@ -55,12 +54,19 @@ export enum FinishReason {
 
 export const TIMEOUT_ERROR_NAMES: readonly string[] = ["TimeoutError", "AbortError"];
 
+export const AI_COLUMN_LIMITS = {
+    ERROR_CODE: 20,
+    PROMPT_VERSION: 10,
+} as const;
+
 export enum LlmCallStatus {
     SUCCESS = "success",
     FAILED = "failed",
 }
 
-export const DRAFT_PLACEHOLDERS = ["{{first_name}}", "{{name}}", "{{role}}", "{{recruiter}}"] as const;
+export const SENDER_PLACEHOLDER = "{{recruiter}}";
+
+export const DRAFT_PLACEHOLDERS = ["{{first_name}}", "{{name}}", "{{role}}", SENDER_PLACEHOLDER] as const;
 
 export const AI_LIMITS = {
     BRIEFING_CHARS: 450,
@@ -81,4 +87,4 @@ export const AI_REQUEST = {
     SCHEMA_NAME: "stall_insights",
 } as const;
 
-export const PROMPT_VERSION = "v1";
+export const PROMPT_VERSION = "v5";

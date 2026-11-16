@@ -1,5 +1,5 @@
 import { ActionCode } from "../constant/stage";
-import { InsightFacts } from "../rules/ai-facts";
+import { actionsOf, InsightFacts } from "../rules/ai-facts";
 import { AiGenerator, GenerationResult } from "./generator";
 import { BottleneckType } from "../constant/board";
 
@@ -32,7 +32,7 @@ export class FakeAiGenerator implements AiGenerator {
                         ? `${bottleneck.stalled} follow-ups share the same next action. Clear them together.`
                         : `${bottleneck.recruiter_key} owns ${bottleneck.stalled} stalled follow-ups. Share some of the load.`
                 ),
-                drafts: facts.alerts.map((alert) => ({ rank: alert.rank, text: DRAFTS[alert.action_code] })),
+                drafts: actionsOf(facts).map((action_code) => ({ action_code, text: DRAFTS[action_code] })),
             },
             servedModel: this.model,
             inputTokens: null,

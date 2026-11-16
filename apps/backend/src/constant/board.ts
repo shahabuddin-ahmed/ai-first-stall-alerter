@@ -1,3 +1,5 @@
+import { STAGE_LIMITS } from "./stage";
+
 export enum BoardColumn {
     CANDIDATE_ID = "candidate_id",
     NAME = "name",
@@ -25,10 +27,22 @@ export const OPTIONAL_DATE_COLUMNS: readonly BoardColumn[] = [
 
 export const KNOWN_COLUMNS: readonly BoardColumn[] = [...REQUIRED_COLUMNS, ...OPTIONAL_DATE_COLUMNS];
 
+export const DATE_COLUMNS: readonly BoardColumn[] = [BoardColumn.STAGE_ENTERED_AT, ...OPTIONAL_DATE_COLUMNS];
+
+export const TEXT_COLUMN_LIMITS = {
+    [BoardColumn.CANDIDATE_ID]: 36,
+    [BoardColumn.NAME]: 50,
+    [BoardColumn.ROLE]: 50,
+    [BoardColumn.STAGE]: STAGE_LIMITS.MAX_NAME_LENGTH,
+    [BoardColumn.RECRUITER]: 50,
+} as const;
+
+export const INVALID_DATE_TEXT = "invalid date";
+
 export const BOARD_LIMITS = {
     MAX_FILE_BYTES: 5 * 1024 * 1024,
     MAX_RECORDS: 10_000,
-    MAX_VALUE_LENGTH: 255,
+    MAX_FILE_NAME_LENGTH: 255,
     MAX_ERROR_DETAILS: 10,
     MIN_BOTTLENECK_STALLED: 2,
     INSERT_BATCH_SIZE: 1000,

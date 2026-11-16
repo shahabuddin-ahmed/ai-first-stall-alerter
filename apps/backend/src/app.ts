@@ -1,9 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
 import { newV1Router } from "./web/router/v1/index";
-import { newPostRepo } from "./repo/post";
-import { newPostService } from "./service/post";
-import { newPostV1Controller } from "./web/controller/v1/post";
 import { globalErrorHandler } from "./web/middleware/global-error-handler";
 import { initializeDBConnection } from "./infra/db";
 import config from "./config/config";
@@ -42,7 +39,6 @@ app.post(`${API_PREFIX}/imports/:id/insights`, newRateLimit(config.SECURITY.RATE
 export const appReady: Promise<void> = (async () => {
     await initializeDBConnection();
 
-    const postRepo = await newPostRepo();
     const stageRepo = await newStageRepo();
     const settingRepo = await newSettingRepo();
     const importRepo = await newImportRepo();
@@ -51,7 +47,6 @@ export const appReady: Promise<void> = (async () => {
 
     const aiGenerator = newAiGenerator(config.AI);
 
-    const postService = await newPostService(postRepo);
     const configService = await newConfigService(stageRepo, settingRepo, {
         configured: aiGenerator !== null,
         model: aiGenerator?.model ?? null,
@@ -67,7 +62,6 @@ export const appReady: Promise<void> = (async () => {
     );
     const exportService = await newExportService(importService, insightService);
 
-    const postV1Controller = await newPostV1Controller(postService);
     const stageV1Controller = await newStageV1Controller(configService);
     const settingV1Controller = await newSettingV1Controller(configService);
     const importV1Controller = await newImportV1Controller(importService);
@@ -75,7 +69,6 @@ export const appReady: Promise<void> = (async () => {
     const exportV1Controller = await newExportV1Controller(exportService);
 
     const v1Router = await newV1Router({
-        postController: postV1Controller,
         stageController: stageV1Controller,
         settingController: settingV1Controller,
         importController: importV1Controller,

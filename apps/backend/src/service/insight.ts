@@ -46,8 +46,7 @@ export interface InsightsView {
 
 export interface SavedDrafts {
     status: AiNoteStatus.AI_DRAFT | AiNoteStatus.DISABLED | AiNoteStatus.PENDING | AiNoteStatus.UNAVAILABLE;
-    topN: number;
-    draftsByRank: Map<number, string>;
+    draftsByAction: Map<ActionCode, string>;
 }
 
 export interface InsightServiceInterface {
@@ -100,10 +99,9 @@ export class InsightService implements InsightServiceInterface {
     }
 
     async getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts> {
-        const saved = (status: SavedDrafts["status"], draftsByRank = new Map<number, string>()): SavedDrafts => ({
+        const saved = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
             status,
-            topN: this.topN,
-            draftsByRank,
+            draftsByAction,
         });
         const { useAiDrafts, stagesVersion } = this.configService.getSnapshot();
         if (!this.generator) {
@@ -116,13 +114,7 @@ export class InsightService implements InsightServiceInterface {
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion);
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            const items = new Map(analysis.queue.map((item) => [item.rank, item]));
-            const draftsByRank = new Map(
-                cached.drafts
-                    .filter((draft) => items.has(draft.rank))
-                    .map((draft) => [draft.rank, fillPlaceholders(draft.text, items.get(draft.rank)!)])
-            );
-            return saved(AiNoteStatus.AI_DRAFT, draftsByRank);
+            return saved(AiNoteStatus.AI_DRAFT, new Map(cached.drafts.map((draft) => [draft.action_code, draft.text])));
         }
 
         const lastCall = await this.llmCallRepo.findLatest(cacheKey);
@@ -221,7 +213,7 @@ export class InsightService implements InsightServiceInterface {
     private aiView(importId: number, analysis: BoardAnalysis, output: AiOutput, cached: boolean): InsightsView {
         const names = new Map([...recruiterKeysOf(analysis.queue)].map(([name, key]) => [key, name]));
         const withNames = (text: string) => text.replace(RECRUITER_KEY_PATTERN, (key) => names.get(key) ?? key);
-        const draftByRank = new Map(output.drafts.map((draft) => [draft.rank, draft.text]));
+        const draftByAction = new Map(output.drafts.map((draft) => [draft.action_code, draft.text]));
 
         return {
             importId,
@@ -243,7 +235,7 @@ export class InsightService implements InsightServiceInterface {
                 name: item.name,
                 actionCode: item.actionCode,
                 recipient: item.recipient,
-                text: fillPlaceholders(draftByRank.get(item.rank) as string, item),
+                text: fillPlaceholders(draftByAction.get(item.actionCode) as string, item),
                 source: MessageSource.AI_DRAFT,
             })),
         };

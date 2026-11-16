@@ -1,7 +1,6 @@
 import { DataTypes } from "sequelize";
 import { Migration } from "../migrator";
 
-// Sample table from the boilerplate (src/model/post.ts), kept as reference code.
 export const up: Migration = async ({ context: queryInterface }) => {
     await queryInterface.createTable(
         "posts",

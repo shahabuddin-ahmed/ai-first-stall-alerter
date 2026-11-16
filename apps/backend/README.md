@@ -32,19 +32,19 @@ yarn dev
 
 ## Settings (`.env`)
 
-| Setting                                                                      | Default                        | What it does                                                                      |
-| ---------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------- |
-| `APPLICATION_SERVER_PORT`                                                    | `4000`                         | API port                                                                          |
-| `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` | local Docker values            | Database. Tests always use `MYSQL_TEST_DATABASE` (`stallalert_test`)              |
-| `WEB_ORIGIN`                                                                 | `http://localhost:3000`        | Browser origins allowed to call the API (comma-separated)                         |
-| `RATE_LIMIT_UPLOADS_PER_MINUTE`                                              | `20`                           | Uploads per IP per minute                                                         |
-| `RATE_LIMIT_INSIGHTS_PER_MINUTE`                                             | `10`                           | AI insights requests per IP per minute                                            |
-| `AI_API_KEY`, `AI_MODEL`                                                     | empty                          | OpenRouter key and model. Empty = templates only. The key never leaves the server |
-| `AI_BASE_URL`                                                                | `https://openrouter.ai/api/v1` | Any OpenAI-compatible endpoint                                                    |
-| `AI_TOP_N`                                                                   | `5`                            | AI writes messages for the top N alerts                                           |
-| `AI_TIMEOUT_MS`, `AI_MAX_OUTPUT_TOKENS`                                      | `15000`, `1500`                | Limits for one AI call                                                            |
-| `AI_REASONING_EFFORT`                                                        | `low`                          | Thinking models: `off` (fastest), `low`, `medium`, `high`; `none` = not sent      |
-| `AI_MODE`                                                                    | `live`                         | `fake` = built-in stand-in, no network (tests and demos)                          |
+| Setting                                                                      | Default                        | What it does                                                                                       |
+| ---------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `APPLICATION_SERVER_PORT`                                                    | `4000`                         | API port                                                                                           |
+| `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` | local Docker values            | Database. Tests always use `MYSQL_TEST_DATABASE` (`stallalert_test`)                               |
+| `WEB_ORIGIN`                                                                 | `http://localhost:3000`        | Browser origins allowed to call the API (comma-separated)                                          |
+| `RATE_LIMIT_UPLOADS_PER_MINUTE`                                              | `20`                           | Uploads per IP per minute                                                                          |
+| `RATE_LIMIT_INSIGHTS_PER_MINUTE`                                             | `10`                           | AI insights requests per IP per minute                                                             |
+| `AI_API_KEY`, `AI_MODEL`                                                     | empty                          | OpenRouter key and model. Empty = templates only. The key never leaves the server                  |
+| `AI_BASE_URL`                                                                | `https://openrouter.ai/api/v1` | Any OpenAI-compatible endpoint                                                                     |
+| `AI_TOP_N`                                                                   | `5`                            | AI briefing looks at the top N alerts. Messages: one AI draft per action, used for every candidate |
+| `AI_TIMEOUT_MS`, `AI_MAX_OUTPUT_TOKENS`                                      | `15000`, `1500`                | Limits for one AI call (timeout up to 120000 = 2 minutes)                                          |
+| `AI_REASONING_EFFORT`                                                        | `low`                          | Thinking models: `off` (fastest), `low`, `medium`, `high`; `none` = not sent                       |
+| `AI_MODE`                                                                    | `live`                         | `fake` = built-in stand-in, no network (tests and demos)                                           |
 
 Every value is checked at start-up. A wrong value stops the API with a clear message.
 
@@ -53,18 +53,18 @@ answered in 9 seconds and passed every check.
 
 ## API (`/api/v1`)
 
-| Method    | Path                                                                    | What it does                                                                               |
-| --------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| GET       | `/health`                                                               | API and database status (200 or 503)                                                       |
-| GET · PUT | `/stages`                                                               | Read or save the hiring stages (save needs the current `version`, else 409)                |
-| GET · PUT | `/settings`                                                             | Read or turn AI drafts on/off; shows if AI is set up (never the key)                       |
-| POST      | `/imports`                                                              | Upload a CSV (`file`, `referenceDate`). 201 new, 200 if the same file was already imported |
-| GET       | `/imports`                                                              | List imports, newest first                                                                 |
-| GET       | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Counts, bottlenecks and the ranked queue, recalculated                                     |
-| GET       | `/imports/:id/errors?referenceDate=&page=`                              | Row errors                                                                                 |
-| POST      | `/imports/:id/insights`                                                 | Briefing, bottleneck notes and messages for the top N (AI or templates)                    |
-| GET       | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=`          | CSV download (never calls the AI)                                                          |
-| DELETE    | `/imports/:id`                                                          | Delete an import, its rows and its cached AI answers                                       |
+| Method    | Path                                                                    | What it does                                                                                       |
+| --------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| GET       | `/health`                                                               | API and database status (200 or 503)                                                               |
+| GET · PUT | `/stages`                                                               | Read or save the hiring stages (save needs the current `version`, else 409)                        |
+| GET · PUT | `/settings`                                                             | Read or turn AI drafts on/off; shows if AI is set up (never the key)                               |
+| POST      | `/imports`                                                              | Upload a CSV (`file`, `referenceDate`). 201 new, 200 if the same file was already imported         |
+| GET       | `/imports`                                                              | List imports, newest first                                                                         |
+| GET       | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Counts, bottlenecks and the ranked queue, recalculated                                             |
+| GET       | `/imports/:id/errors?referenceDate=&page=`                              | Row errors                                                                                         |
+| POST      | `/imports/:id/insights`                                                 | Briefing, bottleneck notes and one message per action (AI or templates); the top N shown filled in |
+| GET       | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=`          | CSV download (never calls the AI)                                                                  |
+| DELETE    | `/imports/:id`                                                          | Delete an import, its rows and its cached AI answers                                               |
 
 Errors always look like `{ code, message, response: null, errors: [...] }`. File errors: `FILE_TOO_LARGE` (413),
 `UNSUPPORTED_FILE` (415), `EMPTY_FILE`, `INVALID_ENCODING`, `MISSING_HEADERS`, `DUPLICATE_HEADERS`, `INVALID_CSV`,
@@ -83,15 +83,14 @@ yarn db:migrate:down     # undo the last migration
 yarn db:seed:down        # remove the default data
 ```
 
-| Table            | What it stores                                                                 |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `imports`        | One uploaded file (unique file hash, so the same file is stored once)          |
-| `import_records` | The rows of a file: the 8 CSV columns as raw text; deleted with the import     |
-| `stages`         | Hiring stages: name, type, threshold, order, aliases, action code              |
-| `settings`       | One row: AI drafts on/off and the stages version                               |
-| `ai_insights`    | Cached, validated AI answers (placeholders, no names); deleted with the import |
-| `llm_calls`      | One row per AI call: model, tokens, cost, time, status; never the text         |
-| `posts`          | Boilerplate sample                                                             |
+| Table            | What it stores                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `imports`        | One uploaded file (unique file hash, so the same file is stored once)                                                                                                                                  |
+| `import_records` | The rows of a file: 5 text columns (candidate_id up to 36 characters, stage up to 30, name, role and recruiter up to 50), 3 DATE columns, and `invalid_dates` for wrong dates; deleted with the import |
+| `stages`         | Hiring stages: name, type, threshold, order, aliases, action code                                                                                                                                      |
+| `settings`       | One row: AI drafts on/off and the stages version                                                                                                                                                       |
+| `ai_insights`    | Cached, validated AI answers (placeholders, no names); deleted with the import                                                                                                                         |
+| `llm_calls`      | One row per AI call: model, tokens, cost, time, status; never the text                                                                                                                                 |
 
 To change a table, add a new migration file. Never edit one that has already run.
 

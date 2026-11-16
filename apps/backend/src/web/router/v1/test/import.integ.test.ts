@@ -259,6 +259,38 @@ describe("GET /api/v1/imports/:id", () => {
     });
 });
 
+describe("stored dates", () => {
+    it("keeps real dates as DATE, a wrong date as a flag, and still reports the wrong date", async () => {
+        const board = Buffer.from(
+            "candidate_id,name,role,stage,stage_entered_at,recruiter,last_activity_at,last_contacted_at\n" +
+                "501,Ana Ruiz,QA,Offer,2026-11-01,Lee,2026-02-30,\n"
+        );
+        const importId = (await upload(app, board, "dates.csv")).body.response.import.id;
+
+        const [stored] = await sequelize.query<Record<string, unknown>>(
+            `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
+                    last_contacted_at AS contacted, invalid_dates AS invalid
+             FROM import_records WHERE import_id = ?`,
+            { replacements: [importId], type: QueryTypes.SELECT }
+        );
+        expect(stored).toEqual({
+            entered: "2026-11-01",
+            activity: null,
+            contacted: null,
+            invalid: ["last_activity_at"],
+        });
+
+        const errors = await request(app).get(`/api/v1/imports/${importId}/errors?referenceDate=${REFERENCE_DATE}`);
+        expect(errors.body.response.items).toEqual([
+            {
+                recordNumber: 2,
+                candidateId: "501",
+                errors: [{ field: "last_activity_at", code: "INVALID_DATE", problem: "not a real YYYY-MM-DD date" }],
+            },
+        ]);
+    });
+});
+
 describe("other import endpoints", () => {
     let importId: number;
 

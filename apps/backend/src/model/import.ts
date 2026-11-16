@@ -1,5 +1,6 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
+import { HASH_COLUMN_LENGTH } from "../constant/hash";
 
 export interface ImportInterface {
     id?: number;
@@ -9,6 +10,7 @@ export interface ImportInterface {
     headerCount: number;
     recordCount: number;
     createdAt?: Date;
+    updatedAt?: Date;
 }
 
 class Import extends Model<ImportInterface> implements ImportInterface {
@@ -19,6 +21,7 @@ class Import extends Model<ImportInterface> implements ImportInterface {
     public headerCount!: number;
     public recordCount!: number;
     public readonly createdAt?: Date;
+    public readonly updatedAt?: Date;
 }
 
 Import.init(
@@ -33,7 +36,7 @@ Import.init(
             allowNull: false,
         },
         fileHash: {
-            type: new DataTypes.CHAR(64),
+            type: new DataTypes.STRING(HASH_COLUMN_LENGTH),
             allowNull: false,
         },
         fileSize: {
@@ -53,7 +56,6 @@ Import.init(
         tableName: "imports",
         freezeTableName: true,
         timestamps: true,
-        updatedAt: false,
         underscored: true,
         sequelize: newSequelize(),
         modelName: "imports",

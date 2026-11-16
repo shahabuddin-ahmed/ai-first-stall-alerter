@@ -1,7 +1,7 @@
 import { AiNoteStatus, MessageSource } from "../constant/ai";
 import { EXPORT_FILE_PREFIX, ExportColumn } from "../constant/export";
 import { buildExportCsv, ExportRow } from "../rules/export-csv";
-import { RECIPIENT_LABELS } from "../rules/messages";
+import { fillPlaceholders, RECIPIENT_LABELS } from "../rules/messages";
 import { filterQueue } from "../rules/queue-filter";
 import { QueueItem } from "../rules/types";
 import { ImportServiceInterface, ReportQuery } from "./import";
@@ -18,14 +18,8 @@ export interface ExportServiceInterface {
 }
 
 const noteStatusOf = (item: QueueItem, saved: SavedDrafts): AiNoteStatus => {
-    if (saved.status === AiNoteStatus.DISABLED) {
-        return AiNoteStatus.DISABLED;
-    }
-    if (item.rank > saved.topN) {
-        return AiNoteStatus.OUTSIDE_AI_SCOPE;
-    }
-    if (saved.status === AiNoteStatus.AI_DRAFT) {
-        return saved.draftsByRank.has(item.rank) ? AiNoteStatus.AI_DRAFT : AiNoteStatus.UNAVAILABLE;
+    if (saved.status === AiNoteStatus.AI_DRAFT && !saved.draftsByAction.has(item.actionCode)) {
+        return AiNoteStatus.UNAVAILABLE;
     }
     return saved.status;
 };
@@ -42,7 +36,8 @@ export class ExportService implements ExportServiceInterface {
 
         const rows: ExportRow[] = filterQueue(analysis.queue, query).map((item) => {
             const noteStatus = noteStatusOf(item, saved);
-            const aiDraft = noteStatus === AiNoteStatus.AI_DRAFT ? saved.draftsByRank.get(item.rank) : undefined;
+            const draft = saved.draftsByAction.get(item.actionCode);
+            const aiDraft = noteStatus === AiNoteStatus.AI_DRAFT && draft ? fillPlaceholders(draft, item) : undefined;
             return {
                 [ExportColumn.RANK]: item.rank,
                 [ExportColumn.CANDIDATE_ID]: item.candidateId,

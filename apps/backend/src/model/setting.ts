@@ -5,6 +5,7 @@ export interface SettingInterface {
     id: number;
     useAiDrafts: boolean;
     stagesVersion: number;
+    createdAt?: Date;
     updatedAt?: Date;
 }
 
@@ -12,13 +13,15 @@ class Setting extends Model<SettingInterface> implements SettingInterface {
     public id!: number;
     public useAiDrafts!: boolean;
     public stagesVersion!: number;
+    public readonly createdAt?: Date;
     public readonly updatedAt?: Date;
 }
 
 Setting.init(
     {
         id: {
-            type: DataTypes.TINYINT.UNSIGNED,
+            type: DataTypes.INTEGER.UNSIGNED,
+            autoIncrement: true,
             primaryKey: true,
         },
         useAiDrafts: {
@@ -36,7 +39,6 @@ Setting.init(
         tableName: "settings",
         freezeTableName: true,
         timestamps: true,
-        createdAt: false,
         underscored: true,
         sequelize: newSequelize(),
         modelName: "settings",

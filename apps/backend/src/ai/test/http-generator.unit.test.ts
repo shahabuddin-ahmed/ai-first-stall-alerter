@@ -64,7 +64,7 @@ const FACTS: InsightFacts = {
 const ANSWER = {
     briefing: "Start with rank 1.",
     bottleneck_notes: [],
-    drafts: [{ rank: 1, text: "Hi {{first_name}}." }],
+    drafts: [{ action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}." }],
 };
 
 const generator = (timeoutMs = 2000) =>

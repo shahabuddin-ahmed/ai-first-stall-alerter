@@ -109,3 +109,6 @@ export const buildInsightFacts = (analysis: BoardAnalysis, topN: number): Insigh
         })),
     };
 };
+
+export const actionsOf = (facts: InsightFacts): ActionCode[] =>
+    Object.keys(facts.board.stalled_by_action) as ActionCode[];

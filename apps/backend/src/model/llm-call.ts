@@ -1,7 +1,8 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
 import { AiUsage } from "../ai/generator";
-import { LlmCallStatus } from "../constant/ai";
+import { AI_COLUMN_LIMITS, LlmCallStatus } from "../constant/ai";
+import { HASH_COLUMN_LENGTH } from "../constant/hash";
 
 export interface LlmCallInterface extends AiUsage {
     id?: number;
@@ -12,6 +13,7 @@ export interface LlmCallInterface extends AiUsage {
     status: LlmCallStatus;
     errorCode: string | null;
     createdAt?: Date;
+    updatedAt?: Date;
 }
 
 class LlmCall extends Model<LlmCallInterface> implements LlmCallInterface {
@@ -27,12 +29,13 @@ class LlmCall extends Model<LlmCallInterface> implements LlmCallInterface {
     public status!: LlmCallStatus;
     public errorCode!: string | null;
     public readonly createdAt?: Date;
+    public readonly updatedAt?: Date;
 }
 
 LlmCall.init(
     {
         id: {
-            type: DataTypes.BIGINT.UNSIGNED,
+            type: DataTypes.INTEGER.UNSIGNED,
             autoIncrement: true,
             primaryKey: true,
         },
@@ -41,7 +44,7 @@ LlmCall.init(
             allowNull: true,
         },
         cacheKey: {
-            type: new DataTypes.CHAR(64),
+            type: new DataTypes.STRING(HASH_COLUMN_LENGTH),
             allowNull: false,
         },
         requestedModel: {
@@ -73,7 +76,7 @@ LlmCall.init(
             allowNull: false,
         },
         errorCode: {
-            type: new DataTypes.STRING(40),
+            type: new DataTypes.STRING(AI_COLUMN_LIMITS.ERROR_CODE),
             allowNull: true,
         },
     },
@@ -81,7 +84,6 @@ LlmCall.init(
         tableName: "llm_calls",
         freezeTableName: true,
         timestamps: true,
-        updatedAt: false,
         underscored: true,
         sequelize: newSequelize(),
         modelName: "llm_calls",

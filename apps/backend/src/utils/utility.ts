@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import { ERROR_CODES, errorMessages } from "../constant/error";
-
-const HASH_ALGORITHM = "sha256";
+import { HASH_ALGORITHM } from "../constant/hash";
 
 export const retrieveErrorMessage = (errorCode: ERROR_CODES): string => errorMessages[errorCode].message;
 

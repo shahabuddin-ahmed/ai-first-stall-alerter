@@ -13,15 +13,18 @@ export interface StageConfig extends StageInput {
     position: number;
 }
 
-export interface BoardRecord {
+export interface RecordText {
     recordNumber: number;
     fieldCount: number;
     candidateId: string;
     name: string;
     role: string;
     stage: string;
-    stageEnteredAt: string;
     recruiter: string;
+}
+
+export interface BoardRecord extends RecordText {
+    stageEnteredAt: string;
     lastActivityAt: string;
     lastContactedAt: string;
 }

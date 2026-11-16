@@ -1,10 +1,17 @@
-import { AI_LIMITS, DRAFT_PLACEHOLDERS } from "../constant/ai";
-import { InsightFacts } from "../rules/ai-facts";
+import { AI_LIMITS, DRAFT_PLACEHOLDERS, SENDER_PLACEHOLDER } from "../constant/ai";
+import { ActionCode } from "../constant/stage";
+import { actionsOf, InsightFacts } from "../rules/ai-facts";
+import { RESPONSE_SCHEMA } from "./prompt";
+
+export interface ActionDraft {
+    action_code: ActionCode;
+    text: string;
+}
 
 export interface AiOutput {
     briefing: string;
     bottleneck_notes: string[];
-    drafts: { rank: number; text: string }[];
+    drafts: ActionDraft[];
 }
 
 export type GuardrailResult = { ok: true; output: AiOutput } | { ok: false; problems: string[] };
@@ -33,6 +40,9 @@ const checkText = (label: string, text: string, maxChars: number, problems: stri
     if (LINK_OR_MARKUP.test(text)) {
         problems.push(`${label} contains a link or markup`);
     }
+    Object.values(ActionCode)
+        .filter((code) => text.includes(code))
+        .forEach((code) => problems.push(`${label} uses the code ${code} instead of plain words`));
 };
 
 const checkNumbers = (label: string, text: string, allowed: Set<number>, problems: string[]): void => {
@@ -46,26 +56,68 @@ const checkNumbers = (label: string, text: string, allowed: Set<number>, problem
 const isObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
+const ANSWER_FIELDS: readonly string[] = RESPONSE_SCHEMA.required;
+const DRAFT_FIELDS: readonly string[] = RESPONSE_SCHEMA.properties.drafts.items.required;
+const MAX_FIELD_NAME_CHARS = 40;
+
+const unexpectedFields = (label: string, value: Record<string, unknown>, expected: readonly string[]): string[] =>
+    Object.keys(value)
+        .filter((key) => !expected.includes(key))
+        .map((key) => `${label}has an unexpected field "${key.slice(0, MAX_FIELD_NAME_CHARS)}"`);
+
+const shapeProblems = (raw: unknown): string[] => {
+    if (!isObject(raw)) {
+        return ["the answer is not a JSON object"];
+    }
+    const problems = unexpectedFields("the answer ", raw, ANSWER_FIELDS);
+    if (typeof raw.briefing !== "string") {
+        problems.push("briefing is missing or not text");
+    }
+    if (!Array.isArray(raw.bottleneck_notes)) {
+        problems.push("bottleneck_notes is missing or not a list");
+    } else {
+        raw.bottleneck_notes.forEach((note, index) => {
+            if (typeof note !== "string") {
+                problems.push(`bottleneck_notes[${index}] is not text`);
+            }
+        });
+    }
+    if (!Array.isArray(raw.drafts)) {
+        problems.push("drafts is missing or not a list");
+    } else {
+        raw.drafts.forEach((draft, index) => {
+            if (!isObject(draft)) {
+                problems.push(`drafts[${index}] is not an object`);
+                return;
+            }
+            problems.push(...unexpectedFields(`drafts[${index}] `, draft, DRAFT_FIELDS));
+            if (typeof draft.action_code !== "string") {
+                problems.push(`drafts[${index}].action_code is missing or not text`);
+            }
+            if (typeof draft.text !== "string") {
+                problems.push(`drafts[${index}].text is missing or not text`);
+            }
+        });
+    }
+    return problems;
+};
+
 export const checkAiOutput = (raw: unknown, facts: InsightFacts): GuardrailResult => {
-    if (
-        !isObject(raw) ||
-        typeof raw.briefing !== "string" ||
-        !Array.isArray(raw.bottleneck_notes) ||
-        !raw.bottleneck_notes.every((note) => typeof note === "string") ||
-        !Array.isArray(raw.drafts) ||
-        !raw.drafts.every((draft) => isObject(draft) && Number.isInteger(draft.rank) && typeof draft.text === "string")
-    ) {
-        return { ok: false, problems: ["the answer does not have the expected fields"] };
+    const wrongShape = shapeProblems(raw);
+    if (wrongShape.length > 0) {
+        return { ok: false, problems: wrongShape };
     }
 
+    const answer = raw as AiOutput;
     const problems: string[] = [];
     const allowedNumbers = numbersIn(facts);
+    const wanted = actionsOf(facts);
     const output: AiOutput = {
-        briefing: raw.briefing.trim(),
-        bottleneck_notes: (raw.bottleneck_notes as string[]).map((note) => note.trim()),
-        drafts: (raw.drafts as { rank: number; text: string }[])
-            .map((draft) => ({ rank: draft.rank, text: draft.text.trim() }))
-            .sort((a, b) => a.rank - b.rank),
+        briefing: answer.briefing.trim(),
+        bottleneck_notes: answer.bottleneck_notes.map((note) => note.trim()),
+        drafts: answer.drafts
+            .map((draft) => ({ action_code: draft.action_code, text: draft.text.trim() }))
+            .sort((a, b) => wanted.indexOf(a.action_code) - wanted.indexOf(b.action_code)),
     };
 
     checkText("briefing", output.briefing, AI_LIMITS.BRIEFING_CHARS, problems);
@@ -79,21 +131,23 @@ export const checkAiOutput = (raw: unknown, facts: InsightFacts): GuardrailResul
         checkNumbers(`bottleneck note ${index + 1}`, note, allowedNumbers, problems);
     });
 
-    const wanted = facts.alerts.map((alert) => alert.rank);
-    const got = output.drafts.map((draft) => draft.rank);
+    const got = output.drafts.map((draft) => draft.action_code);
     if (got.length !== new Set(got).size) {
-        problems.push("a rank has more than one draft");
+        problems.push("an action has more than one draft");
     }
-    wanted.filter((rank) => !got.includes(rank)).forEach((rank) => problems.push(`rank ${rank} has no draft`));
-    got.filter((rank) => !wanted.includes(rank)).forEach((rank) => problems.push(`rank ${rank} was not requested`));
+    wanted.filter((action) => !got.includes(action)).forEach((action) => problems.push(`${action} has no draft`));
+    got.filter((action) => !wanted.includes(action)).forEach((action) => problems.push(`${action} was not requested`));
 
     for (const draft of output.drafts) {
-        const label = `draft for rank ${draft.rank}`;
+        const label = `draft for ${draft.action_code}`;
         checkText(label, draft.text, AI_LIMITS.DRAFT_CHARS, problems);
         const placeholders = draft.text.match(PLACEHOLDER) ?? [];
         placeholders
             .filter((placeholder) => !(DRAFT_PLACEHOLDERS as readonly string[]).includes(placeholder))
             .forEach((placeholder) => problems.push(`${label} uses an unknown placeholder ${placeholder}`));
+        if (placeholders.filter((placeholder) => placeholder === SENDER_PLACEHOLDER).length > 1) {
+            problems.push(`${label} uses ${SENDER_PLACEHOLDER} more than once (it is only for the signature)`);
+        }
         const withoutPlaceholders = draft.text.replace(PLACEHOLDER, "");
         if (/[{}]/.test(withoutPlaceholders)) {
             problems.push(`${label} has a broken placeholder`);

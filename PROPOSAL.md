@@ -43,11 +43,11 @@ sees names, IDs, roles or any free text, and every output is checked before anyo
 ### A6. Definition of done
 1. Samples A, B and C produce **exactly** the committed expected results (`data/expected/*.json`), in both scenarios.
 2. A bad file never crashes the app. Every bad row shows its record number, field and fix.
-3. Every alert has a usable message. With AI on and working, the top 5 get validated AI drafts; with AI off, not set up
-   or failing, the template is used and labelled as such.
+3. Every alert has a usable message. With AI on and working, every alert gets a validated AI draft (one draft per action,
+   reused for each candidate with that action); with AI off, not set up or failing, the template is used and labelled.
 4. The LLM payload contains only the allowlisted facts (Part E3); a test asserts this.
 5. **Build gate (end of Day 3):** in the browser, upload Sample B, verify the expected queue, generate one real AI
-   briefing plus 5 drafts, download the CSV; repeat with the provider unavailable.
+   briefing plus one draft per action, download the CSV; repeat with the provider unavailable.
 6. A 10,000-row file meets the targets in Part I3, with real timings recorded.
 7. A reviewer can run the app from a fresh clone with the README.
 8. All 7 submission deliverables are attached (Part K).
@@ -180,7 +180,7 @@ ascending), each shown only if its count ≥ 2.
 ### C7. Validation
 **File errors** reject the whole file; nothing is stored; the previous queue and AI text are cleared:
 `FILE_TOO_LARGE` (413, > 5 MB) · `UNSUPPORTED_FILE` (415) · `INVALID_ENCODING` · `EMPTY_FILE` · `TOO_MANY_ROWS`
-(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) · `VALUE_TOO_LONG` (a known column over 255 characters, with the record and column) — 422 unless noted.
+(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) · `VALUE_TOO_LONG` (candidate_id over 36 characters, stage over 30, or name, role or recruiter over 50, with the record and column) — 422 unless noted.
 
 **Row errors** exclude the record; the rest still rank; the excluded count is shown. A record lists every error but
 counts once as invalid: field count differs · required value missing · date not a real `YYYY-MM-DD` · date after the
@@ -190,8 +190,8 @@ reference date · stage not in the hiring stages ("add it, or add it as an alias
 - Columns: `rank, candidate_id, name, role, stage, recruiter, reference_date, stage_threshold, timer_from,
   days_in_stage, overdue_days, reason, action, message_to, message_draft, message_source, ai_note_status`
 - `message_draft` is always filled (AI draft or template); `message_source` = `ai_draft` | `template`.
-- `ai_note_status`: `ai_draft` · `disabled` (team setting off) · `outside_ai_scope` (rank above N) · `pending` ·
-  `unavailable` (not set up on the server, or failed).
+- `ai_note_status`: `ai_draft` · `disabled` (team setting off) · `pending` · `unavailable` (not set up on the server,
+  or failed).
 - RFC 4180 escaping; **formula guard**: text starting with `=`, `+`, `-`, `@`, tab or CR gets a `'` prefix.
 - Follows the current view and order, keeps original ranks, works while AI is pending or failed.
 
@@ -235,10 +235,10 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
 
 ### E4. Output and guardrails
 - Schema: `briefing` (≤ 450 chars), `bottleneck_notes[]` (one per supplied bottleneck, ≤ 220), `drafts[]` (one per
-  requested rank, ≤ 600). Drafts use only `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled on the server.
+  action code in `stalled_by_action`, ≤ 600; the same draft is reused for every candidate with that action). Drafts use only `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled on the server.
 - Drafts address the action's recipient and carry out the action; no dates, digits, links, markup, promises of timing,
   guesses about why it stalled, or judgements of the candidate.
-- Checks after generation: exact rank coverage, lengths, allowed placeholders, no digits in drafts, numbers in the
+- Checks after generation: exactly one draft per action, lengths, allowed placeholders, no digits in drafts, numbers in the
   briefing must exist in the board facts, no URLs/HTML. Any failure → the whole report uses templates.
 - Cache only validated, unfilled output; fill names for the current report on every hit; never cache failures.
 
@@ -271,7 +271,7 @@ Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7 
 | Table | Contents |
 |---|---|
 | `imports` | id, file_name, file_hash (UNIQUE), record_count, created_at |
-| `import_records` | import_id (FK cascade), record_number, field_count, the 8 known columns as raw text |
+| `import_records` | import_id (FK cascade), record_number, field_count, the 5 text columns, the 3 dates as DATE, invalid_dates (which dates were not real dates) |
 | `stages` | name, type, threshold, position, aliases (JSON), action_code; plus a `config_version` |
 | `settings` | use_ai_drafts, updated_at |
 | `ai_insights` | cache_key (UNIQUE), model, prompt_version, unfilled rank-keyed output (JSON), created_at |

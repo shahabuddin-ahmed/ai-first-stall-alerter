@@ -8,7 +8,7 @@ const newRunner = (sequelize: Sequelize, folder: string, tableName: string): Umz
     return new Umzug({
         migrations: { glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }] },
         context: sequelize.getQueryInterface(),
-        storage: new SequelizeStorage({ sequelize, tableName }),
+        storage: new SequelizeStorage({ sequelize, tableName, modelName: tableName }),
         logger: undefined,
     });
 };

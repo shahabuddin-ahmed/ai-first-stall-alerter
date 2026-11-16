@@ -8,7 +8,7 @@ const sequelize = newSequelize();
 const migrator = newMigrator(sequelize);
 const seeder = newSeeder(sequelize);
 
-const APP_TABLES = ["ai_insights", "import_records", "imports", "llm_calls", "posts", "settings", "stages"];
+const APP_TABLES = ["ai_insights", "import_records", "imports", "llm_calls", "settings", "stages"];
 
 const listTables = async (): Promise<string[]> => {
     const rows = await sequelize.query<Record<string, string>>("SHOW TABLES", { type: QueryTypes.SELECT });
@@ -52,10 +52,100 @@ afterAll(async () => {
 
 describe("database migrations", () => {
     it("creates every table on an empty database", async () => {
+        const pending = await migrator.pending();
         const done = await migrator.up();
 
-        expect(done).toHaveLength(7);
+        expect(pending.length).toBeGreaterThan(0);
+        expect(done.map((migration) => migration.name)).toEqual(pending.map((migration) => migration.name));
         expect(await listTables()).toEqual(expect.arrayContaining(APP_TABLES));
+        expect(await listTables()).not.toContain("posts");
+    });
+
+    it("gives every table an auto-increment id, created_at and updated_at", async () => {
+        const columns = await sequelize.query<{
+            table_name: string;
+            column_name: string;
+            column_type: string;
+            extra: string;
+        }>(
+            `SELECT table_name AS table_name, column_name AS column_name, column_type AS column_type, extra AS extra
+             FROM information_schema.columns
+             WHERE table_schema = DATABASE() AND table_name IN (?)
+               AND column_name IN ('id', 'created_at', 'updated_at')`,
+            { replacements: [APP_TABLES], type: QueryTypes.SELECT }
+        );
+        const ids = columns.filter((column) => column.column_name === "id");
+        const times = columns.filter((column) => column.column_name !== "id");
+
+        expect(ids).toHaveLength(APP_TABLES.length);
+        ids.forEach((id) =>
+            expect([id.table_name, id.column_type, id.extra]).toEqual([id.table_name, "int unsigned", "auto_increment"])
+        );
+        expect(times).toHaveLength(APP_TABLES.length * 2);
+        times.forEach((time) => expect([time.table_name, time.column_type]).toEqual([time.table_name, "timestamp(3)"]));
+    });
+
+    it("stores CSV dates as DATE and keeps the text columns to real-life sizes", async () => {
+        const columns = await sequelize.query<{ column_name: string; column_type: string }>(
+            `SELECT column_name AS column_name, column_type AS column_type FROM information_schema.columns
+             WHERE table_schema = DATABASE() AND table_name = 'import_records'`,
+            { type: QueryTypes.SELECT }
+        );
+        const typeOf = Object.fromEntries(columns.map((column) => [column.column_name, column.column_type]));
+
+        expect(typeOf).toMatchObject({
+            candidate_id: "varchar(36)",
+            name: "varchar(50)",
+            role: "varchar(50)",
+            stage: "varchar(30)",
+            recruiter: "varchar(50)",
+            stage_entered_at: "date",
+            last_activity_at: "date",
+            last_contacted_at: "date",
+            invalid_dates: "json",
+        });
+    });
+
+    it("keeps the other text columns to real-life sizes", async () => {
+        const columns = await sequelize.query<{ name: string; column_type: string }>(
+            `SELECT CONCAT(table_name, '.', column_name) AS name, column_type AS column_type
+             FROM information_schema.columns
+             WHERE table_schema = DATABASE()
+               AND CONCAT(table_name, '.', column_name) IN ('stages.name', 'llm_calls.error_code', 'ai_insights.prompt_version',
+                 'imports.file_hash', 'ai_insights.cache_key', 'llm_calls.cache_key')`,
+            { type: QueryTypes.SELECT }
+        );
+
+        expect(Object.fromEntries(columns.map((column) => [column.name, column.column_type]))).toEqual({
+            "stages.name": "varchar(30)",
+            "llm_calls.error_code": "varchar(20)",
+            "ai_insights.prompt_version": "varchar(10)",
+            "imports.file_hash": "varchar(130)",
+            "ai_insights.cache_key": "varchar(130)",
+            "llm_calls.cache_key": "varchar(130)",
+        });
+    });
+
+    it("converts text dates in rows that were stored before", async () => {
+        await migrator.down({ to: "20261116000004-right-size-columns.ts" });
+        const importId = await insertImport("c".repeat(64));
+        await sequelize.query(
+            `INSERT INTO import_records
+                (import_id, record_number, field_count, candidate_id, stage_entered_at, last_activity_at, last_contacted_at)
+             VALUES (?, 2, 8, '001', '2026-11-01', '2026-02-30', '')`,
+            { replacements: [importId] }
+        );
+
+        await migrator.up();
+
+        const [row] = await sequelize.query<Record<string, unknown>>(
+            `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
+                    last_contacted_at AS contacted, invalid_dates AS invalid
+             FROM import_records WHERE import_id = ?`,
+            { replacements: [importId], type: QueryTypes.SELECT }
+        );
+        expect(row).toEqual({ entered: "2026-11-01", activity: null, contacted: null, invalid: ["last_activity_at"] });
+        await sequelize.query("DELETE FROM imports WHERE id = ?", { replacements: [importId] });
     });
 
     it("does nothing when run again", async () => {
@@ -102,6 +192,14 @@ describe("database migrations", () => {
     it("does not seed twice", async () => {
         expect(await seeder.up()).toEqual([]);
         expect(await countRows("SELECT COUNT(*) AS total FROM stages", [])).toBe(10);
+    });
+
+    it("keeps the seed history apart from the migration history", async () => {
+        const seedName = ["%default-stages-and-settings%"];
+        const inMigrations = await countRows("SELECT COUNT(*) AS total FROM SequelizeMeta WHERE name LIKE ?", seedName);
+        const inSeeds = await countRows("SELECT COUNT(*) AS total FROM SequelizeData WHERE name LIKE ?", seedName);
+
+        expect([inMigrations, inSeeds]).toEqual([0, 1]);
     });
 
     it("rejects a second import with the same file hash", async () => {
