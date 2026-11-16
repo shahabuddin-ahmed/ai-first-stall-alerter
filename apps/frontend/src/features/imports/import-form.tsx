@@ -11,7 +11,7 @@ import { FilePicker } from '@/features/imports/file-picker';
 import { isFileError } from '@/features/imports/file-errors';
 import { StageThresholds } from '@/features/imports/stage-thresholds';
 import { useAppDispatch } from '@/hooks/use-app-redux';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { boardHref } from '@/lib/board-link';
 import { todayIso } from '@/lib/format';
 import { clearBoard, selectBoard } from '@/stores/slices/board-slice';
@@ -56,7 +56,7 @@ export function ImportForm({ onRejected }: ImportFormProps) {
         onRejected({ fileName: file.name, error });
         return;
       }
-      toast.error(error instanceof ApiError ? error.message : 'Could not reach the StallAlert API.');
+      toast.error(errorMessage(error));
     }
   };
 

@@ -1,15 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
-export function StatCard({ title, value, helper }: { title: string; value: string; helper?: string }) {
+interface StatCardProps {
+  title: string;
+  value: number;
+  valueClassName?: string;
+}
+
+export function StatCard({ title, value, valueClassName }: StatCardProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-semibold">{value}</div>
-        {helper ? <p className="mt-2 text-sm text-muted-foreground">{helper}</p> : null}
-      </CardContent>
+    <Card className="flex flex-col gap-1 px-[18px] py-4">
+      <span className="text-[13px] text-gray-600">{title}</span>
+      <span className={cn('text-[28px] font-bold', valueClassName)}>{value.toLocaleString('en-US')}</span>
     </Card>
   );
 }
