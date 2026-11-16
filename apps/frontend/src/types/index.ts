@@ -217,3 +217,9 @@ export interface InsightsView {
   bottleneckNotes: BottleneckNote[];
   drafts: InsightDraft[];
 }
+
+export interface CsvFile {
+  fileName: string;
+  bytes: ArrayBuffer;
+  text: string;
+}

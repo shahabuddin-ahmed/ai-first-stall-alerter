@@ -1,10 +1,13 @@
+import { Suspense } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { EmptyState } from '@/components/shared/empty-state';
+import { ExportView } from '@/features/export/export-view';
 
 export default function ExportPage() {
   return (
     <AppShell>
-      <EmptyState title="Export" description="This page is built in phase 5." />
+      <Suspense>
+        <ExportView />
+      </Suspense>
     </AppShell>
   );
 }
