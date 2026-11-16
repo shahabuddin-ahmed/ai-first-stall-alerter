@@ -7,7 +7,8 @@ import { AiErrorCode, AiNoteStatus, MessageSource, DEFAULT_AI_MODEL } from "../.
 import { EXPORT_COLUMNS } from "../../../../constant/export";
 import { HttpStatus } from "../../../../constant/http";
 import { AiService } from "../../../../service/ai";
-import { AiError, AiProviderInterface, FakeAiProvider, GenerationResult } from "../../../../service/ai-provider";
+import { AiError, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
+import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { newAiInsightRepo } from "../../../../repo/ai-insight";
@@ -41,21 +42,20 @@ const REFERENCE_DATE = "2026-11-13";
 
 class CountingGenerator implements AiProviderInterface {
     calls = 0;
-    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) =>
-        new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
+    behaviour: (facts: InsightFacts) => Promise<CompletionResult> = async (facts) => mockCompletion(facts);
 
-    async generate(facts: InsightFacts): Promise<GenerationResult> {
+    async createCompletion(facts: InsightFacts): Promise<CompletionResult> {
         this.calls += 1;
         return this.behaviour(facts);
     }
 
-    async listModels() {
-        return new FakeAiProvider().listModels();
+    async fetchModels() {
+        return new MockAiProvider().fetchModels();
     }
 }
 
 const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new FakeAiProvider(), generator !== null);
+    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -173,7 +173,7 @@ describe("GET /api/v1/imports/:id/export", () => {
         });
         const offers = rows.filter((row) => row.stage === "Offer");
         expect(offers.length).toBeGreaterThan(1);
-        offers.forEach((row) => expect(row.message_draft).toMatch(/^Hi .+, I wanted to check in on the .+ offer\./));
+        offers.forEach((row) => expect(row.message_draft).toMatch(/^Hi .+, I am following up about the .+ role\./));
         expect(generator.calls).toBe(1);
     });
 

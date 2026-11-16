@@ -6,7 +6,8 @@ import { QueryTypes } from "sequelize";
 import { AiErrorCode, AiStatus, MessageSource, DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { HttpStatus } from "../../../../constant/http";
 import { AiService } from "../../../../service/ai";
-import { AiError, AiProviderInterface, FakeAiProvider, GenerationResult } from "../../../../service/ai-provider";
+import { AiError, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
+import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
 import { newAiInsightRepo } from "../../../../repo/ai-insight";
@@ -32,28 +33,27 @@ const sequelize = newSequelize();
 const SAMPLE_B = fs.readFileSync(path.resolve(__dirname, "../../../../../../../data/sample-b.csv"));
 const REFERENCE_DATE = "2026-11-13";
 
-// Wraps the fake AI so tests can count calls, slow it down or make it fail.
+// Wraps the mock AI so tests can count calls, slow it down or make it fail.
 class TestGenerator implements AiProviderInterface {
     calls = 0;
     models: string[] = [];
     seenFacts: InsightFacts[] = [];
-    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) =>
-        new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
+    behaviour: (facts: InsightFacts) => Promise<CompletionResult> = async (facts) => mockCompletion(facts);
 
-    async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
+    async createCompletion(facts: InsightFacts, model: string): Promise<CompletionResult> {
         this.models.push(model);
         this.calls += 1;
         this.seenFacts.push(facts);
         return this.behaviour(facts);
     }
 
-    async listModels() {
-        return new FakeAiProvider().listModels();
+    async fetchModels() {
+        return new MockAiProvider().fetchModels();
     }
 }
 
 const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new FakeAiProvider(), generator !== null);
+    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -134,7 +134,7 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
             recipient: "hiring_manager",
             source: MessageSource.AI_DRAFT,
         });
-        expect(view.drafts[0].text).toContain("Hana Novak");
+        expect(view.drafts[0].text).toContain("Hi Hana,");
         expect(JSON.stringify(view.drafts)).not.toContain("{{");
         expect(generator.calls).toBe(1);
     });
@@ -160,7 +160,7 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
     it("makes one AI call when three requests arrive at the same moment", async () => {
         generator.behaviour = async (facts) => {
             await new Promise((resolve) => setTimeout(resolve, 200));
-            return new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
+            return mockCompletion(facts);
         };
 
         const results = await Promise.all([insights(app, importId), insights(app, importId), insights(app, importId)]);
@@ -200,7 +200,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         expectTemplates(first.body.response);
 
         // Retry works: the failure was not cached, so the AI is asked again
-        generator.behaviour = (facts) => new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
+        generator.behaviour = async (facts) => mockCompletion(facts);
         const retry = await insights(app, importId);
         expect(retry.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
         expect(generator.calls).toBe(2);
@@ -212,7 +212,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
 
     it("when the answer breaks a rule (a date in a message), uses templates for the whole report", async () => {
         generator.behaviour = async (facts) => {
-            const good = await new FakeAiProvider().generate(facts, DEFAULT_AI_MODEL);
+            const good = mockCompletion(facts);
             const output = good.output as any;
             output.drafts[2].text = "Hi {{first_name}}, please reply by 20 November.";
             return good;
@@ -229,16 +229,16 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         await insights(app, importId).expect(HttpStatus.OK);
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: true, aiModel: "fake/other-model:free" })
+            .send({ useAiDrafts: true, aiModel: "mock/other-model:free" })
             .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);
 
-        expect(res.body.response).toMatchObject({ model: "fake/other-model:free", cached: false });
-        expect(generator.models).toEqual([DEFAULT_AI_MODEL, "fake/other-model:free"]);
+        expect(res.body.response).toMatchObject({ model: "mock/other-model:free", cached: false });
+        expect(generator.models).toEqual([DEFAULT_AI_MODEL, "mock/other-model:free"]);
         expect((await llmCalls()).map((call) => call.requested_model)).toEqual([
             DEFAULT_AI_MODEL,
-            "fake/other-model:free",
+            "mock/other-model:free",
         ]);
     });
 

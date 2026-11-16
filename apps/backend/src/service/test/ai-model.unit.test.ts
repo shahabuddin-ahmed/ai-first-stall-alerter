@@ -1,5 +1,5 @@
 import { AiService } from "../ai";
-import { AiProviderInterface, GenerationResult } from "../ai-provider";
+import { AiProviderInterface, CompletionResult } from "../ai-provider";
 import { AI_MODEL_LIST } from "../../constant/ai";
 import { AiModelInterface } from "../../model/ai-model";
 import { AiModelRepoInterface } from "../../repo/ai-model";
@@ -23,11 +23,11 @@ class CountingSource implements AiProviderInterface {
     calls = 0;
     answer: () => Promise<AiModelInterface[]> = async () => [LING];
 
-    async generate(): Promise<GenerationResult> {
+    async createCompletion(): Promise<CompletionResult> {
         throw new Error("not used");
     }
 
-    async listModels(): Promise<AiModelInterface[]> {
+    async fetchModels(): Promise<AiModelInterface[]> {
         this.calls += 1;
         return this.answer();
     }

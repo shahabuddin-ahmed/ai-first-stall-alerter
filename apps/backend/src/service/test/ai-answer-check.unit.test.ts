@@ -57,17 +57,17 @@ const check = (raw: unknown) =>
     new AiService(
         NO_MODELS,
         {
-            generate: async () => ({
+            createCompletion: async () => ({
                 output: raw,
                 servedModel: null,
                 inputTokens: null,
                 outputTokens: null,
                 costUsd: null,
             }),
-            listModels: async () => [],
+            fetchModels: async () => [],
         },
         true
-    ).generate(FACTS, "test/model");
+    ).generateText(FACTS, "test/model");
 
 const withChange = (change: Partial<AiOutput>) => ({ ...VALID, ...change });
 const problemsOf = async (raw: unknown) => (await check(raw)).problems;
@@ -181,13 +181,13 @@ describe("AiService answer check", () => {
             new AiService(
                 NO_MODELS,
                 {
-                    generate: async () => {
+                    createCompletion: async () => {
                         throw error;
                     },
-                    listModels: async () => [],
+                    fetchModels: async () => [],
                 },
                 true
-            ).generate(FACTS, "test/model");
+            ).generateText(FACTS, "test/model");
 
         expect((await failing(new AxiosError("timeout", "ECONNABORTED"))).errorCode).toBe(AiErrorCode.TIMEOUT);
         expect((await failing(new Error("network down"))).errorCode).toBe(AiErrorCode.PROVIDER_ERROR);

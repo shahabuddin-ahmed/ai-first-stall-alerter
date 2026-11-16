@@ -11,7 +11,7 @@ import { newImportRepo } from "../../../../repo/import";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { AiService } from "../../../../service/ai";
-import { FakeAiProvider } from "../../../../service/ai-provider";
+import { MockAiProvider } from "./mock-ai-provider";
 import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
@@ -29,7 +29,7 @@ const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "s
 const REFERENCE_DATE = "2026-11-13";
 
 const makeApi = async (): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), new FakeAiProvider(), false);
+    const aiService = new AiService(await newAiModelRepo(), new MockAiProvider(), false);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const app = express();

@@ -3,7 +3,7 @@
  *
  *   yarn perf                       upload, recalculate, row errors, export (no AI calls)
  *   yarn perf --insights            also AI insights: first call and cached call
- *                                   (run the API with AI_MODE=fake so no real AI is called)
+ *                                   (calls the real AI once per run, so it needs AI_API_KEY)
  *   API_URL=http://localhost:4200/api/v1 yarn perf
  *
  * Each run uploads a different file (so it is never "already imported") and deletes it at the end.

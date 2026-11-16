@@ -44,7 +44,6 @@ yarn dev
 | `AI_TOP_N`                                                                   | `5`                            | AI briefing looks at the top N alerts. Messages: one AI draft per action, used for every candidate |
 | `AI_TIMEOUT_MS`, `AI_MAX_OUTPUT_TOKENS`                                      | `15000`, `1500`                | Limits for one AI call (timeout up to 120000 = 2 minutes)                                          |
 | `AI_REASONING_EFFORT`                                                        | `low`                          | Thinking models: `off` (fastest), `low`, `medium`, `high`; `none` = not sent                       |
-| `AI_MODE`                                                                    | `live`                         | `fake` = built-in stand-in, no network (tests and demos)                                           |
 
 Every value is checked at start-up. A wrong value stops the API with a clear message.
 
@@ -105,7 +104,7 @@ yarn format       # format every file with Prettier (yarn format:check only chec
 yarn test         # all tests
 yarn test-unit    # unit only (no database)
 yarn test-integ   # integration (needs MySQL; creates and uses the stallalert_test database)
-yarn perf         # 10,000-row speed test against a running API (add --insights with AI_MODE=fake)
+yarn perf         # 10,000-row speed test against a running API (--insights also calls the real AI once per run)
 ```
 
 The expected results in `data/expected/*.json` come from `scripts/generate_expected.py` (Python, written separately
@@ -113,7 +112,7 @@ from the app). The pipeline tests must match them exactly. No test calls a real 
 
 ## Speed (10,000 rows, measured)
 
-`yarn perf --insights`, 3 runs, API on a laptop (Apple Silicon, MySQL 8 in Docker), `AI_MODE=fake`:
+`yarn perf --insights`, 3 runs, API on a laptop (Apple Silicon, MySQL 8 in Docker), with a stand-in AI:
 
 | Step                              | Median | Slowest | Target     |
 | --------------------------------- | ------ | ------- | ---------- |

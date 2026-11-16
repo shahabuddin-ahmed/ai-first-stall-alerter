@@ -157,7 +157,7 @@ export class InsightService implements InsightServiceInterface {
 
     private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
         const startedAt = Date.now();
-        const attempt = await this.aiService.generate(facts, model);
+        const attempt = await this.aiService.generateText(facts, model);
         const { usage } = attempt;
 
         await this.llmCallRepo.log({

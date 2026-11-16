@@ -29,11 +29,6 @@ export enum AiErrorCode {
     INVALID_OUTPUT = "INVALID_OUTPUT",
 }
 
-export enum AiMode {
-    LIVE = "live",
-    FAKE = "fake",
-}
-
 export enum ReasoningEffort {
     NONE = "none",
     OFF = "off",

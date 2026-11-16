@@ -100,11 +100,11 @@ const thrownBy = async (promise: Promise<unknown>): Promise<unknown> => {
 
 const errorCodeOf = async (promise: Promise<unknown>) => ((await thrownBy(promise)) as AiError).code;
 
-describe("OpenRouterProvider.generate", () => {
+describe("OpenRouterProvider.createCompletion", () => {
     it("sends one chat request with the prompt, the facts and a JSON schema, and reads the answer and usage", async () => {
         handler = reply(200, completion(JSON.stringify(ANSWER)));
 
-        const result = await generator().generate(FACTS, "test/model");
+        const result = await generator().createCompletion(FACTS, "test/model");
 
         expect(result).toEqual({
             output: ANSWER,
@@ -135,10 +135,10 @@ describe("OpenRouterProvider.generate", () => {
                 reasoningEffort,
             });
 
-        await make(ReasoningEffort.OFF).generate(FACTS, "test/model");
+        await make(ReasoningEffort.OFF).createCompletion(FACTS, "test/model");
         expect(lastRequest.body.reasoning).toEqual({ enabled: false });
 
-        await make(ReasoningEffort.NONE).generate(FACTS, "test/model");
+        await make(ReasoningEffort.NONE).createCompletion(FACTS, "test/model");
         expect(lastRequest.body.reasoning).toBeUndefined();
     });
 
@@ -149,28 +149,28 @@ describe("OpenRouterProvider.generate", () => {
         [500, AiErrorCode.PROVIDER_ERROR],
     ])("turns HTTP %s into %s", async (status, code) => {
         handler = reply(status, { error: { message: "provider text that is never stored" } });
-        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(code);
+        expect(await errorCodeOf(generator().createCompletion(FACTS, "test/model"))).toBe(code);
     });
 
     it("stops waiting after the timeout", async () => {
         handler = (_body, _req, res) =>
             setTimeout(() => reply(200, completion(JSON.stringify(ANSWER)))(_body, _req, res), 1500);
-        expect(isTimeoutError(await thrownBy(generator(1000).generate(FACTS, "test/model")))).toBe(true);
+        expect(isTimeoutError(await thrownBy(generator(1000).createCompletion(FACTS, "test/model")))).toBe(true);
     });
 
     it("reports a refusal", async () => {
         handler = reply(200, completion("", { message: { content: null, refusal: "I can't help with that." } }));
-        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.REFUSED);
+        expect(await errorCodeOf(generator().createCompletion(FACTS, "test/model"))).toBe(AiErrorCode.REFUSED);
     });
 
     it("reports text that is not JSON", async () => {
         handler = reply(200, completion("Sure! Here are your drafts..."));
-        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_JSON);
+        expect(await errorCodeOf(generator().createCompletion(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_JSON);
     });
 
     it("reports an answer that was cut off", async () => {
         handler = reply(200, completion('{"briefing": "Start', { finish_reason: "length" }));
-        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_OUTPUT);
+        expect(await errorCodeOf(generator().createCompletion(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_OUTPUT);
     });
 
     it("reports a provider that cannot be reached", async () => {
@@ -181,7 +181,7 @@ describe("OpenRouterProvider.generate", () => {
             maxOutputTokens: 100,
             reasoningEffort: ReasoningEffort.NONE,
         });
-        const error = await thrownBy(unreachable.generate(FACTS, "test/model"));
+        const error = await thrownBy(unreachable.createCompletion(FACTS, "test/model"));
         expect(error).not.toBeInstanceOf(AiError);
         expect(isTimeoutError(error)).toBe(false);
     });

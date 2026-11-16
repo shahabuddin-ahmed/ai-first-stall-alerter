@@ -1,12 +1,12 @@
 import Joi from "joi";
 import type { AiConfig } from "../config/config";
-import { AI_LIMITS, AI_MODEL_LIST, AiErrorCode, AiMode, DRAFT_PLACEHOLDERS, SENDER_PLACEHOLDER } from "../constant/ai";
+import { AI_LIMITS, AI_MODEL_LIST, AiErrorCode, DRAFT_PLACEHOLDERS, SENDER_PLACEHOLDER } from "../constant/ai";
 import { ActionCode } from "../constant/stage";
 import logger from "../infra/logger";
 import { AiModelInterface } from "../model/ai-model";
 import { AiModelRepoInterface } from "../repo/ai-model";
 import { isTimeoutError } from "../utils/http";
-import { AiError, AiProviderInterface, AiUsage, GenerationResult, newAiProvider } from "./ai-provider";
+import { AiError, AiProviderInterface, AiUsage, CompletionResult, newAiProvider } from "./ai-provider";
 import { actionsOf, InsightFacts } from "./pipeline-messages";
 
 export interface ActionDraft {
@@ -29,7 +29,7 @@ export interface AiAttempt {
 
 export interface AiServiceInterface {
     isConfigured(): boolean;
-    generate(facts: InsightFacts, model: string): Promise<AiAttempt>;
+    generateText(facts: InsightFacts, model: string): Promise<AiAttempt>;
     listModels(): Promise<AiModelInterface[]>;
     isModelAvailable(modelId: string): Promise<boolean>;
 }
@@ -151,10 +151,10 @@ export class AiService implements AiServiceInterface {
         return this.configured;
     }
 
-    async generate(facts: InsightFacts, model: string): Promise<AiAttempt> {
-        let generated: GenerationResult;
+    async generateText(facts: InsightFacts, model: string): Promise<AiAttempt> {
+        let generated: CompletionResult;
         try {
-            generated = await this.provider.generate(facts, model);
+            generated = await this.provider.createCompletion(facts, model);
         } catch (err) {
             return { output: null, errorCode: errorCodeOf(err), problems: [], usage: NO_USAGE };
         }
@@ -190,7 +190,7 @@ export class AiService implements AiServiceInterface {
 
     private async loadModels(): Promise<AiModelInterface[]> {
         try {
-            const models = await this.provider.listModels();
+            const models = await this.provider.fetchModels();
             await this.aiModelRepo.replaceAll(models);
             return models;
         } catch {
@@ -200,6 +200,5 @@ export class AiService implements AiServiceInterface {
 }
 
 export const newAiService = async (ai: AiConfig, aiModelRepo: AiModelRepoInterface): Promise<AiService> => {
-    const configured = ai.AI_MODE === AiMode.FAKE || ai.AI_API_KEY !== "";
-    return new AiService(aiModelRepo, await newAiProvider(ai), configured);
+    return new AiService(aiModelRepo, await newAiProvider(ai), ai.AI_API_KEY !== "");
 };

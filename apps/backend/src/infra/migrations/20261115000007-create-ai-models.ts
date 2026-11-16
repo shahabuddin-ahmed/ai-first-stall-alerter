@@ -11,7 +11,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
             updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
             PRIMARY KEY (id),
             UNIQUE KEY uq_ai_models_model_id (model_id)
-        ) COMMENT 'free OpenRouter models, refreshed every 30 minutes'`
+        )`
     );
 };
 

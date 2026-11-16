@@ -38,11 +38,11 @@ const provider = () =>
         reasoningEffort: ReasoningEffort.NONE,
     });
 
-describe("OpenRouterProvider.listModels", () => {
+describe("OpenRouterProvider.fetchModels", () => {
     it("keeps only models that support JSON output", async () => {
         status = 200;
 
-        const models = await provider().listModels();
+        const models = await provider().fetchModels();
 
         expect(requestedUrl).toBe("/api/v1/models");
         expect(models).toEqual([
@@ -54,6 +54,6 @@ describe("OpenRouterProvider.listModels", () => {
     it("fails when OpenRouter answers with an error", async () => {
         status = 500;
 
-        await expect(provider().listModels()).rejects.toThrow("HTTP 500");
+        await expect(provider().fetchModels()).rejects.toThrow("HTTP 500");
     });
 });

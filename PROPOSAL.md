@@ -79,7 +79,7 @@ Redis would only be needed if the API ran as several copies (README "next steps"
 web/        routes + controllers (Joi validation, error mapping)          ← presentation
 service/    use cases: import board, get queue, export, insights, stages, settings  ← application
   ai.ts           AI service: answer check, error codes, 30-min model list cache
-  ai-provider.ts  AI provider: OpenRouter chat + model list, fake (AI_MODE=fake); prompt text in constant/ai-prompt.ts
+  ai-provider.ts  AI provider: OpenRouter chat + model list; prompt text in constant/ai-prompt.ts
   pipeline-csv.ts · pipeline-analysis.ts · pipeline-messages.ts · pipeline-types.ts   pure pipeline logic: read/write CSV · row errors, stalls, rank, bottlenecks · messages, AI facts
 repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) + stored-record mapping ← infrastructure
 utils/      general helpers: dates, hashing, http (shared axios request)
@@ -228,7 +228,7 @@ sorts or exports. No automatic retries; a **Retry** button for recoverable failu
 
 ### E2. Backend `.env` (server setup and secrets only)
 `AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
-`AI_MAX_OUTPUT_TOKENS` · `AI_MODE` (`live` | `fake` for tests) · `MYSQL_*`. Validated at startup.
+`AI_MAX_OUTPUT_TOKENS` · `MYSQL_*`. Validated at startup.
 
 ### E3. Facts sent (allowlist, nothing else)
 Per rank 1…N: `rank`, `action_code`, `stage_threshold`, `days_in_stage`, `overdue_days`, `days_since_contact` or null,
@@ -246,7 +246,7 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
 - Cache only validated, unfilled output; fill names for the current report on every hit; never cache failures.
 
 ### E5. Testing the AI layer
-A fake generator in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown rank, too long, digits,
+A mock AI provider in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown rank, too long, digits,
 URL, bad placeholder, timeout, refusal, rate limit, no key, setting off, cache hit (0 calls), two simultaneous requests
 (1 call), failure not cached, same facts with different names. Day 1 smoke test with a real key; manual `npm run eval`
 on fictional cases, target ≥ 95% guardrail pass, defects and fixes logged.

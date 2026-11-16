@@ -1,7 +1,7 @@
 import "dotenv/config";
 import Joi from "joi";
 import { Options } from "sequelize";
-import { AiMode, ReasoningEffort } from "../constant/ai";
+import { ReasoningEffort } from "../constant/ai";
 import { DATABASE_CHARSET, DATABASE_COLLATION, NodeEnv, TEST_DATABASE_SUFFIX } from "../constant/env";
 
 interface AppConfig {
@@ -25,7 +25,6 @@ export interface AiConfig {
     AI_TOP_N: number;
     AI_TIMEOUT_MS: number;
     AI_MAX_OUTPUT_TOKENS: number;
-    AI_MODE: AiMode;
     AI_REASONING_EFFORT: ReasoningEffort;
 }
 
@@ -70,9 +69,6 @@ const envSchema = Joi.object<Env>({
     AI_TOP_N: Joi.number().integer().min(1).max(20).default(5),
     AI_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(15000),
     AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(1500),
-    AI_MODE: Joi.string()
-        .valid(...Object.values(AiMode))
-        .default(AiMode.LIVE),
     AI_REASONING_EFFORT: Joi.string()
         .valid(...Object.values(ReasoningEffort))
         .default(ReasoningEffort.LOW),
@@ -121,7 +117,6 @@ const config: Config = {
         AI_TOP_N: env.AI_TOP_N,
         AI_TIMEOUT_MS: env.AI_TIMEOUT_MS,
         AI_MAX_OUTPUT_TOKENS: env.AI_MAX_OUTPUT_TOKENS,
-        AI_MODE: env.AI_MODE,
         AI_REASONING_EFFORT: env.AI_REASONING_EFFORT,
     },
     SECURITY: {

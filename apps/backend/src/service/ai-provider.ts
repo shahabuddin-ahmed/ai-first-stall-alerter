@@ -1,21 +1,10 @@
 import type { AiConfig } from "../config/config";
-import {
-    AI_MODEL_LIST,
-    AI_REQUEST,
-    AiErrorCode,
-    AiMode,
-    ChatRole,
-    DEFAULT_AI_MODEL,
-    FinishReason,
-    ReasoningEffort,
-} from "../constant/ai";
+import { AI_MODEL_LIST, AI_REQUEST, AiErrorCode, ChatRole, FinishReason, ReasoningEffort } from "../constant/ai";
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "../constant/ai-prompt";
-import { BottleneckType } from "../constant/pipeline";
 import { HttpStatus } from "../constant/http";
-import { ActionCode } from "../constant/stage";
 import { AiModelInterface } from "../model/ai-model";
 import { httpRequest } from "../utils/http";
-import { actionsOf, InsightFacts } from "./pipeline-messages";
+import { InsightFacts } from "./pipeline-messages";
 
 export interface AiUsage {
     servedModel: string | null;
@@ -24,13 +13,13 @@ export interface AiUsage {
     costUsd: number | null;
 }
 
-export interface GenerationResult extends AiUsage {
+export interface CompletionResult extends AiUsage {
     output: unknown;
 }
 
 export interface AiProviderInterface {
-    generate(facts: InsightFacts, model: string): Promise<GenerationResult>;
-    listModels(): Promise<AiModelInterface[]>;
+    createCompletion(facts: InsightFacts, model: string): Promise<CompletionResult>;
+    fetchModels(): Promise<AiModelInterface[]>;
 }
 
 export class AiError extends Error {
@@ -85,7 +74,7 @@ const supportsJsonOutput = (model: OpenRouterModel): boolean =>
 export class OpenRouterProvider implements AiProviderInterface {
     constructor(private options: OpenRouterOptions) {}
 
-    async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
+    async createCompletion(facts: InsightFacts, model: string): Promise<CompletionResult> {
         const data = await this.chat({
             model,
             temperature: AI_REQUEST.TEMPERATURE,
@@ -106,6 +95,7 @@ export class OpenRouterProvider implements AiProviderInterface {
         if (choice?.message?.refusal) {
             throw new AiError(AiErrorCode.REFUSED);
         }
+
         if (choice?.finish_reason === FinishReason.LENGTH) {
             throw new AiError(AiErrorCode.INVALID_OUTPUT, "the answer was cut off");
         }
@@ -119,14 +109,16 @@ export class OpenRouterProvider implements AiProviderInterface {
         };
     }
 
-    async listModels(): Promise<AiModelInterface[]> {
+    async fetchModels(): Promise<AiModelInterface[]> {
         const response = await httpRequest<{ data?: OpenRouterModel[] }>({
             url: `${this.options.baseUrl}${AI_MODEL_LIST.PATH}`,
             timeoutMs: AI_MODEL_LIST.TIMEOUT_MS,
         });
+
         if (response.statusCode !== HttpStatus.OK) {
             throw new Error(`HTTP ${response.statusCode}`);
         }
+
         return (response.data.data ?? []).filter(supportsJsonOutput).map((model) => ({
             modelId: model.id,
             name: model.name,
@@ -142,6 +134,7 @@ export class OpenRouterProvider implements AiProviderInterface {
             data: body,
             timeoutMs: this.options.timeoutMs,
         });
+
         if (response.statusCode !== HttpStatus.OK) {
             const errorCode = STATUS_ERRORS[response.statusCode] ?? AiErrorCode.PROVIDER_ERROR;
             throw new AiError(errorCode, `HTTP ${response.statusCode}`);
@@ -154,6 +147,7 @@ export class OpenRouterProvider implements AiProviderInterface {
         if (effort === ReasoningEffort.NONE) {
             return {};
         }
+
         if (effort === ReasoningEffort.OFF) {
             return { reasoning: { enabled: false } };
         }
@@ -161,56 +155,7 @@ export class OpenRouterProvider implements AiProviderInterface {
     }
 }
 
-const FAKE_DRAFTS: Record<ActionCode, string> = {
-    [ActionCode.REVIEW_APPLICATION]:
-        "Hi, could you take a look at {{name}}'s application for the {{role}} role and let me know the next step? Thanks, {{recruiter}}",
-    [ActionCode.SCHEDULE_SCREEN]:
-        "Hi {{first_name}}, I would love to set up a short call about the {{role}} role. Which times work for you? Best, {{recruiter}}",
-    [ActionCode.REQUEST_FEEDBACK]:
-        "Hi team, could you send your feedback on {{name}} for the {{role}} role when you can? Thanks, {{recruiter}}",
-    [ActionCode.REVIEW_ASSESSMENT]:
-        "Hi, could you review {{name}}'s assessment for the {{role}} role and share your result? Thanks, {{recruiter}}",
-    [ActionCode.CHASE_REFERENCES]:
-        "Hi {{first_name}}, could you check that your referees received our request for the {{role}} role? Best, {{recruiter}}",
-    [ActionCode.CONFIRM_OFFER]:
-        "Hi {{first_name}}, I wanted to check in on the {{role}} offer. Do you have any questions, or a decision? Best, {{recruiter}}",
-    [ActionCode.GENERIC_FOLLOW_UP]:
-        "Hi {{first_name}}, I am checking in on your application for the {{role}} role. Best, {{recruiter}}",
-};
-
-export const FAKE_MODELS: AiModelInterface[] = [
-    { modelId: DEFAULT_AI_MODEL, name: "Ling 3.2 Flash (free)", contextLength: null },
-    { modelId: "fake/other-model:free", name: "Other model (free)", contextLength: null },
-];
-
-export class FakeAiProvider implements AiProviderInterface {
-    async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
-        return {
-            output: {
-                briefing: `Start with rank 1. ${facts.board.stalled} candidates are past their stage threshold.`,
-                bottleneck_notes: facts.bottlenecks.map((bottleneck) =>
-                    bottleneck.type === BottleneckType.STAGE
-                        ? `${bottleneck.stalled} follow-ups share the same next action. Clear them together.`
-                        : `${bottleneck.recruiter_key} owns ${bottleneck.stalled} stalled follow-ups. Share some of the load.`
-                ),
-                drafts: actionsOf(facts).map((action_code) => ({ action_code, text: FAKE_DRAFTS[action_code] })),
-            },
-            servedModel: model,
-            inputTokens: null,
-            outputTokens: null,
-            costUsd: null,
-        };
-    }
-
-    async listModels(): Promise<AiModelInterface[]> {
-        return FAKE_MODELS;
-    }
-}
-
 export const newAiProvider = async (ai: AiConfig): Promise<AiProviderInterface> => {
-    if (ai.AI_MODE === AiMode.FAKE) {
-        return new FakeAiProvider();
-    }
     return new OpenRouterProvider({
         apiKey: ai.AI_API_KEY,
         baseUrl: ai.AI_BASE_URL,
