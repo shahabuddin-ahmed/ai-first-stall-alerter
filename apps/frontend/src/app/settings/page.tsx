@@ -1,10 +1,17 @@
 import { AppShell } from '@/components/layout/app-shell';
-import { EmptyState } from '@/components/shared/empty-state';
+import { SettingsView } from '@/features/settings/settings-view';
 
 export default function SettingsPage() {
   return (
     <AppShell>
-      <EmptyState title="Settings" description="This page is built in phase 7." />
+      <span className="text-[13px] text-gray-600">StallAlert / Settings</span>
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-[28px] font-bold tracking-tight">Settings</h1>
+        <p className="text-[15px] text-gray-600">
+          Team preferences, saved in the database. The server key lives in the backend .env and is never shown here.
+        </p>
+      </div>
+      <SettingsView />
     </AppShell>
   );
 }
