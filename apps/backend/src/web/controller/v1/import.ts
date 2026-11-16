@@ -9,12 +9,12 @@ import { idParamsSchema, pageFields, queueFilterFields, referenceDateField } fro
 export interface ImportControllerInterface {
     upload(req: Request, res: Response): any;
     list(req: Request, res: Response): any;
-    getBoard(req: Request, res: Response): any;
+    getPipeline(req: Request, res: Response): any;
     getRowErrors(req: Request, res: Response): any;
     remove(req: Request, res: Response): any;
 }
 
-const boardSchema = Joi.object({
+const pipelineSchema = Joi.object({
     referenceDate: referenceDateField,
     ...queueFilterFields,
     ...pageFields,
@@ -36,7 +36,7 @@ export class ImportController extends Controller implements ImportControllerInte
     }
 
     upload = async (req: Request, res: Response): Promise<any> => {
-        const { value } = await this.validateRequest(boardSchema, req.body);
+        const { value } = await this.validateRequest(pipelineSchema, req.body);
         const file = req.file as Express.Multer.File;
         const data = await this.importService.upload({ fileName: file.originalname, bytes: file.buffer }, value);
         return this.sendResponse({ response: data }, data.alreadyImported ? HttpStatus.OK : HttpStatus.CREATED, res);
@@ -48,10 +48,10 @@ export class ImportController extends Controller implements ImportControllerInte
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
-    getBoard = async (req: Request, res: Response): Promise<any> => {
+    getPipeline = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
-        const { value: query } = await this.validateRequest(boardSchema, req.query);
-        const data = await this.importService.getBoard(params.id, query);
+        const { value: query } = await this.validateRequest(pipelineSchema, req.query);
+        const data = await this.importService.getPipeline(params.id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 

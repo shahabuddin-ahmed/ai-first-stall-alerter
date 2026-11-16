@@ -1,24 +1,23 @@
 import LlmCall, { LlmCallInterface } from "../model/llm-call";
 
 export interface LlmCallRepoInterface {
-    log(call: LlmCallInterface): Promise<void>;
+    log(call: LlmCallInterface): Promise<LlmCallInterface>;
     findLatest(cacheKey: string): Promise<LlmCallInterface | null>;
 }
 
 export class LlmCallRepo implements LlmCallRepoInterface {
-    public async log(call: LlmCallInterface): Promise<void> {
-        await LlmCall.create(call);
+    public async log(call: LlmCallInterface): Promise<LlmCallInterface> {
+        return LlmCall.create(call);
     }
 
     public async findLatest(cacheKey: string): Promise<LlmCallInterface | null> {
-        const found = await LlmCall.findOne({
+        return LlmCall.findOne({
             where: { cacheKey },
             order: [
                 ["createdAt", "DESC"],
                 ["id", "DESC"],
             ],
         });
-        return found ? (found.get({ plain: true }) as LlmCallInterface) : null;
     }
 }
 

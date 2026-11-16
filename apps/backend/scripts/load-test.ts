@@ -1,9 +1,9 @@
 /*
- * Speed test with a 10,000-row board (spec I3). Talks to a running API over HTTP.
+ * Speed test with a 10,000-row pipeline (spec I3). Talks to a running API over HTTP.
  *
  *   yarn perf                       upload, recalculate, row errors, export (no AI calls)
  *   yarn perf --insights            also AI insights: first call and cached call
- *                                   (run the API with AI_MODE=fake so no real AI is called)
+ *                                   (calls the real AI once per run, so it needs AI_API_KEY)
  *   API_URL=http://localhost:4200/api/v1 yarn perf
  *
  * Each run uploads a different file (so it is never "already imported") and deletes it at the end.
@@ -16,13 +16,13 @@ const WITH_INSIGHTS = process.argv.includes("--insights");
 
 const TARGETS_MS: Record<string, number> = {
     "upload (10,000 rows)": 3000,
-    "recalculate (GET board)": 300,
+    "recalculate (GET /imports/:id)": 300,
     "insights, cached": 200,
 };
 
 const STAGES = ["Applied", "Screening", "Interview", "Assessment", "Reference check", "Offer", "On hold", "Hired"];
 
-const makeBoard = (run: string): string => {
+const makePipeline = (run: string): string => {
     const lines = ["candidate_id,name,role,stage,stage_entered_at,recruiter,last_activity_at,last_contacted_at"];
     for (let i = 0; i < ROWS; i += 1) {
         const month = String(1 + (i % 10)).padStart(2, "0");
@@ -52,10 +52,10 @@ const main = async () => {
     const record = (name: string, ms: number) => (times[name] ??= []).push(ms);
 
     for (let run = 1; run <= RUNS; run += 1) {
-        const board = makeBoard(`r${Date.now()}${run}`);
+        const pipeline = makePipeline(`r${Date.now()}${run}`);
         const form = new FormData();
         form.append("referenceDate", REFERENCE_DATE);
-        form.append("file", new Blob([board], { type: "text/csv" }), "load-test.csv");
+        form.append("file", new Blob([pipeline], { type: "text/csv" }), "load-test.csv");
 
         const upload = await timed(async () =>
             expectOk(await fetch(`${API_URL}/imports`, { method: "POST", body: form }), "upload")
@@ -66,7 +66,7 @@ const main = async () => {
 
         for (let i = 0; i < 3; i += 1) {
             record(
-                "recalculate (GET board)",
+                "recalculate (GET /imports/:id)",
                 (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}?${query}`), "board"))).ms
             );
         }
@@ -95,7 +95,7 @@ const main = async () => {
 
         await fetch(`${API_URL}/imports/${id}`, { method: "DELETE" });
         console.log(
-            `run ${run}/${RUNS} done (${Buffer.byteLength(board)} bytes, stalled: ${upload.result.response.counts.stalled})`
+            `run ${run}/${RUNS} done (${Buffer.byteLength(pipeline)} bytes, stalled: ${upload.result.response.counts.stalled})`
         );
     }
 

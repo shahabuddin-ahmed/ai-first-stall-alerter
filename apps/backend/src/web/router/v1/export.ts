@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/async-hander";
+import { asyncHandler } from "../../middleware/async-handler";
 import { ExportControllerInterface } from "../../controller/v1/export";
 
 export const newExportRouter = async (exportController: ExportControllerInterface): Promise<Router> => {
@@ -9,5 +9,3 @@ export const newExportRouter = async (exportController: ExportControllerInterfac
 
     return router;
 };
-
-export default newExportRouter;

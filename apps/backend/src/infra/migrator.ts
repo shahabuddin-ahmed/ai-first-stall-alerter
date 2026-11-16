@@ -1,16 +1,54 @@
-import { QueryInterface, Sequelize } from "sequelize";
+import { DataTypes, QueryInterface, Sequelize } from "sequelize";
 import { SequelizeStorage, Umzug } from "umzug";
 
-const MIGRATION_TABLE = "SequelizeMeta";
-const SEEDER_TABLE = "SequelizeData";
+const MIGRATION_TABLE = "migrations";
+const SEEDER_TABLE = "seeders";
+const HISTORY_NAME_LENGTH = 100;
+const FILE_ENDING = /\.(ts|js)$/;
+
+const createHistoryTable = async (sequelize: Sequelize, tableName: string): Promise<void> => {
+    await sequelize.query(
+        `CREATE TABLE IF NOT EXISTS ${tableName} (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(${HISTORY_NAME_LENGTH}) NOT NULL,
+            created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+            updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_${tableName}_name (name)
+        )`
+    );
+};
+
+const historyModel = (sequelize: Sequelize, tableName: string) =>
+    sequelize.define(
+        tableName,
+        {
+            id: {
+                type: DataTypes.INTEGER.UNSIGNED,
+                autoIncrement: true,
+                primaryKey: true,
+            },
+            name: {
+                type: new DataTypes.STRING(HISTORY_NAME_LENGTH),
+                allowNull: false,
+            },
+        },
+        { tableName, freezeTableName: true, timestamps: true, underscored: true }
+    );
 
 const newRunner = (sequelize: Sequelize, folder: string, tableName: string): Umzug<QueryInterface> => {
-    return new Umzug({
-        migrations: { glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }] },
+    const runner = new Umzug({
+        migrations: {
+            glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }],
+            // Same name for .ts (dev) and .js (build), so both see the same history
+            resolve: (params) => ({ ...Umzug.defaultResolver(params), name: params.name.replace(FILE_ENDING, "") }),
+        },
         context: sequelize.getQueryInterface(),
-        storage: new SequelizeStorage({ sequelize, tableName, modelName: tableName }),
+        storage: new SequelizeStorage({ model: historyModel(sequelize, tableName) }),
         logger: undefined,
     });
+    runner.on("beforeCommand", () => createHistoryTable(sequelize, tableName));
+    return runner;
 };
 
 export const newMigrator = (sequelize: Sequelize): Umzug<QueryInterface> =>

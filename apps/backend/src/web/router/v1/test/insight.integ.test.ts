@@ -3,18 +3,21 @@ import fs from "fs";
 import path from "path";
 import request from "supertest";
 import { QueryTypes } from "sequelize";
-import { AiErrorCode, AiStatus, MessageSource } from "../../../../constant/ai";
+import { AiErrorCode, AiStatus, MessageSource, DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { HttpStatus } from "../../../../constant/http";
-import { FakeAiGenerator } from "../../../../ai/fake-generator";
-import { AiError, AiGenerator, GenerationResult } from "../../../../ai/generator";
+import { AiService } from "../../../../service/ai";
+import { AiError, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
+import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
+import logger from "../../../../infra/logger";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
-import { newAiInsightRepo } from "../../../../repo/ai-insight";
+import { AiInsightRepoInterface, newAiInsightRepo } from "../../../../repo/ai-insight";
 import { newImportRepo } from "../../../../repo/import";
 import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
-import { InsightFacts } from "../../../../rules/ai-facts";
+import { InsightFacts } from "../../../../service/pipeline-messages";
+import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
 import { newInsightService } from "../../../../service/insight";
@@ -31,39 +34,45 @@ const sequelize = newSequelize();
 const SAMPLE_B = fs.readFileSync(path.resolve(__dirname, "../../../../../../../data/sample-b.csv"));
 const REFERENCE_DATE = "2026-11-13";
 
-// Wraps the fake AI so tests can count calls, slow it down or make it fail.
-class TestGenerator implements AiGenerator {
-    readonly model = "test-model";
+// Wraps the mock AI so tests can count calls, slow it down or make it fail.
+class TestGenerator implements AiProviderInterface {
     calls = 0;
+    models: string[] = [];
     seenFacts: InsightFacts[] = [];
-    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) => new FakeAiGenerator().generate(facts);
+    behaviour: (facts: InsightFacts) => Promise<CompletionResult> = async (facts) => mockCompletion(facts);
 
-    async generate(facts: InsightFacts): Promise<GenerationResult> {
+    async createCompletion(facts: InsightFacts, model: string): Promise<CompletionResult> {
+        this.models.push(model);
         this.calls += 1;
         this.seenFacts.push(facts);
         return this.behaviour(facts);
     }
+
+    async fetchModels() {
+        return new MockAiProvider().fetchModels();
+    }
 }
 
-const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
-    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), {
-        configured: generator !== null,
-        model: generator?.model ?? null,
-    });
+const makeApi = async (
+    generator: AiProviderInterface | null,
+    aiInsightRepo?: AiInsightRepoInterface
+): Promise<Express> => {
+    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
         importService,
         configService,
-        await newAiInsightRepo(),
+        aiInsightRepo ?? (await newAiInsightRepo()),
         await newLlmCallRepo(),
-        generator,
+        aiService,
         5
     );
     const app = express();
     app.use(express.json());
     app.use("/api/v1/imports/:id/insights", await newInsightRouter(await newInsightV1Controller(insightService)));
     app.use("/api/v1/imports", await newImportRouter(await newImportV1Controller(importService)));
-    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService)));
+    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService, aiService)));
     app.use(globalErrorHandler);
     return app;
 };
@@ -114,7 +123,7 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
             aiStatus: AiStatus.AI_DRAFT,
             errorCode: null,
             cached: false,
-            model: "test-model",
+            model: DEFAULT_AI_MODEL,
             topN: 5,
         });
         expect(view.briefing.source).toBe(MessageSource.AI_DRAFT);
@@ -155,13 +164,61 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
     it("makes one AI call when three requests arrive at the same moment", async () => {
         generator.behaviour = async (facts) => {
             await new Promise((resolve) => setTimeout(resolve, 200));
-            return new FakeAiGenerator().generate(facts);
+            return mockCompletion(facts);
         };
 
         const results = await Promise.all([insights(app, importId), insights(app, importId), insights(app, importId)]);
 
         expect(results.every((res) => res.body.response.aiStatus === AiStatus.AI_DRAFT)).toBe(true);
         expect(generator.calls).toBe(1);
+    });
+
+    it("makes one AI call when the saved-answer lookup is slow", async () => {
+        generator.behaviour = async (facts) => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return mockCompletion(facts);
+        };
+        const realRepo = await newAiInsightRepo();
+        let lookups = 0;
+        const slowRepo: AiInsightRepoInterface = {
+            findByKey: async (cacheKey) => {
+                lookups += 1;
+                const lookup = lookups;
+                const found = await realRepo.findByKey(cacheKey);
+                if (lookup === 2) {
+                    await new Promise((resolve) => setTimeout(resolve, 300));
+                }
+                return found;
+            },
+            save: (insight) => realRepo.save(insight),
+        };
+        const slowApp = await makeApi(generator, slowRepo);
+
+        const results = await Promise.all([insights(slowApp, importId), insights(slowApp, importId)]);
+
+        expect(results.every((res) => res.body.response.aiStatus === AiStatus.AI_DRAFT)).toBe(true);
+        expect(generator.calls).toBe(1);
+    });
+
+    it("still returns the AI answer when saving it fails (e.g. the import was just deleted)", async () => {
+        const realRepo = await newAiInsightRepo();
+        const failingRepo: AiInsightRepoInterface = {
+            findByKey: (cacheKey) => realRepo.findByKey(cacheKey),
+            save: async () => {
+                throw new Error("database is down");
+            },
+        };
+        const failingApp = await makeApi(generator, failingRepo);
+        const loggerWarn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
+
+        const first = await insights(failingApp, importId);
+        const second = await insights(failingApp, importId);
+
+        expect([first.status, first.body.response.aiStatus]).toEqual([HttpStatus.OK, AiStatus.AI_DRAFT]);
+        expect(second.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
+        expect(generator.calls).toBe(2);
+        expect(loggerWarn).toHaveBeenCalledWith("Could not save the AI answer", { error: "Error" });
+        loggerWarn.mockRestore();
     });
 
     it("asks again for a new reference date (a different report)", async () => {
@@ -195,7 +252,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         expectTemplates(first.body.response);
 
         // Retry works: the failure was not cached, so the AI is asked again
-        generator.behaviour = (facts) => new FakeAiGenerator().generate(facts);
+        generator.behaviour = async (facts) => mockCompletion(facts);
         const retry = await insights(app, importId);
         expect(retry.body.response.aiStatus).toBe(AiStatus.AI_DRAFT);
         expect(generator.calls).toBe(2);
@@ -207,7 +264,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
 
     it("when the answer breaks a rule (a date in a message), uses templates for the whole report", async () => {
         generator.behaviour = async (facts) => {
-            const good = await new FakeAiGenerator().generate(facts);
+            const good = mockCompletion(facts);
             const output = good.output as any;
             output.drafts[2].text = "Hi {{first_name}}, please reply by 20 November.";
             return good;
@@ -220,8 +277,28 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         expect(await sequelize.query("SELECT id FROM ai_insights", { type: QueryTypes.SELECT })).toHaveLength(0);
     });
 
+    it("uses the model picked in the settings, and a new model makes a new AI call", async () => {
+        await insights(app, importId).expect(HttpStatus.OK);
+        await request(app)
+            .put("/api/v1/settings")
+            .send({ useAiDrafts: true, aiModel: "mock/other-model:free" })
+            .expect(HttpStatus.OK);
+
+        const res = await insights(app, importId);
+
+        expect(res.body.response).toMatchObject({ model: "mock/other-model:free", cached: false });
+        expect(generator.models).toEqual([DEFAULT_AI_MODEL, "mock/other-model:free"]);
+        expect((await llmCalls()).map((call) => call.requested_model)).toEqual([
+            DEFAULT_AI_MODEL,
+            "mock/other-model:free",
+        ]);
+    });
+
     it("when the team turned AI drafts off: no AI call", async () => {
-        await request(app).put("/api/v1/settings").send({ useAiDrafts: false }).expect(HttpStatus.OK);
+        await request(app)
+            .put("/api/v1/settings")
+            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);
 

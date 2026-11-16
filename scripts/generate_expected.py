@@ -20,6 +20,7 @@ from pathlib import Path
 
 REQUIRED = ["candidate_id", "name", "role", "stage", "stage_entered_at", "recruiter"]
 OPTIONAL_DATES = ["last_activity_at", "last_contacted_at"]
+MAX_DUPLICATE_RECORDS = 5
 
 # Default hiring stages (position = order in the pipeline; later = more urgent).
 DEFAULT_STAGES = [
@@ -118,7 +119,9 @@ def analyse(path, reference, setup):
         cid = p["v"]["candidate_id"]
         if cid and ids[cid] > 1:
             others = [q["record"] for q in parsed if q["v"]["candidate_id"] == cid and q is not p]
-            p["errs"].append({"field": "candidate_id", "problem": f"duplicate ID (also record {', '.join(map(str, others))})"})
+            shown = others[:MAX_DUPLICATE_RECORDS]
+            more = f" and {len(others) - len(shown):,} more" if len(others) > len(shown) else ""
+            p["errs"].append({"field": "candidate_id", "problem": f"duplicate ID (also record {', '.join(map(str, shown))}{more})"})
         if p["errs"]:
             errors.append({"record": p["record"], "candidate_id": cid, "errors": p["errs"]})
     errors.sort(key=lambda e: e["record"])

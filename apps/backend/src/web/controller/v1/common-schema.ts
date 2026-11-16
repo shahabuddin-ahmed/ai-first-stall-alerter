@@ -1,6 +1,6 @@
 import Joi from "joi";
 import { ISO_DATE_PATTERN, PAGINATION, SEARCH_MAX_LENGTH } from "../../../constant/api";
-import { BoardColumn, TEXT_COLUMN_LIMITS } from "../../../constant/board";
+import { PipelineColumn, TEXT_COLUMN_LIMITS } from "../../../constant/pipeline";
 
 export const idParamsSchema = Joi.object({
     id: Joi.number().integer().positive().required(),
@@ -11,8 +11,8 @@ export const referenceDateField = Joi.string().pattern(ISO_DATE_PATTERN).message
 });
 
 export const queueFilterFields = {
-    stage: Joi.string().trim().max(TEXT_COLUMN_LIMITS[BoardColumn.STAGE]),
-    recruiter: Joi.string().trim().max(TEXT_COLUMN_LIMITS[BoardColumn.RECRUITER]),
+    stage: Joi.string().trim().max(TEXT_COLUMN_LIMITS[PipelineColumn.STAGE]),
+    recruiter: Joi.string().trim().max(TEXT_COLUMN_LIMITS[PipelineColumn.RECRUITER]),
     search: Joi.string().trim().max(SEARCH_MAX_LENGTH).allow(""),
 };
 

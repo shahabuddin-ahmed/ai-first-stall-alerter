@@ -1,4 +1,4 @@
-import newSequelize from "./sequelize";
+import newSequelize, { createDatabaseIfMissing } from "./sequelize";
 import { newMigrator, newSeeder } from "./migrator";
 import { DbCommand } from "../constant/env";
 
@@ -10,6 +10,7 @@ const run = async (command: DbCommand): Promise<void> => {
     try {
         switch (command) {
             case DbCommand.MIGRATE: {
+                await createDatabaseIfMissing();
                 const done = await migrator.up();
                 console.log(done.length ? `Migrated: ${done.map((m) => m.name).join(", ")}` : "No new migrations.");
                 break;

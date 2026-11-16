@@ -1,9 +1,11 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
+import { AI_COLUMN_LIMITS } from "../constant/ai";
 
 export interface SettingInterface {
     id: number;
     useAiDrafts: boolean;
+    aiModel: string;
     stagesVersion: number;
     createdAt?: Date;
     updatedAt?: Date;
@@ -12,6 +14,7 @@ export interface SettingInterface {
 class Setting extends Model<SettingInterface> implements SettingInterface {
     public id!: number;
     public useAiDrafts!: boolean;
+    public aiModel!: string;
     public stagesVersion!: number;
     public readonly createdAt?: Date;
     public readonly updatedAt?: Date;
@@ -28,6 +31,10 @@ Setting.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: true,
+        },
+        aiModel: {
+            type: new DataTypes.STRING(AI_COLUMN_LIMITS.MODEL_ID),
+            allowNull: false,
         },
         stagesVersion: {
             type: DataTypes.INTEGER.UNSIGNED,

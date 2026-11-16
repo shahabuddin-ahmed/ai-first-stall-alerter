@@ -1,6 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
 import { HASH_COLUMN_LENGTH } from "../constant/hash";
+import { PIPELINE_LIMITS } from "../constant/pipeline";
 
 export interface ImportInterface {
     id?: number;
@@ -32,7 +33,7 @@ Import.init(
             primaryKey: true,
         },
         fileName: {
-            type: new DataTypes.STRING(255),
+            type: new DataTypes.STRING(PIPELINE_LIMITS.MAX_FILE_NAME_LENGTH),
             allowNull: false,
         },
         fileHash: {

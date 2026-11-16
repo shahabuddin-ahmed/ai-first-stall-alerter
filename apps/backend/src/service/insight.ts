@@ -7,19 +7,24 @@ import {
     PROMPT_VERSION,
     RECRUITER_KEY_PATTERN,
 } from "../constant/ai";
+import { BottleneckType } from "../constant/pipeline";
 import { ActionCode, RecipientType } from "../constant/stage";
-import { AiError, AiGenerator, AiUsage } from "../ai/generator";
-import { AiOutput, checkAiOutput } from "../ai/guardrails";
+import logger from "../infra/logger";
 import { AiInsightRepoInterface } from "../repo/ai-insight";
 import { LlmCallRepoInterface } from "../repo/llm-call";
-import { buildInsightFacts, InsightFacts, recruiterKeysOf } from "../rules/ai-facts";
-import { fillPlaceholders, templateBottleneckNote, templateBriefing } from "../rules/messages";
-import { BoardAnalysis } from "../rules/types";
-import logger from "../infra/logger";
 import { sha256Hex } from "../utils/utility";
+import { AiAttempt, AiOutput, AiServiceInterface } from "./ai";
 import { ConfigServiceInterface } from "./config";
 import { ImportServiceInterface } from "./import";
-import { BottleneckType } from "../constant/board";
+import {
+    buildInsightFacts,
+    fillPlaceholders,
+    InsightFacts,
+    recruiterKeysOf,
+    templateBottleneckNote,
+    templateBriefing,
+} from "./pipeline-messages";
+import { PipelineAnalysis, QueueItem } from "./pipeline-types";
 
 export interface InsightDraft {
     rank: number;
@@ -47,37 +52,53 @@ export interface InsightsView {
 export interface SavedDrafts {
     status: AiNoteStatus.AI_DRAFT | AiNoteStatus.DISABLED | AiNoteStatus.PENDING | AiNoteStatus.UNAVAILABLE;
     draftsByAction: Map<ActionCode, string>;
+    topN: number;
+}
+
+interface InsightResult {
+    output: AiOutput | null;
+    errorCode: AiErrorCode | null;
+    cached: boolean;
 }
 
 export interface InsightServiceInterface {
     getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
-    getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts>;
+    getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
 
-type Attempt = { ok: true; output: AiOutput } | { ok: false; code: AiErrorCode };
+const toDraft = (item: QueueItem, text: string, source: MessageSource): InsightDraft => ({
+    rank: item.rank,
+    candidateId: item.candidateId,
+    name: item.name,
+    actionCode: item.actionCode,
+    recipient: item.recipient,
+    text,
+    source,
+});
 
 export class InsightService implements InsightServiceInterface {
-    private inFlight = new Map<string, Promise<Attempt>>();
+    private inFlight = new Map<string, Promise<InsightResult>>();
 
     constructor(
         private importService: ImportServiceInterface,
         private configService: ConfigServiceInterface,
         private aiInsightRepo: AiInsightRepoInterface,
         private llmCallRepo: LlmCallRepoInterface,
-        private generator: AiGenerator | null,
+        private aiService: AiServiceInterface,
         private topN: number
     ) {}
 
     async getInsights(importId: number, referenceDate?: string): Promise<InsightsView> {
         const { analysis } = await this.importService.analyse(importId, referenceDate);
-        const { useAiDrafts, stagesVersion } = this.configService.getSnapshot();
+        const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
+        const model = this.aiService.isConfigured() ? aiModel : null;
         const templates = (aiStatus: AiStatus, errorCode: AiErrorCode | null = null) =>
-            this.templateView(importId, analysis, aiStatus, errorCode);
+            this.templateView(importId, analysis, model, aiStatus, errorCode);
 
         if (analysis.queue.length === 0) {
             return templates(AiStatus.NOTHING_STALLED);
         }
-        if (!this.generator) {
+        if (!this.aiService.isConfigured()) {
             return templates(AiStatus.NOT_CONFIGURED);
         }
         if (!useAiDrafts) {
@@ -85,132 +106,118 @@ export class InsightService implements InsightServiceInterface {
         }
 
         const facts = buildInsightFacts(analysis, this.topN);
-        const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion);
+        const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
 
-        const cached = await this.aiInsightRepo.findByKey(cacheKey);
-        if (cached) {
-            return this.aiView(importId, analysis, cached, true);
-        }
-
-        const attempt = await this.callOnce(cacheKey, importId, facts);
-        return attempt.ok
-            ? this.aiView(importId, analysis, attempt.output, false)
-            : templates(AiStatus.FAILED, attempt.code);
+        const result = await this.callOnce(cacheKey, importId, facts, aiModel);
+        return result.output
+            ? this.aiView(importId, analysis, aiModel, result.output, result.cached)
+            : templates(AiStatus.FAILED, result.errorCode);
     }
 
-    async getSavedDrafts(importId: number, analysis: BoardAnalysis): Promise<SavedDrafts> {
-        const saved = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
-            status,
-            draftsByAction,
-        });
-        const { useAiDrafts, stagesVersion } = this.configService.getSnapshot();
-        if (!this.generator) {
-            return saved(AiNoteStatus.UNAVAILABLE);
+    async getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts> {
+        const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
+        if (!this.aiService.isConfigured()) {
+            return this.savedDrafts(AiNoteStatus.UNAVAILABLE);
         }
         if (!useAiDrafts) {
-            return saved(AiNoteStatus.DISABLED);
+            return this.savedDrafts(AiNoteStatus.DISABLED);
         }
 
-        const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion);
+        const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            return saved(AiNoteStatus.AI_DRAFT, new Map(cached.drafts.map((draft) => [draft.action_code, draft.text])));
+            return this.savedDrafts(
+                AiNoteStatus.AI_DRAFT,
+                new Map(cached.output.drafts.map((draft) => [draft.action_code, draft.text]))
+            );
         }
 
         const lastCall = await this.llmCallRepo.findLatest(cacheKey);
-        return saved(lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING);
+        return this.savedDrafts(
+            lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING
+        );
     }
 
-    cacheKey(importId: number, referenceDate: string, stagesVersion: number): string {
-        const parts = [importId, referenceDate, stagesVersion, this.topN, PROMPT_VERSION, this.model ?? ""];
+    cacheKey(importId: number, referenceDate: string, stagesVersion: number, model: string): string {
+        const parts = [importId, referenceDate, stagesVersion, this.topN, PROMPT_VERSION, model];
         return sha256Hex(JSON.stringify(parts));
     }
 
-    private get model(): string | null {
-        return this.generator?.model ?? null;
+    private savedDrafts(status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts {
+        return { status, draftsByAction, topN: this.topN };
     }
 
-    private callOnce(cacheKey: string, importId: number, facts: InsightFacts): Promise<Attempt> {
+    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<InsightResult> {
         const running = this.inFlight.get(cacheKey);
         if (running) {
             return running;
         }
-        const attempt = this.attemptAndForget(cacheKey, importId, facts);
-        this.inFlight.set(cacheKey, attempt);
-        return attempt;
+        const result = this.loadOrGenerate(cacheKey, importId, facts, model).finally(() =>
+            this.inFlight.delete(cacheKey)
+        );
+        this.inFlight.set(cacheKey, result);
+        return result;
     }
 
-    private async attemptAndForget(cacheKey: string, importId: number, facts: InsightFacts): Promise<Attempt> {
-        try {
-            return await this.attempt(cacheKey, importId, facts);
-        } finally {
-            this.inFlight.delete(cacheKey);
+    private async loadOrGenerate(
+        cacheKey: string,
+        importId: number,
+        facts: InsightFacts,
+        model: string
+    ): Promise<InsightResult> {
+        const cached = await this.aiInsightRepo.findByKey(cacheKey);
+        if (cached) {
+            return { output: cached.output, errorCode: null, cached: true };
         }
+        const attempt = await this.attempt(cacheKey, importId, facts, model);
+        return { output: attempt.output, errorCode: attempt.errorCode, cached: false };
     }
 
-    private async attempt(cacheKey: string, importId: number, facts: InsightFacts): Promise<Attempt> {
-        const generator = this.generator as AiGenerator;
+    private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
         const startedAt = Date.now();
-        let result: Attempt;
-        let usage: AiUsage = {
-            servedModel: null,
-            inputTokens: null,
-            outputTokens: null,
-            costUsd: null,
-        };
+        const attempt = await this.aiService.generateText(facts, model);
+        const { usage } = attempt;
 
-        try {
-            const generated = await generator.generate(facts);
-            usage = generated;
-            const check = checkAiOutput(generated.output, facts);
-            if (check.ok) {
-                result = { ok: true, output: check.output };
-            } else {
-                logger.warn("AI answer failed the checks", { problems: check.problems.join("; ") });
-                result = { ok: false, code: AiErrorCode.INVALID_OUTPUT };
-            }
-        } catch (err) {
-            result = { ok: false, code: err instanceof AiError ? err.code : AiErrorCode.PROVIDER_ERROR };
-        }
-
-        await this.safely("log the AI call", () =>
+        await this.saveSafely("the AI call log", () =>
             this.llmCallRepo.log({
                 importId,
                 cacheKey,
-                requestedModel: generator.model,
+                requestedModel: model,
                 servedModel: usage.servedModel,
                 inputTokens: usage.inputTokens,
                 outputTokens: usage.outputTokens,
                 costUsd: usage.costUsd,
                 latencyMs: Date.now() - startedAt,
-                status: result.ok ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
-                errorCode: result.ok ? null : result.code,
+                status: attempt.output ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
+                errorCode: attempt.errorCode,
             })
         );
-        if (result.ok) {
-            const { output } = result;
-            await this.safely("cache the AI answer", () =>
-                this.aiInsightRepo.save({
-                    importId,
-                    cacheKey,
-                    model: generator.model,
-                    promptVersion: PROMPT_VERSION,
-                    output,
-                })
+        if (attempt.output) {
+            const output = attempt.output;
+            await this.saveSafely("the AI answer", () =>
+                this.aiInsightRepo.save({ importId, cacheKey, model, promptVersion: PROMPT_VERSION, output })
             );
         }
-        return result;
+        return attempt;
     }
 
-    private async safely(what: string, work: () => Promise<void>): Promise<void> {
+    // The AI answer is already here, so a failed save (e.g. the import was just deleted) must not turn it into an error.
+    // The error name only: database errors can contain row values.
+    private async saveSafely(what: string, save: () => Promise<unknown>): Promise<void> {
         try {
-            await work();
+            await save();
         } catch (err) {
-            logger.error(`Could not ${what}`, { error: err instanceof Error ? err.name : "Error" });
+            logger.warn(`Could not save ${what}`, { error: err instanceof Error ? err.name : "Error" });
         }
     }
 
-    private aiView(importId: number, analysis: BoardAnalysis, output: AiOutput, cached: boolean): InsightsView {
+    private aiView(
+        importId: number,
+        analysis: PipelineAnalysis,
+        model: string,
+        output: AiOutput,
+        cached: boolean
+    ): InsightsView {
         const names = new Map([...recruiterKeysOf(analysis.queue)].map(([name, key]) => [key, name]));
         const withNames = (text: string) => text.replace(RECRUITER_KEY_PATTERN, (key) => names.get(key) ?? key);
         const draftByAction = new Map(output.drafts.map((draft) => [draft.action_code, draft.text]));
@@ -220,7 +227,7 @@ export class InsightService implements InsightServiceInterface {
             referenceDate: analysis.referenceDate,
             aiStatus: AiStatus.AI_DRAFT,
             errorCode: null,
-            model: this.model,
+            model,
             cached,
             topN: this.topN,
             briefing: { text: withNames(output.briefing), source: MessageSource.AI_DRAFT },
@@ -229,21 +236,22 @@ export class InsightService implements InsightServiceInterface {
                 text: withNames(output.bottleneck_notes[index]),
                 source: MessageSource.AI_DRAFT,
             })),
-            drafts: analysis.queue.slice(0, this.topN).map((item) => ({
-                rank: item.rank,
-                candidateId: item.candidateId,
-                name: item.name,
-                actionCode: item.actionCode,
-                recipient: item.recipient,
-                text: fillPlaceholders(draftByAction.get(item.actionCode) as string, item),
-                source: MessageSource.AI_DRAFT,
-            })),
+            drafts: analysis.queue
+                .slice(0, this.topN)
+                .map((item) =>
+                    toDraft(
+                        item,
+                        fillPlaceholders(draftByAction.get(item.actionCode) as string, item),
+                        MessageSource.AI_DRAFT
+                    )
+                ),
         };
     }
 
     private templateView(
         importId: number,
-        analysis: BoardAnalysis,
+        analysis: PipelineAnalysis,
+        model: string | null,
         aiStatus: AiStatus,
         errorCode: AiErrorCode | null
     ): InsightsView {
@@ -252,7 +260,7 @@ export class InsightService implements InsightServiceInterface {
             referenceDate: analysis.referenceDate,
             aiStatus,
             errorCode,
-            model: this.model,
+            model,
             cached: false,
             topN: this.topN,
             briefing: { text: templateBriefing(analysis), source: MessageSource.TEMPLATE },
@@ -261,15 +269,9 @@ export class InsightService implements InsightServiceInterface {
                 text: templateBottleneckNote(bottleneck),
                 source: MessageSource.TEMPLATE,
             })),
-            drafts: analysis.queue.slice(0, this.topN).map((item) => ({
-                rank: item.rank,
-                candidateId: item.candidateId,
-                name: item.name,
-                actionCode: item.actionCode,
-                recipient: item.recipient,
-                text: item.templateMessage,
-                source: MessageSource.TEMPLATE,
-            })),
+            drafts: analysis.queue
+                .slice(0, this.topN)
+                .map((item) => toDraft(item, item.templateMessage, MessageSource.TEMPLATE)),
         };
     }
 }
@@ -279,8 +281,8 @@ export const newInsightService = async (
     configService: ConfigServiceInterface,
     aiInsightRepo: AiInsightRepoInterface,
     llmCallRepo: LlmCallRepoInterface,
-    generator: AiGenerator | null,
+    aiService: AiServiceInterface,
     topN: number
 ): Promise<InsightService> => {
-    return new InsightService(importService, configService, aiInsightRepo, llmCallRepo, generator, topN);
+    return new InsightService(importService, configService, aiInsightRepo, llmCallRepo, aiService, topN);
 };

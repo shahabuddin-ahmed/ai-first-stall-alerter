@@ -7,9 +7,33 @@ import logger from "../../infra/logger";
 import { ResponseType } from "../controller/controller";
 import { pathOf } from "./request-logger";
 
-const BODY_ERRORS: Record<string, { status: HttpStatus; code: ERROR_CODES }> = {
+interface BodyError {
+    status: HttpStatus;
+    code: ERROR_CODES;
+}
+
+interface ErrorDetails {
+    code: string;
+    message: string;
+    errors: string[];
+}
+
+const BODY_ERRORS: Record<string, BodyError> = {
     "entity.parse.failed": { status: HttpStatus.BAD_REQUEST, code: ERROR_CODES.E_INVALID_DATA },
     "entity.too.large": { status: HttpStatus.PAYLOAD_TOO_LARGE, code: ERROR_CODES.E_PAYLOAD_TOO_LARGE },
+};
+
+const detailsOf = (err: any, bodyError: BodyError | undefined, isServerError: boolean): ErrorDetails => {
+    if (isServerError) {
+        const message = errorMessages.E_INTERNAL_SERVER_ERROR.message;
+        return { code: ERROR_CODES.E_INTERNAL_SERVER_ERROR, message, errors: [message] };
+    }
+    if (bodyError) {
+        const message = errorMessages[bodyError.code].message;
+        return { code: bodyError.code, message, errors: [message] };
+    }
+    const message = err.message || errorMessages.E_INVALID_DATA.message;
+    return { code: err.code ?? ERROR_CODES.E_INVALID_DATA, message, errors: err.errors || [message] };
 };
 
 export const globalErrorHandler = (err: any, req: Request, res: Response, _next: NextFunction) => {
@@ -28,19 +52,7 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, _next:
         });
     }
 
-    const code = isServerError
-        ? ERROR_CODES.E_INTERNAL_SERVER_ERROR
-        : (bodyError?.code ?? err.code ?? ERROR_CODES.E_INVALID_DATA);
-    const message = isServerError
-        ? errorMessages.E_INTERNAL_SERVER_ERROR.message
-        : bodyError
-          ? errorMessages[bodyError.code].message
-          : err.message || errorMessages.E_INVALID_DATA.message;
-
-    return res.status(statusCode).send({
-        code,
-        message,
-        response: null,
-        errors: isServerError || bodyError ? [message] : err.errors || [message],
-    } as ResponseType);
+    const { code, message, errors } = detailsOf(err, bodyError, isServerError);
+    const body: ResponseType = { code, message, response: null, errors };
+    return res.status(statusCode).send(body);
 };

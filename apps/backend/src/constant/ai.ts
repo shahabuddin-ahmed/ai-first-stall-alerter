@@ -11,6 +11,7 @@ export enum AiNoteStatus {
     DISABLED = "disabled",
     PENDING = "pending",
     UNAVAILABLE = "unavailable",
+    NOT_IN_TOP_N = "not_in_top_n",
 }
 
 export enum MessageSource {
@@ -29,11 +30,6 @@ export enum AiErrorCode {
     INVALID_OUTPUT = "INVALID_OUTPUT",
 }
 
-export enum AiMode {
-    LIVE = "live",
-    FAKE = "fake",
-}
-
 export enum ReasoningEffort {
     NONE = "none",
     OFF = "off",
@@ -48,25 +44,36 @@ export enum ChatRole {
 }
 
 export enum FinishReason {
-    STOP = "stop",
     LENGTH = "length",
 }
-
-export const TIMEOUT_ERROR_NAMES: readonly string[] = ["TimeoutError", "AbortError"];
-
-export const AI_COLUMN_LIMITS = {
-    ERROR_CODE: 20,
-    PROMPT_VERSION: 10,
-} as const;
 
 export enum LlmCallStatus {
     SUCCESS = "success",
     FAILED = "failed",
 }
 
-export const SENDER_PLACEHOLDER = "{{recruiter}}";
+export const AI_COLUMN_LIMITS = {
+    ERROR_CODE: 20,
+    PROMPT_VERSION: 10,
+    MODEL_ID: 100,
+    MODEL_NAME: 100,
+} as const;
 
-export const DRAFT_PLACEHOLDERS = ["{{first_name}}", "{{name}}", "{{role}}", SENDER_PLACEHOLDER] as const;
+export const SENDER_PLACEHOLDER = "{{recruiter}}";
+export const FIRST_NAME_PLACEHOLDER = "{{first_name}}";
+export const NAME_PLACEHOLDER = "{{name}}";
+export const ROLE_PLACEHOLDER = "{{role}}";
+
+export const DRAFT_PLACEHOLDERS: readonly string[] = [
+    FIRST_NAME_PLACEHOLDER,
+    NAME_PLACEHOLDER,
+    ROLE_PLACEHOLDER,
+    SENDER_PLACEHOLDER,
+];
+
+// "May" is left out on purpose: "may" is a normal word.
+export const TIMING_WORDS =
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|this week|next week|january|february|march|april|june|july|august|september|october|november|december)\b/i;
 
 export const AI_LIMITS = {
     BRIEFING_CHARS: 450,
@@ -87,4 +94,14 @@ export const AI_REQUEST = {
     SCHEMA_NAME: "stall_insights",
 } as const;
 
-export const PROMPT_VERSION = "v5";
+// Part of the AI cache key: change it when the prompt or the answer checks change, so old saved answers are not reused
+export const PROMPT_VERSION = "v6";
+
+export const DEFAULT_AI_MODEL = "inclusionai/ling-3.2-flash:free";
+
+export const AI_MODEL_LIST = {
+    PATH: "/models",
+    REQUIRED_PARAMETER: "structured_outputs",
+    CACHE_MS: 30 * 60 * 1000,
+    TIMEOUT_MS: 10_000,
+} as const;

@@ -1,26 +1,17 @@
-import { UniqueConstraintError } from "sequelize";
-import { AiOutput } from "../ai/guardrails";
 import AiInsight, { AiInsightInterface } from "../model/ai-insight";
 
 export interface AiInsightRepoInterface {
-    findByKey(cacheKey: string): Promise<AiOutput | null>;
-    save(insight: AiInsightInterface): Promise<void>;
+    findByKey(cacheKey: string): Promise<AiInsightInterface | null>;
+    save(insight: AiInsightInterface): Promise<AiInsightInterface>;
 }
 
 export class AiInsightRepo implements AiInsightRepoInterface {
-    public async findByKey(cacheKey: string): Promise<AiOutput | null> {
-        const found = await AiInsight.findOne({ where: { cacheKey } });
-        return found ? (found.get("output") as AiOutput) : null;
+    public async findByKey(cacheKey: string): Promise<AiInsightInterface | null> {
+        return AiInsight.findOne({ where: { cacheKey } });
     }
 
-    public async save(insight: AiInsightInterface): Promise<void> {
-        try {
-            await AiInsight.create(insight);
-        } catch (err) {
-            if (!(err instanceof UniqueConstraintError)) {
-                throw err;
-            }
-        }
+    public async save(insight: AiInsightInterface): Promise<AiInsightInterface> {
+        return AiInsight.create(insight);
     }
 }
 

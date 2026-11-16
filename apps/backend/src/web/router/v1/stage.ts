@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/async-hander";
+import { asyncHandler } from "../../middleware/async-handler";
 import { StageControllerInterface } from "../../controller/v1/stage";
 
 export const newStageRouter = async (stageController: StageControllerInterface): Promise<Router> => {
@@ -10,5 +10,3 @@ export const newStageRouter = async (stageController: StageControllerInterface):
 
     return router;
 };
-
-export default newStageRouter;

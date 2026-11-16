@@ -6,3 +6,13 @@ export const retrieveErrorMessage = (errorCode: ERROR_CODES): string => errorMes
 
 export const sha256Hex = (data: string | Buffer): string =>
     crypto.createHash(HASH_ALGORITHM).update(data).digest("hex");
+
+export const compareText = (a: string, b: string): number => {
+    if (a < b) {
+        return -1;
+    }
+    if (a > b) {
+        return 1;
+    }
+    return 0;
+};
