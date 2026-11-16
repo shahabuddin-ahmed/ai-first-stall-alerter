@@ -1,4 +1,14 @@
-import type { ApiEnvelope, HealthReport, ImportList, PipelineView, StageList, UploadResult } from '@/types';
+import type {
+  ApiEnvelope,
+  HealthReport,
+  ImportList,
+  Page,
+  PipelineView,
+  QueueQuery,
+  RowError,
+  StageList,
+  UploadResult
+} from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -10,6 +20,10 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+export function errorMessage(error: unknown): string {
+  return error instanceof ApiError ? error.message : 'Could not reach the StallAlert API.';
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,6 +52,18 @@ export const api = {
   getImports: () => request<ImportList>('/imports'),
   getImport: (id: number, referenceDate: string) =>
     request<PipelineView>(`/imports/${id}?${new URLSearchParams({ referenceDate, pageSize: '1' })}`),
+  getQueue: (id: number, query: QueueQuery) => {
+    const params = new URLSearchParams({ referenceDate: query.referenceDate, page: String(query.page) });
+    // Empty filters are left out: the backend rejects an empty stage or recruiter
+    for (const [key, value] of Object.entries({ stage: query.stage, recruiter: query.recruiter, search: query.search })) {
+      if (value) {
+        params.set(key, value);
+      }
+    }
+    return request<PipelineView>(`/imports/${id}?${params}`);
+  },
+  getRowErrors: (id: number, referenceDate: string, page: number) =>
+    request<Page<RowError>>(`/imports/${id}/errors?${new URLSearchParams({ referenceDate, page: String(page) })}`),
   uploadImport: (file: File, referenceDate: string) => {
     const body = new FormData();
     body.append('file', file);

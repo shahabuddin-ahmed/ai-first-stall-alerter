@@ -59,9 +59,110 @@ export interface ImportList {
   total: number;
 }
 
+export interface Page<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface PipelineCounts {
+  total: number;
+  valid: number;
+  invalid: number;
+  terminal: number;
+  onHold: number;
+  stalled: number;
+  notStalled: number;
+}
+
+export enum BottleneckType {
+  STAGE = 'stage',
+  RECRUITER = 'recruiter'
+}
+
+export interface Bottleneck {
+  type: BottleneckType;
+  key: string;
+  stalled: number;
+}
+
+export interface StageThreshold {
+  name: string;
+  thresholdDays: number;
+  stalled: number;
+}
+
+export enum TimerSource {
+  STAGE_ENTERED = 'stage_entered_at',
+  LAST_ACTIVITY = 'last_activity_at'
+}
+
+export enum Recipient {
+  HIRING_MANAGER = 'hiring_manager',
+  CANDIDATE = 'candidate',
+  INTERVIEW_PANEL = 'interview_panel',
+  ASSESSMENT_REVIEWER = 'assessment_reviewer'
+}
+
+export interface QueueItem {
+  rank: number;
+  recordNumber: number;
+  candidateId: string;
+  name: string;
+  firstName: string;
+  role: string;
+  stage: string;
+  recruiter: string;
+  timerFrom: string;
+  timerSource: TimerSource;
+  daysInStage: number;
+  stageThreshold: number;
+  overdueDays: number;
+  actionLabel: string;
+  recipient: Recipient;
+  daysSinceContact: number | null;
+  reason: string;
+  templateMessage: string;
+}
+
 export interface PipelineView {
   import: ImportSummary;
   referenceDate: string;
+  counts: PipelineCounts;
+  bottlenecks: Bottleneck[];
+  stageThresholds: StageThreshold[];
+  filterOptions: { stages: string[]; recruiters: string[] };
+  queue: Page<QueueItem>;
+}
+
+export interface QueueQuery {
+  referenceDate: string;
+  page: number;
+  stage: string;
+  recruiter: string;
+  search: string;
+}
+
+export enum RowErrorCode {
+  FIELD_COUNT = 'FIELD_COUNT',
+  MISSING_VALUE = 'MISSING_VALUE',
+  INVALID_DATE = 'INVALID_DATE',
+  FUTURE_DATE = 'FUTURE_DATE',
+  UNKNOWN_STAGE = 'UNKNOWN_STAGE',
+  DUPLICATE_ID = 'DUPLICATE_ID'
+}
+
+export interface FieldError {
+  field: string;
+  code: RowErrorCode;
+  problem: string;
+}
+
+export interface RowError {
+  recordNumber: number;
+  candidateId: string;
+  errors: FieldError[];
 }
 
 export interface UploadResult extends PipelineView {
