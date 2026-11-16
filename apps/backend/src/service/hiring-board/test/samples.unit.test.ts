@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { StageType } from "../../constant/stage";
+import { StageType } from "../../../constant/stage";
 import { analyseBoard } from "../analyse-board";
 import { parseBoardCsv } from "../csv-reader";
 import { DEFAULT_STAGES } from "./default-stages";
@@ -8,7 +8,7 @@ import { BoardAnalysis, StageConfig } from "../types";
 
 // The app must give exactly the same answers as scripts/generate_expected.py,
 // which was written separately (Python). Never edit data/expected/*.json by hand.
-const DATA_DIR = path.resolve(__dirname, "../../../../../data");
+const DATA_DIR = path.resolve(__dirname, "../../../../../../data");
 const REFERENCE_DATE = "2026-11-13";
 
 const SCENARIOS: Record<string, StageConfig[]> = {

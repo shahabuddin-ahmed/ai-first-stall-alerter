@@ -1,5 +1,5 @@
 import { Bottleneck, QueueItem } from "./types";
-import { BOARD_LIMITS, BottleneckType } from "../constant/board";
+import { BOARD_LIMITS, BottleneckType } from "../../constant/board";
 
 const countBy = (items: QueueItem[], key: (item: QueueItem) => string): Map<string, number> => {
     const counts = new Map<string, number>();

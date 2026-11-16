@@ -1,4 +1,4 @@
-import { ActionCode, StageType } from "../../constant/stage";
+import { ActionCode, StageType } from "../../../constant/stage";
 import { StageConfig } from "../types";
 
 // Test data only: the default hiring stages, the same as the seed file

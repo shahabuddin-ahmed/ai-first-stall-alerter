@@ -1,4 +1,4 @@
-import { STAGE_LIMITS, StageType } from "../constant/stage";
+import { STAGE_LIMITS, StageType } from "../../constant/stage";
 import { normaliseStageName } from "./stage-matcher";
 import { StageConfig } from "./types";
 

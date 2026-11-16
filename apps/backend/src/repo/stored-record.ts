@@ -1,8 +1,8 @@
 import { BoardColumn, DATE_COLUMNS, INVALID_DATE_TEXT } from "../constant/board";
 import { ImportRecordInterface } from "../model/import-record";
-import { COLUMN_FIELDS } from "./csv-reader";
-import { parseIsoDate } from "./dates";
-import { BoardRecord } from "./types";
+import { COLUMN_FIELDS } from "../service/hiring-board/csv-reader";
+import { parseIsoDate } from "../utils/dates";
+import { BoardRecord } from "../service/hiring-board/types";
 
 const isInvalidDate = (value: string): boolean => value !== "" && parseIsoDate(value) === null;
 

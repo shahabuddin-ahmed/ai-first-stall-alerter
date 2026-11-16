@@ -1,4 +1,4 @@
-import { ActionCode, RecipientType, TimerSource } from "../../constant/stage";
+import { ActionCode, RecipientType, TimerSource } from "../../../constant/stage";
 import { ACTIONS, explainReason, templateMessage } from "../messages";
 
 describe("ACTIONS", () => {

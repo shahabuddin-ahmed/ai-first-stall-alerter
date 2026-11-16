@@ -78,8 +78,9 @@ Redis would only be needed if the API ran as several copies (README "next steps"
 ```
 web/        routes + controllers (Joi validation, error mapping)          ← presentation
 service/    use cases: import board, get queue, export, insights, stages, settings  ← application
-rules/      pure rules: csv-reader · row-checks · dates · stage-matcher · analyse-board · messages · bottlenecks · facts · export
-repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) ← infrastructure
+  hiring-board/  pure board logic: csv-reader · row-checks · stage-matcher · analyse-board · messages · bottlenecks · ai-facts · export-csv
+repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) + stored-record mapping ← infrastructure
+utils/      general helpers: dates, hashing
 ai/         HTTP insights generator · fake generator · guardrails · prompt         ← infrastructure
 infra/      MySQL connection, config cache
 ```

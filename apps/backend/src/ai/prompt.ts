@@ -1,6 +1,6 @@
 import { AI_LIMITS, DRAFT_PLACEHOLDERS } from "../constant/ai";
 import { ActionCode } from "../constant/stage";
-import { InsightFacts } from "../rules/ai-facts";
+import { InsightFacts } from "../service/hiring-board/ai-facts";
 
 export const SYSTEM_PROMPT = `You write short follow-up text for a recruiting team.
 You get facts about stalled candidates as JSON. Code has already decided who is stalled, the order (rank),

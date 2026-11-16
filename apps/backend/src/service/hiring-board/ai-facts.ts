@@ -1,7 +1,7 @@
-import { AI_LIMITS, RECRUITER_KEY_PREFIX } from "../constant/ai";
-import { ActionCode, RecipientType } from "../constant/stage";
+import { AI_LIMITS, RECRUITER_KEY_PREFIX } from "../../constant/ai";
+import { ActionCode, RecipientType } from "../../constant/stage";
 import { BoardAnalysis, QueueItem } from "./types";
-import { BottleneckType } from "../constant/board";
+import { BottleneckType } from "../../constant/board";
 
 export interface AlertFacts {
     rank: number;

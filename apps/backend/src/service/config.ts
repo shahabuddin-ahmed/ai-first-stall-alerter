@@ -3,8 +3,8 @@ import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
 import { SettingRepoInterface, SettingsUpdate } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
-import { findStageListProblems } from "../rules/stage-list-checks";
-import { StageConfig, StageInput } from "../rules/types";
+import { findStageListProblems } from "./hiring-board/stage-list-checks";
+import { StageConfig, StageInput } from "./hiring-board/types";
 import { StageInterface } from "../model/stage";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
@@ -54,7 +54,7 @@ export class ConfigService implements ConfigServiceInterface {
 
     async load(): Promise<void> {
         const [stages, settings] = await Promise.all([this.stageRepo.list(), this.settingRepo.get()]);
-        if (!settings || stages.length === 0) {
+        if (!settings || !stages.length) {
             throw new Error("No hiring stages or settings in the database. Run `yarn db:seed` first.");
         }
         this.snapshot = {

@@ -1,9 +1,9 @@
 import { AiNoteStatus, MessageSource } from "../constant/ai";
 import { EXPORT_FILE_PREFIX, ExportColumn } from "../constant/export";
-import { buildExportCsv, ExportRow } from "../rules/export-csv";
-import { fillPlaceholders, RECIPIENT_LABELS } from "../rules/messages";
-import { filterQueue } from "../rules/queue-filter";
-import { QueueItem } from "../rules/types";
+import { buildExportCsv, ExportRow } from "./hiring-board/export-csv";
+import { fillPlaceholders, RECIPIENT_LABELS } from "./hiring-board/messages";
+import { filterQueue } from "./hiring-board/queue-filter";
+import { QueueItem } from "./hiring-board/types";
 import { ImportServiceInterface, ReportQuery } from "./import";
 import { InsightServiceInterface, SavedDrafts } from "./insight";
 

@@ -1,13 +1,13 @@
 import fs from "fs";
 import path from "path";
-import { AI_LIMITS } from "../../constant/ai";
+import { AI_LIMITS } from "../../../constant/ai";
 import { buildInsightFacts } from "../ai-facts";
 import { analyseBoard } from "../analyse-board";
 import { parseBoardCsv } from "../csv-reader";
 import { BoardAnalysis } from "../types";
 import { DEFAULT_STAGES } from "./default-stages";
 
-const DATA_DIR = path.resolve(__dirname, "../../../../../data");
+const DATA_DIR = path.resolve(__dirname, "../../../../../../data");
 
 const analyse = (bytes: Buffer): BoardAnalysis => {
     const parsed = parseBoardCsv(bytes);

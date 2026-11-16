@@ -1,4 +1,4 @@
-import { StageType } from "../../constant/stage";
+import { StageType } from "../../../constant/stage";
 import { findStageListProblems } from "../stage-list-checks";
 import { StageConfig } from "../types";
 import { DEFAULT_STAGES } from "./default-stages";

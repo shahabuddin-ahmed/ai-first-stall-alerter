@@ -1,6 +1,6 @@
 import { Transaction } from "sequelize";
 import Stage, { StageInterface } from "../model/stage";
-import { StageConfig } from "../rules/types";
+import { StageConfig } from "../service/hiring-board/types";
 
 export interface StageRepoInterface {
     list(): Promise<StageInterface[]>;

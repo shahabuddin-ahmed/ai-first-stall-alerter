@@ -1,4 +1,4 @@
-import { BOARD_LIMITS, FileErrorCode } from "../../constant/board";
+import { BOARD_LIMITS, FileErrorCode } from "../../../constant/board";
 import { parseBoardCsv } from "../csv-reader";
 import { FileError, ParsedBoard } from "../types";
 

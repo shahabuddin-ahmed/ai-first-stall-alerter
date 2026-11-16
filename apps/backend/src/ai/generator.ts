@@ -1,5 +1,5 @@
 import { AiErrorCode } from "../constant/ai";
-import { InsightFacts } from "../rules/ai-facts";
+import { InsightFacts } from "../service/hiring-board/ai-facts";
 
 export interface AiUsage {
     servedModel: string | null;

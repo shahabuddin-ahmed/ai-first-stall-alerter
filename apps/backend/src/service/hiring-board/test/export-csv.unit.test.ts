@@ -1,4 +1,4 @@
-import { ExportColumn, EXPORT_COLUMNS } from "../../constant/export";
+import { ExportColumn, EXPORT_COLUMNS } from "../../../constant/export";
 import { buildExportCsv, ExportRow, guardFormula } from "../export-csv";
 
 const row = (change: Partial<ExportRow> = {}): ExportRow => ({

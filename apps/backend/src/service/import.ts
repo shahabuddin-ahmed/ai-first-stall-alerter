@@ -5,16 +5,16 @@ import { StageType } from "../constant/stage";
 import { ImportInterface } from "../model/import";
 import { ImportRepoInterface } from "../repo/import";
 import { withTransaction } from "../repo/transaction";
-import { analyseBoard } from "../rules/analyse-board";
-import { parseBoardCsv } from "../rules/csv-reader";
-import { filterQueue, QueueFilter } from "../rules/queue-filter";
-import { dayNumberOf, parseIsoDate, toIsoDate } from "../rules/dates";
-import { BoardAnalysis, BoardCounts, Bottleneck, Page, ParsedBoard, QueueItem, RowError } from "../rules/types";
+import { analyseBoard } from "./hiring-board/analyse-board";
+import { parseBoardCsv } from "./hiring-board/csv-reader";
+import { filterQueue, QueueFilter } from "./hiring-board/queue-filter";
+import { dayNumberOf, parseIsoDate, toIsoDate } from "../utils/dates";
+import { BoardAnalysis, BoardCounts, Bottleneck, Page, ParsedBoard, QueueItem, RowError } from "./hiring-board/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { NotFoundException } from "../web/exception/not-found-exception";
 import { UnprocessableEntityException } from "../web/exception/unprocessable-entity-exception";
 import { sha256Hex } from "../utils/utility";
-import { toBoardRecord, toStoredRecord } from "../rules/stored-record";
+import { toBoardRecord, toStoredRecord } from "../repo/stored-record";
 import { ConfigServiceInterface } from "./config";
 
 export interface ImportSummary {

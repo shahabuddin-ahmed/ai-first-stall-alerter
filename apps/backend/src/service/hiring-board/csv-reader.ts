@@ -6,7 +6,7 @@ import {
     KNOWN_COLUMNS,
     REQUIRED_COLUMNS,
     TEXT_COLUMN_LIMITS,
-} from "../constant/board";
+} from "../../constant/board";
 import { BoardRecord, FileError, ParseResult } from "./types";
 
 export const COLUMN_FIELDS: Record<BoardColumn, keyof BoardRecord> = {

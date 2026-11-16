@@ -2,7 +2,7 @@ import http from "http";
 import { AddressInfo } from "net";
 import { AiErrorCode, ReasoningEffort } from "../../constant/ai";
 import { ActionCode, RecipientType } from "../../constant/stage";
-import { InsightFacts } from "../../rules/ai-facts";
+import { InsightFacts } from "../../service/hiring-board/ai-facts";
 import { AiError } from "../generator";
 import { HttpAiGenerator } from "../http-generator";
 

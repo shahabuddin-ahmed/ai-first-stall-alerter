@@ -109,7 +109,7 @@ yarn perf         # 10,000-row speed test against a running API (add --insights 
 ```
 
 The expected results in `data/expected/*.json` come from `scripts/generate_expected.py` (Python, written separately
-from the app). The rules tests must match them exactly. No test calls a real AI.
+from the app). The hiring-board tests must match them exactly. No test calls a real AI.
 
 ## Speed (10,000 rows, measured)
 

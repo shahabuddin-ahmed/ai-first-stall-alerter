@@ -1,6 +1,6 @@
 import { AI_REQUEST, AiErrorCode, ChatRole, FinishReason, ReasoningEffort, TIMEOUT_ERROR_NAMES } from "../constant/ai";
 import { HttpStatus } from "../constant/http";
-import { InsightFacts } from "../rules/ai-facts";
+import { InsightFacts } from "../service/hiring-board/ai-facts";
 import { AiError, AiGenerator, GenerationResult } from "./generator";
 import { buildUserMessage, RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./prompt";
 

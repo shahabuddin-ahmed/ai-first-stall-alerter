@@ -1,5 +1,5 @@
 import { ActionCode, RecipientType } from "../../constant/stage";
-import { InsightFacts } from "../../rules/ai-facts";
+import { InsightFacts } from "../../service/hiring-board/ai-facts";
 import { AiOutput, checkAiOutput } from "../guardrails";
 import { BottleneckType } from "../../constant/board";
 

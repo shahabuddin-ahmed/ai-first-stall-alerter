@@ -14,7 +14,7 @@ import { newImportRepo } from "../../../../repo/import";
 import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
-import { InsightFacts } from "../../../../rules/ai-facts";
+import { InsightFacts } from "../../../../service/hiring-board/ai-facts";
 import { FakeModelSource } from "../../../../ai/model-source";
 import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newAiModelService } from "../../../../service/ai-model";

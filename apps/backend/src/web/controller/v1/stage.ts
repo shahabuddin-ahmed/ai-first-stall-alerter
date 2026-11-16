@@ -3,7 +3,7 @@ import Joi from "joi";
 import { Controller } from "../controller";
 import { HttpStatus } from "../../../constant/http";
 import { ActionCode, STAGE_LIMITS, StageType } from "../../../constant/stage";
-import { ACTIONS } from "../../../rules/messages";
+import { ACTIONS } from "../../../service/hiring-board/messages";
 import { ConfigServiceInterface, ConfigSnapshot } from "../../../service/config";
 
 export interface StageControllerInterface {

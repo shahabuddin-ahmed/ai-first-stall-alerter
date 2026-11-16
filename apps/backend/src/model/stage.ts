@@ -1,6 +1,6 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { StageConfig } from "../rules/types";
+import { StageConfig } from "../service/hiring-board/types";
 import { ActionCode, STAGE_LIMITS, StageType } from "../constant/stage";
 
 export interface StageInterface extends StageConfig {

@@ -1,6 +1,6 @@
-import { ActionCode, RecipientType, TimerSource } from "../constant/stage";
+import { ActionCode, RecipientType, TimerSource } from "../../constant/stage";
 import { BoardAnalysis, Bottleneck, MessageFacts, ReasonFacts } from "./types";
-import { BottleneckType } from "../constant/board";
+import { BottleneckType } from "../../constant/board";
 
 interface ActionDetails {
     label: string;

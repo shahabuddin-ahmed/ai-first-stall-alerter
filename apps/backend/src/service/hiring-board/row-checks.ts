@@ -1,6 +1,6 @@
-import { BoardColumn, OPTIONAL_DATE_COLUMNS, RECORD_FIELD, REQUIRED_COLUMNS, RowErrorCode } from "../constant/board";
+import { BoardColumn, OPTIONAL_DATE_COLUMNS, RECORD_FIELD, REQUIRED_COLUMNS, RowErrorCode } from "../../constant/board";
 import { COLUMN_FIELDS } from "./csv-reader";
-import { parseIsoDate } from "./dates";
+import { parseIsoDate } from "../../utils/dates";
 import { normaliseStageName } from "./stage-matcher";
 import { BoardRecord, FieldError, ParsedBoard, RowError, StageConfig } from "./types";
 

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { RowErrorCode } from "../../constant/board";
-import { TimerSource } from "../../constant/stage";
+import { RowErrorCode } from "../../../constant/board";
+import { TimerSource } from "../../../constant/stage";
 import { analyseBoard } from "../analyse-board";
 import { parseBoardCsv } from "../csv-reader";
 import { DEFAULT_STAGES } from "./default-stages";
@@ -82,7 +82,7 @@ describe("ranking", () => {
     });
 
     it("does not depend on the row order in the file", () => {
-        const sampleB = parseBoardCsv(fs.readFileSync(path.resolve(__dirname, "../../../../../data/sample-b.csv")));
+        const sampleB = parseBoardCsv(fs.readFileSync(path.resolve(__dirname, "../../../../../../data/sample-b.csv")));
         if (!sampleB.ok) {
             throw new Error("sample B rejected");
         }

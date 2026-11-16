@@ -10,7 +10,7 @@ const migrator = newMigrator(sequelize);
 const seeder = newSeeder(sequelize);
 
 const APP_TABLES = ["ai_insights", "ai_models", "import_records", "imports", "llm_calls", "settings", "stages"];
-const HISTORY_TABLES = ["SequelizeData", "SequelizeMeta"];
+const HISTORY_TABLES = ["migrations", "seeders"];
 const ALL_TABLES = [...APP_TABLES, ...HISTORY_TABLES];
 
 const listTables = async (): Promise<string[]> => {
@@ -185,8 +185,8 @@ describe("database migrations", () => {
 
     it("keeps the seed history apart from the migration history", async () => {
         const seedName = ["%default-stages-and-settings%"];
-        const inMigrations = await countRows("SELECT COUNT(*) AS total FROM SequelizeMeta WHERE name LIKE ?", seedName);
-        const inSeeds = await countRows("SELECT COUNT(*) AS total FROM SequelizeData WHERE name LIKE ?", seedName);
+        const inMigrations = await countRows("SELECT COUNT(*) AS total FROM migrations WHERE name LIKE ?", seedName);
+        const inSeeds = await countRows("SELECT COUNT(*) AS total FROM seeders WHERE name LIKE ?", seedName);
 
         expect([inMigrations, inSeeds]).toEqual([0, 1]);
     });

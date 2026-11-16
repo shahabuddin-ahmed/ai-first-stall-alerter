@@ -1,6 +1,6 @@
 import { AI_LIMITS, DRAFT_PLACEHOLDERS, SENDER_PLACEHOLDER } from "../constant/ai";
 import { ActionCode } from "../constant/stage";
-import { actionsOf, InsightFacts } from "../rules/ai-facts";
+import { actionsOf, InsightFacts } from "../service/hiring-board/ai-facts";
 import { RESPONSE_SCHEMA } from "./prompt";
 
 export interface ActionDraft {

@@ -1,8 +1,8 @@
 import { DataTypes, QueryInterface, Sequelize } from "sequelize";
 import { SequelizeStorage, Umzug } from "umzug";
 
-const MIGRATION_TABLE = "SequelizeMeta";
-const SEEDER_TABLE = "SequelizeData";
+const MIGRATION_TABLE = "migrations";
+const SEEDER_TABLE = "seeders";
 const HISTORY_NAME_LENGTH = 100;
 
 const createHistoryTable = async (sequelize: Sequelize, tableName: string): Promise<void> => {

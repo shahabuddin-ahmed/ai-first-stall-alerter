@@ -1,6 +1,6 @@
-import { ActionCode, StageType, TimerSource } from "../constant/stage";
+import { ActionCode, StageType, TimerSource } from "../../constant/stage";
 import { findBottlenecks } from "./bottlenecks";
-import { daysBetween, parseIsoDate } from "./dates";
+import { daysBetween, parseIsoDate } from "../../utils/dates";
 import { ACTIONS, explainReason, firstNameOf, templateMessage } from "./messages";
 import { buildStageLookup } from "./stage-matcher";
 import { BoardAnalysis, ParsedBoard, QueueItem, StageConfig, StalledCandidate } from "./types";

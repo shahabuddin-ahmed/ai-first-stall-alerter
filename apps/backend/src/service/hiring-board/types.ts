@@ -1,5 +1,5 @@
-import { BoardColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../constant/board";
-import { ActionCode, RecipientType, StageType, TimerSource } from "../constant/stage";
+import { BoardColumn, BottleneckType, FileErrorCode, RowErrorCode } from "../../constant/board";
+import { ActionCode, RecipientType, StageType, TimerSource } from "../../constant/stage";
 
 export interface StageInput {
     name: string;

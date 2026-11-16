@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
 import { BoardColumn, TEXT_COLUMN_LIMITS } from "../constant/board";
-import { RecordText } from "../rules/types";
+import { RecordText } from "../service/hiring-board/types";
 
 export interface ImportRecordInterface extends RecordText {
     id?: number;
