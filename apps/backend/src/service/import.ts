@@ -128,10 +128,7 @@ export class ImportService implements ImportServiceInterface {
             if (!(err instanceof UniqueConstraintError)) {
                 throw err;
             }
-            const existing = await this.importRepo.findByHash(details.fileHash);
-            if (!existing) {
-                throw err;
-            }
+            const existing = (await this.importRepo.findByHash(details.fileHash)) as ImportInterface;
             return {
                 alreadyImported: true,
                 ...this.buildView(toSummary(existing), parsed.board, referenceDate, query),

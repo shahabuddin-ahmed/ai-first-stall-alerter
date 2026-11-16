@@ -39,7 +39,8 @@ export class SettingController extends Controller implements SettingControllerIn
     };
 
     listModels = async (_req: Request, res: Response): Promise<any> => {
-        return this.sendResponse({ response: await this.aiModelService.list() }, HttpStatus.OK, res);
+        const models = await this.aiModelService.list();
+        return this.sendResponse({ response: models }, HttpStatus.OK, res);
     };
 }
 

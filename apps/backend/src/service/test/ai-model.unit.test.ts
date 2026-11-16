@@ -38,16 +38,12 @@ class CountingSource implements ModelSource {
 let repo: MemoryRepo;
 let source: CountingSource;
 let service: AiModelService;
-let warnLog: jest.SpyInstance;
 
 beforeEach(() => {
     repo = new MemoryRepo();
     source = new CountingSource();
     service = new AiModelService(repo, source);
-    warnLog = jest.spyOn(console, "warn").mockImplementation(() => undefined);
 });
-
-afterEach(() => warnLog.mockRestore());
 
 describe("AiModelService", () => {
     it("fetches the list once and reuses it for 30 minutes", async () => {
@@ -65,13 +61,13 @@ describe("AiModelService", () => {
         expect(source.calls).toBe(2);
     });
 
-    it("keeps the saved list when OpenRouter cannot be reached", async () => {
-        await service.list();
-        repo.refreshedAt = new Date(0);
+    it("passes the error on when OpenRouter cannot be reached, and tries again next time", async () => {
         source.answer = async () => {
             throw new Error("network error");
         };
+        await expect(service.list()).rejects.toThrow("network error");
 
+        source.answer = async () => [LING];
         expect(await service.list()).toEqual([LING]);
     });
 

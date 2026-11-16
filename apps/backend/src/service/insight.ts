@@ -1,4 +1,3 @@
-import { UniqueConstraintError } from "sequelize";
 import {
     AiErrorCode,
     AiNoteStatus,
@@ -179,44 +178,28 @@ export class InsightService implements InsightServiceInterface {
             result = { ok: false, code: err instanceof AiError ? err.code : AiErrorCode.PROVIDER_ERROR };
         }
 
-        await this.safely("log the AI call", () =>
-            this.llmCallRepo.log({
+        await this.llmCallRepo.log({
+            importId,
+            cacheKey,
+            requestedModel: model,
+            servedModel: usage.servedModel,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            costUsd: usage.costUsd,
+            latencyMs: Date.now() - startedAt,
+            status: result.ok ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
+            errorCode: result.ok ? null : result.code,
+        });
+        if (result.ok) {
+            await this.aiInsightRepo.save({
                 importId,
                 cacheKey,
-                requestedModel: model,
-                servedModel: usage.servedModel,
-                inputTokens: usage.inputTokens,
-                outputTokens: usage.outputTokens,
-                costUsd: usage.costUsd,
-                latencyMs: Date.now() - startedAt,
-                status: result.ok ? LlmCallStatus.SUCCESS : LlmCallStatus.FAILED,
-                errorCode: result.ok ? null : result.code,
-            })
-        );
-        if (result.ok) {
-            const { output } = result;
-            await this.safely("cache the AI answer", () =>
-                this.aiInsightRepo.save({
-                    importId,
-                    cacheKey,
-                    model,
-                    promptVersion: PROMPT_VERSION,
-                    output,
-                })
-            );
+                model,
+                promptVersion: PROMPT_VERSION,
+                output: result.output,
+            });
         }
         return result;
-    }
-
-    private async safely(what: string, work: () => Promise<unknown>): Promise<void> {
-        try {
-            await work();
-        } catch (err) {
-            if (err instanceof UniqueConstraintError) {
-                return;
-            }
-            logger.error(`Could not ${what}`, { error: err instanceof Error ? err.name : "Error" });
-        }
     }
 
     private aiView(

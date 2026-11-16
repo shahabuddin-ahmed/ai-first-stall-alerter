@@ -1,6 +1,5 @@
 import { ModelSource } from "../ai/model-source";
 import { AI_MODEL_LIST } from "../constant/ai";
-import logger from "../infra/logger";
 import { AiModelInterface } from "../model/ai-model";
 import { AiModelRepoInterface } from "../repo/ai-model";
 
@@ -23,8 +22,7 @@ export class AiModelService implements AiModelServiceInterface {
     }
 
     async isAvailable(modelId: string): Promise<boolean> {
-        const models = await this.list();
-        return models.some((model) => model.modelId === modelId);
+        return (await this.list()).some((model) => model.modelId === modelId);
     }
 
     private async refreshIfOld(): Promise<void> {
@@ -39,16 +37,7 @@ export class AiModelService implements AiModelServiceInterface {
     }
 
     private async refresh(): Promise<void> {
-        try {
-            const models = await this.modelSource.listFreeModels();
-            if (models.length > 0) {
-                await this.aiModelRepo.replaceAll(models);
-            }
-        } catch (err) {
-            logger.warn("Could not refresh the AI model list", {
-                error: err instanceof Error ? err.message : String(err),
-            });
-        }
+        await this.aiModelRepo.replaceAll(await this.modelSource.listFreeModels());
     }
 }
 
