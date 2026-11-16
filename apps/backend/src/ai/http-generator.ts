@@ -6,7 +6,6 @@ import { buildUserMessage, RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./prompt";
 
 export interface HttpGeneratorOptions {
     apiKey: string;
-    model: string;
     baseUrl: string;
     timeoutMs: number;
     maxOutputTokens: number;
@@ -22,11 +21,7 @@ interface ChatCompletion {
 const isTimeout = (err: unknown): boolean => TIMEOUT_ERROR_NAMES.includes((err as Error).name);
 
 export class HttpAiGenerator implements AiGenerator {
-    readonly model: string;
-
-    constructor(private options: HttpGeneratorOptions) {
-        this.model = options.model;
-    }
+    constructor(private options: HttpGeneratorOptions) {}
 
     private reasoningSetting(): { reasoning?: Record<string, unknown> } {
         const effort = this.options.reasoningEffort;
@@ -39,7 +34,7 @@ export class HttpAiGenerator implements AiGenerator {
         return { reasoning: { effort, exclude: true } };
     }
 
-    async generate(facts: InsightFacts): Promise<GenerationResult> {
+    async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
         let response: Response;
         try {
             response = await fetch(`${this.options.baseUrl}${AI_REQUEST.CHAT_PATH}`, {
@@ -50,7 +45,7 @@ export class HttpAiGenerator implements AiGenerator {
                     "X-Title": AI_REQUEST.APP_TITLE,
                 },
                 body: JSON.stringify({
-                    model: this.options.model,
+                    model,
                     temperature: AI_REQUEST.TEMPERATURE,
                     max_tokens: this.options.maxOutputTokens,
                     messages: [

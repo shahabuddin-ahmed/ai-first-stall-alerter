@@ -12,7 +12,9 @@ import { newSettingV1Controller } from "./web/controller/v1/setting";
 import { newImportRepo } from "./repo/import";
 import { newImportService } from "./service/import";
 import { newImportV1Controller } from "./web/controller/v1/import";
-import { newAiGenerator } from "./ai/new-generator";
+import { newAiGenerator, newModelSource } from "./ai/new-generator";
+import { newAiModelRepo } from "./repo/ai-model";
+import { newAiModelService } from "./service/ai-model";
 import { newAiInsightRepo } from "./repo/ai-insight";
 import { newLlmCallRepo } from "./repo/llm-call";
 import { newInsightService } from "./service/insight";
@@ -44,13 +46,12 @@ export const appReady: Promise<void> = (async () => {
     const importRepo = await newImportRepo();
     const aiInsightRepo = await newAiInsightRepo();
     const llmCallRepo = await newLlmCallRepo();
+    const aiModelRepo = await newAiModelRepo();
 
     const aiGenerator = newAiGenerator(config.AI);
 
-    const configService = await newConfigService(stageRepo, settingRepo, {
-        configured: aiGenerator !== null,
-        model: aiGenerator?.model ?? null,
-    });
+    const aiModelService = await newAiModelService(aiModelRepo, newModelSource(config.AI));
+    const configService = await newConfigService(stageRepo, settingRepo, aiModelService, aiGenerator !== null);
     const importService = await newImportService(importRepo, configService);
     const insightService = await newInsightService(
         importService,
@@ -63,7 +64,7 @@ export const appReady: Promise<void> = (async () => {
     const exportService = await newExportService(importService, insightService);
 
     const stageV1Controller = await newStageV1Controller(configService);
-    const settingV1Controller = await newSettingV1Controller(configService);
+    const settingV1Controller = await newSettingV1Controller(configService, aiModelService);
     const importV1Controller = await newImportV1Controller(importService);
     const insightV1Controller = await newInsightV1Controller(insightService);
     const exportV1Controller = await newExportV1Controller(exportService);

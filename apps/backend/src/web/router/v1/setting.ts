@@ -7,6 +7,7 @@ export const newSettingRouter = async (settingController: SettingControllerInter
 
     router.get("/", asyncHandler(settingController.get));
     router.put("/", asyncHandler(settingController.update));
+    router.get("/models", asyncHandler(settingController.listModels));
 
     return router;
 };

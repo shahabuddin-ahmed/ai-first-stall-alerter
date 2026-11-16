@@ -70,7 +70,6 @@ const ANSWER = {
 const generator = (timeoutMs = 2000) =>
     new HttpAiGenerator({
         apiKey: "test-key",
-        model: "test/model",
         baseUrl,
         timeoutMs,
         maxOutputTokens: 800,
@@ -103,7 +102,7 @@ describe("HttpAiGenerator", () => {
     it("sends one chat request with the prompt, the facts and a JSON schema, and reads the answer and usage", async () => {
         handler = reply(200, completion(JSON.stringify(ANSWER)));
 
-        const result = await generator().generate(FACTS);
+        const result = await generator().generate(FACTS, "test/model");
 
         expect(result).toEqual({
             output: ANSWER,
@@ -128,17 +127,16 @@ describe("HttpAiGenerator", () => {
         const make = (reasoningEffort: ReasoningEffort) =>
             new HttpAiGenerator({
                 apiKey: "k",
-                model: "m",
                 baseUrl,
                 timeoutMs: 2000,
                 maxOutputTokens: 100,
                 reasoningEffort,
             });
 
-        await make(ReasoningEffort.OFF).generate(FACTS);
+        await make(ReasoningEffort.OFF).generate(FACTS, "test/model");
         expect(lastRequest.body.reasoning).toEqual({ enabled: false });
 
-        await make(ReasoningEffort.NONE).generate(FACTS);
+        await make(ReasoningEffort.NONE).generate(FACTS, "test/model");
         expect(lastRequest.body.reasoning).toBeUndefined();
     });
 
@@ -149,39 +147,38 @@ describe("HttpAiGenerator", () => {
         [500, AiErrorCode.PROVIDER_ERROR],
     ])("turns HTTP %s into %s", async (status, code) => {
         handler = reply(status, { error: { message: "provider text that is never stored" } });
-        expect(await errorCodeOf(generator().generate(FACTS))).toBe(code);
+        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(code);
     });
 
     it("stops waiting after the timeout", async () => {
         handler = (_body, _req, res) =>
             setTimeout(() => reply(200, completion(JSON.stringify(ANSWER)))(_body, _req, res), 1500);
-        expect(await errorCodeOf(generator(1000).generate(FACTS))).toBe(AiErrorCode.TIMEOUT);
+        expect(await errorCodeOf(generator(1000).generate(FACTS, "test/model"))).toBe(AiErrorCode.TIMEOUT);
     });
 
     it("reports a refusal", async () => {
         handler = reply(200, completion("", { message: { content: null, refusal: "I can't help with that." } }));
-        expect(await errorCodeOf(generator().generate(FACTS))).toBe(AiErrorCode.REFUSED);
+        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.REFUSED);
     });
 
     it("reports text that is not JSON", async () => {
         handler = reply(200, completion("Sure! Here are your drafts..."));
-        expect(await errorCodeOf(generator().generate(FACTS))).toBe(AiErrorCode.INVALID_JSON);
+        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_JSON);
     });
 
     it("reports an answer that was cut off", async () => {
         handler = reply(200, completion('{"briefing": "Start', { finish_reason: "length" }));
-        expect(await errorCodeOf(generator().generate(FACTS))).toBe(AiErrorCode.INVALID_OUTPUT);
+        expect(await errorCodeOf(generator().generate(FACTS, "test/model"))).toBe(AiErrorCode.INVALID_OUTPUT);
     });
 
     it("reports a provider that cannot be reached", async () => {
         const unreachable = new HttpAiGenerator({
             apiKey: "k",
-            model: "m",
             baseUrl: "http://127.0.0.1:9/api/v1",
             timeoutMs: 2000,
             maxOutputTokens: 100,
             reasoningEffort: ReasoningEffort.NONE,
         });
-        expect(await errorCodeOf(unreachable.generate(FACTS))).toBe(AiErrorCode.PROVIDER_ERROR);
+        expect(await errorCodeOf(unreachable.generate(FACTS, "test/model"))).toBe(AiErrorCode.PROVIDER_ERROR);
     });
 });

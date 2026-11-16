@@ -2,9 +2,14 @@ import { literal, Transaction } from "sequelize";
 import { SETTINGS_ID } from "../constant/setting";
 import Setting, { SettingInterface } from "../model/setting";
 
+export interface SettingsUpdate {
+    useAiDrafts: boolean;
+    aiModel: string;
+}
+
 export interface SettingRepoInterface {
     get(transaction?: Transaction): Promise<SettingInterface | null>;
-    setUseAiDrafts(useAiDrafts: boolean): Promise<void>;
+    update(update: SettingsUpdate): Promise<void>;
     bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<boolean>;
 }
 
@@ -14,8 +19,8 @@ export class SettingRepo implements SettingRepoInterface {
         return setting ? (setting.get({ plain: true }) as SettingInterface) : null;
     }
 
-    public async setUseAiDrafts(useAiDrafts: boolean): Promise<void> {
-        await Setting.update({ useAiDrafts }, { where: { id: SETTINGS_ID } });
+    public async update(update: SettingsUpdate): Promise<void> {
+        await Setting.update(update, { where: { id: SETTINGS_ID } });
     }
 
     public async bumpStagesVersion(expectedVersion: number, transaction: Transaction): Promise<boolean> {

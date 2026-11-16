@@ -1,28 +1,25 @@
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
-import { SettingRepoInterface } from "../repo/setting";
+import { SettingRepoInterface, SettingsUpdate } from "../repo/setting";
 import { withTransaction } from "../repo/transaction";
 import { findStageListProblems } from "../rules/stage-list-checks";
 import { StageConfig, StageInput } from "../rules/types";
 import { BadRequestException } from "../web/exception/bad-request-exception";
 import { ConflictException } from "../web/exception/conflict-exception";
+import { AiModelServiceInterface } from "./ai-model";
 
 export interface ConfigSnapshot {
     stages: StageConfig[];
     stagesVersion: number;
     useAiDrafts: boolean;
-}
-
-export interface AiSetup {
-    configured: boolean;
-    model: string | null;
+    aiModel: string;
 }
 
 export interface SettingsView {
     useAiDrafts: boolean;
     aiConfigured: boolean;
-    aiModel: string | null;
+    aiModel: string;
     stagesVersion: number;
 }
 
@@ -31,7 +28,7 @@ export interface ConfigServiceInterface {
     getSnapshot(): ConfigSnapshot;
     saveStages(stages: StageInput[], expectedVersion: number): Promise<ConfigSnapshot>;
     getSettings(): SettingsView;
-    updateSettings(update: { useAiDrafts: boolean }): Promise<SettingsView>;
+    updateSettings(update: SettingsUpdate): Promise<SettingsView>;
 }
 
 export class ConfigService implements ConfigServiceInterface {
@@ -41,7 +38,8 @@ export class ConfigService implements ConfigServiceInterface {
     constructor(
         private stageRepo: StageRepoInterface,
         private settingRepo: SettingRepoInterface,
-        private aiSetup: AiSetup
+        private aiModelService: AiModelServiceInterface,
+        private aiConfigured: boolean
     ) {}
 
     async load(): Promise<void> {
@@ -49,7 +47,12 @@ export class ConfigService implements ConfigServiceInterface {
         if (!settings || stages.length === 0) {
             throw new Error("No hiring stages or settings in the database. Run `yarn db:seed` first.");
         }
-        this.snapshot = { stages, stagesVersion: settings.stagesVersion, useAiDrafts: settings.useAiDrafts };
+        this.snapshot = {
+            stages,
+            stagesVersion: settings.stagesVersion,
+            useAiDrafts: settings.useAiDrafts,
+            aiModel: settings.aiModel,
+        };
     }
 
     getSnapshot(): ConfigSnapshot {
@@ -90,18 +93,18 @@ export class ConfigService implements ConfigServiceInterface {
     }
 
     getSettings(): SettingsView {
-        const { useAiDrafts, stagesVersion } = this.getSnapshot();
-        return {
-            useAiDrafts,
-            aiConfigured: this.aiSetup.configured,
-            aiModel: this.aiSetup.model,
-            stagesVersion,
-        };
+        const { useAiDrafts, aiModel, stagesVersion } = this.getSnapshot();
+        return { useAiDrafts, aiConfigured: this.aiConfigured, aiModel, stagesVersion };
     }
 
-    async updateSettings(update: { useAiDrafts: boolean }): Promise<SettingsView> {
+    async updateSettings(update: SettingsUpdate): Promise<SettingsView> {
+        if (update.aiModel !== this.snapshot.aiModel && !(await this.aiModelService.isAvailable(update.aiModel))) {
+            throw new BadRequestException(ERROR_CODES.E_INVALID_DATA, "The settings cannot be saved", [
+                `"${update.aiModel}" is not one of the free AI models.`,
+            ]);
+        }
         return this.oneAtATime(async () => {
-            await this.settingRepo.setUseAiDrafts(update.useAiDrafts);
+            await this.settingRepo.update(update);
             await this.load();
             return this.getSettings();
         });
@@ -126,9 +129,10 @@ export class ConfigService implements ConfigServiceInterface {
 export const newConfigService = async (
     stageRepo: StageRepoInterface,
     settingRepo: SettingRepoInterface,
-    aiSetup: AiSetup
+    aiModelService: AiModelServiceInterface,
+    aiConfigured: boolean
 ): Promise<ConfigService> => {
-    const service = new ConfigService(stageRepo, settingRepo, aiSetup);
+    const service = new ConfigService(stageRepo, settingRepo, aiModelService, aiConfigured);
     await service.load();
     return service;
 };

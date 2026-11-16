@@ -48,11 +48,11 @@ LlmCall.init(
             allowNull: false,
         },
         requestedModel: {
-            type: new DataTypes.STRING(100),
+            type: new DataTypes.STRING(AI_COLUMN_LIMITS.MODEL_ID),
             allowNull: false,
         },
         servedModel: {
-            type: new DataTypes.STRING(100),
+            type: new DataTypes.STRING(AI_COLUMN_LIMITS.MODEL_ID),
             allowNull: true,
         },
         inputTokens: {

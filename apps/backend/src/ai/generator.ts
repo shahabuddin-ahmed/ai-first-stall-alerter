@@ -13,8 +13,7 @@ export interface GenerationResult extends AiUsage {
 }
 
 export interface AiGenerator {
-    readonly model: string;
-    generate(facts: InsightFacts): Promise<GenerationResult>;
+    generate(facts: InsightFacts, model: string): Promise<GenerationResult>;
 }
 
 export class AiError extends Error {

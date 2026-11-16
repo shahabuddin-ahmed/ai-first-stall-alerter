@@ -21,9 +21,7 @@ const DRAFTS: Record<ActionCode, string> = {
 };
 
 export class FakeAiGenerator implements AiGenerator {
-    readonly model = "fake-model";
-
-    async generate(facts: InsightFacts): Promise<GenerationResult> {
+    async generate(facts: InsightFacts, model: string): Promise<GenerationResult> {
         return {
             output: {
                 briefing: `Start with rank 1. ${facts.board.stalled} candidates are past their stage threshold.`,
@@ -34,7 +32,7 @@ export class FakeAiGenerator implements AiGenerator {
                 ),
                 drafts: actionsOf(facts).map((action_code) => ({ action_code, text: DRAFTS[action_code] })),
             },
-            servedModel: this.model,
+            servedModel: model,
             inputTokens: null,
             outputTokens: null,
             costUsd: null,

@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import request from "supertest";
 import { parse } from "csv-parse/sync";
-import { AiErrorCode, AiNoteStatus, MessageSource } from "../../../../constant/ai";
+import { AiErrorCode, AiNoteStatus, MessageSource, DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { EXPORT_COLUMNS } from "../../../../constant/export";
 import { HttpStatus } from "../../../../constant/http";
 import { FakeAiGenerator } from "../../../../ai/fake-generator";
@@ -16,6 +16,9 @@ import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { InsightFacts } from "../../../../rules/ai-facts";
+import { FakeModelSource } from "../../../../ai/model-source";
+import { newAiModelRepo } from "../../../../repo/ai-model";
+import { newAiModelService } from "../../../../service/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newExportService } from "../../../../service/export";
 import { newImportService } from "../../../../service/import";
@@ -39,9 +42,9 @@ const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "s
 const REFERENCE_DATE = "2026-11-13";
 
 class CountingGenerator implements AiGenerator {
-    readonly model = "test-model";
     calls = 0;
-    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) => new FakeAiGenerator().generate(facts);
+    behaviour: (facts: InsightFacts) => Promise<GenerationResult> = (facts) =>
+        new FakeAiGenerator().generate(facts, DEFAULT_AI_MODEL);
 
     async generate(facts: InsightFacts): Promise<GenerationResult> {
         this.calls += 1;
@@ -50,10 +53,13 @@ class CountingGenerator implements AiGenerator {
 }
 
 const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
-    const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), {
-        configured: generator !== null,
-        model: generator?.model ?? null,
-    });
+    const aiModelService = await newAiModelService(await newAiModelRepo(), new FakeModelSource());
+    const configService = await newConfigService(
+        await newStageRepo(),
+        await newSettingRepo(),
+        aiModelService,
+        generator !== null
+    );
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
         importService,
@@ -69,7 +75,7 @@ const makeApi = async (generator: AiGenerator | null): Promise<Express> => {
     app.use("/api/v1/imports/:id/insights", await newInsightRouter(await newInsightV1Controller(insightService)));
     app.use("/api/v1/imports/:id/export", await newExportRouter(await newExportV1Controller(exportService)));
     app.use("/api/v1/imports", await newImportRouter(await newImportV1Controller(importService)));
-    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService)));
+    app.use("/api/v1/settings", await newSettingRouter(await newSettingV1Controller(configService, aiModelService)));
     app.use(globalErrorHandler);
     return app;
 };
@@ -187,7 +193,10 @@ describe("GET /api/v1/imports/:id/export", () => {
     });
 
     it("marks every row as disabled when the team turned AI drafts off", async () => {
-        await request(app).put("/api/v1/settings").send({ useAiDrafts: false }).expect(HttpStatus.OK);
+        await request(app)
+            .put("/api/v1/settings")
+            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .expect(HttpStatus.OK);
 
         const rows = readCsv((await download(app, importId)).body);
 

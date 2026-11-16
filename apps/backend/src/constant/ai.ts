@@ -57,6 +57,8 @@ export const TIMEOUT_ERROR_NAMES: readonly string[] = ["TimeoutError", "AbortErr
 export const AI_COLUMN_LIMITS = {
     ERROR_CODE: 20,
     PROMPT_VERSION: 10,
+    MODEL_ID: 100,
+    MODEL_NAME: 100,
 } as const;
 
 export enum LlmCallStatus {
@@ -88,3 +90,13 @@ export const AI_REQUEST = {
 } as const;
 
 export const PROMPT_VERSION = "v5";
+
+export const DEFAULT_AI_MODEL = "inclusionai/ling-3.2-flash:free";
+
+export const AI_MODEL_LIST = {
+    PATH: "/models",
+    FREE_SUFFIX: ":free",
+    REQUIRED_PARAMETER: "structured_outputs",
+    CACHE_MS: 30 * 60 * 1000,
+    TIMEOUT_MS: 10000,
+} as const;
