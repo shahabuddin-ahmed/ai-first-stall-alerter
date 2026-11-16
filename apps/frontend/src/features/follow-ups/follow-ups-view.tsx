@@ -70,7 +70,8 @@ export function FollowUpsView() {
   const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState(Tab.QUEUE);
-  const [retry, setRetry] = useState<{ board: string; count: number } | null>(null);
+  // Set only by a click on Retry AI. A new object per click, so a second click runs again too.
+  const [retry, setRetry] = useState<{ board: string } | null>(null);
   const boardKey = `${importId}|${referenceDate}`;
 
   const load = useMemo(
@@ -100,6 +101,8 @@ export function FollowUpsView() {
   }
 
   const changeDate = (date: string) => {
+    // Leaving this date ends its Retry: coming back must not ask the AI again by itself
+    setRetry(null);
     const board = { importId, fileName: view.import.fileName, referenceDate: date };
     dispatch(selectBoard(board));
     setPage(1);
@@ -165,7 +168,7 @@ export function FollowUpsView() {
           insights={freshInsights}
           error={insights.error}
           stalled={view.counts.stalled}
-          onRetry={() => setRetry({ board: boardKey, count: (retry?.count ?? 0) + 1 })}
+          onRetry={() => setRetry({ board: boardKey })}
         />
       )}
 

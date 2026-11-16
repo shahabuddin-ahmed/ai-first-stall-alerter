@@ -7,7 +7,7 @@ import { Providers } from '@/lib/providers';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'StallAlert',
+  title: { default: 'StallAlert', template: '%s · StallAlert' },
   description: 'Find stalled job applications and who to follow up first'
 };
 

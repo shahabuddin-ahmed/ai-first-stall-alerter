@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
 import { useAppSelector } from '@/hooks/use-app-redux';
 import { boardHref, isBoardPage } from '@/lib/board-link';
 import { cn } from '@/lib/utils';
@@ -73,10 +72,6 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-
-      <Badge variant="warn" className="mx-2.5 mt-4 hidden self-start lg:mt-auto lg:inline-flex">
-        Demo data
-      </Badge>
     </aside>
   );
 }

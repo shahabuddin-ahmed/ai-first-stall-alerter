@@ -5,14 +5,9 @@ export interface ApiEnvelope<T> {
   errors: string[];
 }
 
-export enum ServiceStatus {
-  OK = 'ok',
-  DEGRADED = 'degraded'
-}
-
 export interface HealthReport {
   service: string;
-  status: ServiceStatus;
+  status: string;
   database: string;
 }
 

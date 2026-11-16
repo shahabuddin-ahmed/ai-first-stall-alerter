@@ -14,14 +14,14 @@ Five-day assessment, Option C (Stall Alerter). Built AI-first.
 | Part                       | State                                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------- |
 | Backend API                | Done: upload, validation, ranking, hiring stages, settings, AI insights with checks, export |
-| Frontend (`apps/frontend`) | Not built yet                                                                               |
+| Frontend (`apps/frontend`) | Done: import, follow-up queue with AI insights, export, hiring stages, settings             |
 
 ## Repository
 
 | Path                           | What                                                                  |
 | ------------------------------ | --------------------------------------------------------------------- |
 | `apps/backend`                 | Express + TypeScript + MySQL 8 API ([README](apps/backend/README.md)) |
-| `apps/frontend`                | Next.js app (not built yet)                                           |
+| `apps/frontend`                | Next.js web app ([README](apps/frontend/README.md))                   |
 | `data/sample-*.csv`            | Fictional sample files A, B and C                                     |
 | `data/expected/*.json`         | Expected results for the samples                                      |
 | `scripts/generate_expected.py` | Makes the expected results, written separately from the app (Python)  |
@@ -30,7 +30,7 @@ Five-day assessment, Option C (Stall Alerter). Built AI-first.
 
 ## Run it (fresh clone)
 
-You need Docker. Node 22 and Yarn are only needed to run the tests on your machine.
+You need Docker for the API and database, and Node 22+ with Yarn for the web app and the tests.
 
 ```bash
 cd apps/backend
@@ -40,6 +40,18 @@ docker compose up
 
 This starts MySQL, creates the database, runs the migrations and the seed (10 default hiring stages), then starts the
 API at http://localhost:4000/api/v1. Check it with http://localhost:4000/api/v1/health.
+
+Then start the web app in a second terminal (Node 22+ and Yarn):
+
+```bash
+cd apps/frontend
+cp .env.example .env
+yarn install
+yarn dev
+```
+
+Open http://localhost:3000, click **Start: import a board**, and use **Download sample CSV** (Sample B) with the
+reference date `2026-11-13`.
 
 **AI is optional.** Without `AI_API_KEY` in `.env`, everything works and every message is a template. To get AI
 drafts, put an OpenRouter key in `AI_API_KEY` and restart. The model is picked in the settings (default

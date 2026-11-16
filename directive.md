@@ -6,7 +6,7 @@
 >
 > Labels: **[Brief]** = mandated by the assessment. **[Decision]** = my implementation choice, with its reason.
 >
-> Version: v5
+> Version: v5.2
 
 ---
 
@@ -70,7 +70,7 @@ calls, chat, message queues, Redis, microservices, real candidate data.
 | Database | **MySQL 8** + Sequelize (from the boilerplate), utf8mb4; `candidate_id` uses `utf8mb4_bin` | Already set up; relational data with unique keys and cascades |
 | Validation | Joi (the boilerplate's request validation) | Already in place |
 | AI | One provider adapter (axios through the shared `utils/http` helper) to an OpenAI-compatible endpoint (OpenRouter by default), JSON-schema response format, Joi answer check | One prompt, one JSON; no SDK to keep compatible |
-| Frontend | My Next.js + TypeScript boilerplate (`apps/frontend`), display only (**not built yet**) | Known and proven |
+| Frontend | My Next.js boilerplate (`apps/frontend`): Next.js 16 App Router, React 19, TypeScript, Tailwind 4, Redux Toolkit; display only | Known and proven |
 | Tests | Jest + supertest (backend, real MySQL test database), `scripts/generate_expected.py` (independent expected results). Planned: Playwright (E2E, with the frontend) and an eval script | |
 
 **Not used:** Redis, queues, microservices, Kubernetes. One API process with a clean core is the right size.
@@ -238,7 +238,8 @@ models that support structured outputs), saved in the DB, default `inclusionai/l
 not in the list is rejected. One provider call per distinct report (import + reference date + stage config version + N
 + prompt version + model); repeats come from the cache; simultaneous requests share one call (the cache lookup and the
 call run as one step). Zero calls when AI is off or not set up, the file is rejected, nothing is stalled, or the user filters,
-sorts or exports. No automatic retries; a **Retry** button for recoverable failures. `/insights` is rate-limited.
+sorts or exports. No automatic retries: a failed try is remembered (from the call log), so the same report makes no
+new call until the user clicks **Retry AI** (`retry: true`). `/insights` is rate-limited.
 
 ### E2. Backend `.env` (server setup and secrets only)
 `AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
@@ -286,7 +287,7 @@ cases (target ≥ 95% guardrail pass, defects and fixes logged).
 | GET | `/imports?offset=&limit=` | List imports, newest first |
 | GET | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Recalculate; no re-upload. Filters keep the original ranks |
 | GET | `/imports/:id/errors?referenceDate=&page=&pageSize=` | Row errors: record number, candidate ID, field, problem |
-| POST | `/imports/:id/insights` | Briefing, bottleneck notes and AI drafts for the top N (or templates, with the reason) |
+| POST | `/imports/:id/insights` | Briefing, bottleneck notes and AI drafts for the top N (or templates, with the reason). `retry: true` asks again after a failure |
 | GET | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=` | CSV download (C8); never calls the AI |
 | DELETE | `/imports/:id` | Delete the import, its rows and cached AI results (the AI call log is kept) |
 | GET · PUT | `/stages` | Read or save the hiring stages (PUT needs the current `version`, else 409) |
@@ -322,19 +323,25 @@ in parallel and expects one row and one shared ID.
 ---
 
 ## Part H: Frontend (Next.js, display only)
-**Status: not built yet** (`apps/frontend` is empty). This part is the plan.
+**Status: built** (`apps/frontend`). Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Redux Toolkit
+(the open board), following my frontend boilerplate. The frontend only shows data; every rule runs in the backend.
 
 - **Shell:** full-height sidebar (Workspace: Follow-ups, Imports, Export; Configure: Hiring stages, Settings), top bar
   with the board picker, New import and help, slim footer `StallAlert 1.0 · API healthy · Docs · Privacy`.
-- **Screens:** Import · Follow-ups (counts, stage thresholds, insights panel, ranked queue with AI/Template badges, row
-  details with reason, action, timer start and the message with its recipient, Row errors tab) · Export · Hiring stages ·
-  Settings.
-- **Inline states** (not pages): file rejected (on Import), no valid rows, nobody stalled ("lower a stage threshold"),
-  AI unavailable (banner + Retry; templates used), same file uploaded again.
-- **Copy** shows "Copied" only after the clipboard write succeeds, otherwise "Copy failed, select the text".
-- Stale AI responses are discarded when the import, date or stage config changes; old AI text is hidden behind
-  **Refresh AI insights**.
-- Keyboard accessible, visible focus, `aria-live` for counts and AI status, colour never the only signal, works at 375 px.
+- **Screens:** Overview · Imports (upload, file rejected, recent imports) · Follow-ups (counts, stage thresholds,
+  insights panel, ranked queue with AI/Template badges and filters, row details with reason, action, timer start and
+  the message with its recipient, Row errors tab) · Export (preview read from the real file; Download saves the same
+  bytes) · Hiring stages (editor) · Settings (Use AI drafts, model, stored imports) · How it works.
+- **The open board lives in the address** (`?import=…&date=…`), so a reload or a shared link opens the same board.
+  Open in Recent imports uses the upload day, so the saved AI notes are reused.
+- **AI runs once when a board opens** (right after an upload), with an "AI is writing" status. A failure shows templates
+  and **Retry AI**; the page never asks again by itself.
+- **Inline states** (not pages): file rejected (on Imports), no valid rows, nobody stalled ("lower a stage threshold"),
+  AI unavailable (notice + Retry AI; templates used), same file uploaded again.
+- **Copy** shows "Message copied" only after the clipboard write succeeds, otherwise "Copy failed".
+- A late answer for an old board or date is dropped, so old AI text never shows next to a new queue.
+- Keyboard accessible, visible focus, `role="status"` for the AI status, colour never the only signal, works at 375 px.
+- **Not built:** Playwright end-to-end tests.
 
 ---
 
@@ -453,3 +460,6 @@ invitation is the authority for formats and deadlines.
   (`db:migrate:prod`, `db:seed:prod`), and `.env` is kept out of Docker images. AI checks described as limited
   safeguards. Kept as is: the 30-minute model list cache with the `ai_models` fallback.
   *Reason:* each was a real gap found by reading the code; the model-list case is rare and already has a fallback.
+- **v5.2:** the frontend is built; Part H now describes what ships. A failed AI try is remembered from the call log:
+  the same report makes no new call until **Retry AI** sends `retry: true`. The open board lives in the page address.
+  *Reason:* with a free key, every visit after a failed answer cost a new call; a reload must not lose the board.

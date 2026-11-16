@@ -50,11 +50,14 @@ export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
   const showAi = aiDraft !== null && !useTemplate;
   const message = showAi ? aiDraft : item.templateMessage;
 
-  const copyMessage = () => {
-    navigator.clipboard
-      .writeText(message)
-      .then(() => toast.success('Message copied'))
-      .catch(() => toast.error('Copy failed. Select the text and copy it.'));
+  const copyMessage = async () => {
+    try {
+      // navigator.clipboard is missing on a plain http address that is not localhost
+      await navigator.clipboard.writeText(message);
+      toast.success('Message copied');
+    } catch {
+      toast.error('Copy failed. Select the text and copy it.');
+    }
   };
 
   return (
