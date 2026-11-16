@@ -10,6 +10,10 @@ export interface StageDraft {
   actionCode: string;
 }
 
+// crypto.randomUUID() is missing on a plain http address that is not localhost, so use a counter
+let keyCount = 0;
+const nextKey = () => `stage-${++keyCount}`;
+
 export const DEFAULT_THRESHOLD_DAYS = '7';
 export const DEFAULT_ACTION = 'GENERIC_FOLLOW_UP';
 
@@ -22,7 +26,7 @@ export const RECIPIENT_NAME: Record<Recipient, string> = {
 
 export function toDraft(stage: Stage): StageDraft {
   return {
-    key: crypto.randomUUID(),
+    key: nextKey(),
     name: stage.name,
     type: stage.type,
     thresholdDays: stage.thresholdDays === null ? '' : String(stage.thresholdDays),
@@ -33,7 +37,7 @@ export function toDraft(stage: Stage): StageDraft {
 
 export function newDraft(): StageDraft {
   return {
-    key: crypto.randomUUID(),
+    key: nextKey(),
     name: '',
     type: StageType.WATCHED,
     thresholdDays: DEFAULT_THRESHOLD_DAYS,
