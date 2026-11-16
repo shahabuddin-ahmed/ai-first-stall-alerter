@@ -84,7 +84,8 @@ whole report uses templates.
 ## Database
 
 Tables are created by migrations (`src/infra/migrations`), never by `sequelize.sync()`. The API refuses to start while a
-migration is pending.
+migration is pending. Done migrations and seeds are kept in the `migrations` and `seeders` tables, by name without the
+`.ts`/`.js` ending, so `yarn dev` and the built app see the same history.
 
 ```bash
 yarn db:migrate          # create or update the tables
@@ -124,13 +125,13 @@ from the app). The pipeline tests must match them exactly. No test calls a real 
 
 `yarn perf --insights`, 3 runs, API on a laptop (Apple Silicon, MySQL 8 in Docker), with a stand-in AI:
 
-| Step                              | Median | Slowest | Target     |
-| --------------------------------- | ------ | ------- | ---------- |
-| Upload (10,000 rows, 773 KB)      | 261 ms | 408 ms  | ≤ 3,000 ms |
-| Recalculate the queue (GET board) | 49 ms  | 65 ms   | ≤ 300 ms   |
-| Row errors                        | 47 ms  | 49 ms   | -          |
-| Export CSV                        | 89 ms  | 97 ms   | -          |
-| AI insights, cached               | 55 ms  | 99 ms   | ≤ 200 ms   |
+| Step                                     | Median | Slowest | Target     |
+| ---------------------------------------- | ------ | ------- | ---------- |
+| Upload (10,000 rows, 773 KB)             | 261 ms | 408 ms  | ≤ 3,000 ms |
+| Recalculate the queue (GET /imports/:id) | 49 ms  | 65 ms   | ≤ 300 ms   |
+| Row errors                               | 47 ms  | 49 ms   | -          |
+| Export CSV                               | 89 ms  | 97 ms   | -          |
+| AI insights, cached                      | 55 ms  | 99 ms   | ≤ 200 ms   |
 
 A first AI call adds the model's own time (about 9 s with the free model above). Reading 10,000 rows from MySQL is
 fast enough, so no extra in-memory cache was added.

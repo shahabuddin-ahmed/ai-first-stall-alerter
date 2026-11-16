@@ -16,7 +16,7 @@ const WITH_INSIGHTS = process.argv.includes("--insights");
 
 const TARGETS_MS: Record<string, number> = {
     "upload (10,000 rows)": 3000,
-    "recalculate (GET board)": 300,
+    "recalculate (GET /imports/:id)": 300,
     "insights, cached": 200,
 };
 
@@ -66,7 +66,7 @@ const main = async () => {
 
         for (let i = 0; i < 3; i += 1) {
             record(
-                "recalculate (GET board)",
+                "recalculate (GET /imports/:id)",
                 (await timed(async () => expectOk(await fetch(`${API_URL}/imports/${id}?${query}`), "board"))).ms
             );
         }

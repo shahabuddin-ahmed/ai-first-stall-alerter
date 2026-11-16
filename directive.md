@@ -6,7 +6,7 @@
 >
 > Labels: **[Brief]** = mandated by the assessment. **[Decision]** = my implementation choice, with its reason.
 >
-> Version: v4
+> Version: v5
 
 ---
 
@@ -35,7 +35,7 @@ The queue can be exported as CSV.
 | Layer | What | How |
 |---|---|---|
 | **1. Build with AI** | The tool is built AI-first | AI coding assistants; each day logged honestly (prompts, what was accepted, rejected, corrected) |
-| **2. AI inside the tool** | The LLM writes message text around facts code has already computed | One `fetch` call to an OpenAI-compatible endpoint (OpenRouter), backend only |
+| **2. AI inside the tool** | The LLM writes message text around facts code has already computed | One HTTP call (axios) to an OpenAI-compatible endpoint (OpenRouter), backend only |
 
 ### A5. The golden rule [Decision]
 **Code decides, AI only writes.** Code decides who is stalled, the rank, the action, the recipient, the counts and the
@@ -66,24 +66,28 @@ calls, chat, message queues, Redis, microservices, real candidate data.
 | Part | Choice | Reason |
 |---|---|---|
 | Backend | My Express + TypeScript boilerplate (`apps/backend`), clean layers | Known and proven; baseline commit `e90ed03` |
-| Rules engine | Pure TypeScript rules module (`src/rules`), no framework, DB, network or clock | Deterministic, unit-testable |
+| Rules engine | Pure TypeScript pipeline files in `src/service` (`pipeline-csv`, `pipeline-analysis`, `pipeline-messages`, `pipeline-types`), no framework, DB, network or clock | Deterministic, unit-testable |
 | Database | **MySQL 8** + Sequelize (from the boilerplate), utf8mb4; `candidate_id` uses `utf8mb4_bin` | Already set up; relational data with unique keys and cascades |
 | Validation | Joi (the boilerplate's request validation) | Already in place |
-| AI | One `fetch` adapter to an OpenAI-compatible endpoint (OpenRouter by default), JSON-schema response format, schema validation | One prompt, one JSON; no SDK to keep compatible |
-| Frontend | My Next.js + TypeScript boilerplate (`apps/frontend`), display only | Known and proven |
-| Tests | Jest (backend), Playwright (E2E), `scripts/generate_expected.py` (independent expected results), an eval script | |
+| AI | One provider adapter (axios through the shared `utils/http` helper) to an OpenAI-compatible endpoint (OpenRouter by default), JSON-schema response format, Joi answer check | One prompt, one JSON; no SDK to keep compatible |
+| Frontend | My Next.js + TypeScript boilerplate (`apps/frontend`), display only (**not built yet**) | Known and proven |
+| Tests | Jest + supertest (backend, real MySQL test database), `scripts/generate_expected.py` (independent expected results). Planned: Playwright (E2E, with the frontend) and an eval script | |
 
 **Not used:** Redis, queues, microservices, Kubernetes. One API process with a clean core is the right size.
 Redis would only be needed if the API ran as several copies (README "next steps").
 
 ### B2. Backend layers (mapped to the boilerplate)
 ```
-web/        routes + controllers (Joi validation, error mapping)          ← presentation
-service/    use cases: import board, get queue, export, insights, stages, settings  ← application
-rules/      pure rules: csv-reader · row-checks · dates · stage-matcher · analyse-board · messages · bottlenecks · facts · export
-repo/       Sequelize repositories (imports, records, stages, settings, ai cache, llm calls) ← infrastructure
-ai/         HTTP insights generator · fake generator · guardrails · prompt         ← infrastructure
-infra/      MySQL connection, config cache
+web/        routers, controllers (Joi validation), middleware (upload, errors, rate limits)   ← presentation
+service/    use cases: import · config (stages + settings) · insight · export                 ← application
+            pipeline-csv · pipeline-analysis · pipeline-messages · pipeline-types: pure rules
+            ai.ts (answer checks, model list) · ai-provider.ts (OpenRouter chat + model list)
+repo/       Sequelize repositories: queries only (imports, records, stages, settings, ai insights,
+            llm calls, ai models)                                                             ← infrastructure
+model/      Sequelize models
+constant/   fixed values and enums, the AI prompt and response schema
+utils/      dates, http (shared axios client), hashing
+infra/      MySQL connection, migrations, seeders, logger
 ```
 
 ### B3. Architecture decisions
@@ -93,12 +97,12 @@ infra/      MySQL connection, config cache
 | AD2 | Validation and ranking are **recomputed** on every request; the queue is never stored | Results depend on the reference date and stage setup |
 | AD3 | **Hiring stages are configuration, not code** (Part C2), seeded with defaults | Every company names, orders and times its stages differently |
 | AD4 | The domain never reads the clock, DB or network | Exact, repeatable tests |
-| AD5 | LLM input/output keyed by **rank**; the server maps ranks back to candidates | The model cannot invent a candidate |
+| AD5 | LLM input keyed by **rank**, drafts keyed by **action code**; the server maps them back to candidates | The model cannot invent a candidate |
 | AD6 | The LLM receives **fixed action codes**, never stage names, action text, names or any free text | Privacy and no prompt-injection path |
 | AD7 | Messages go to **whoever has to act** (recipient per action code) | A message that carries out the action |
 | AD8 | Every LLM output is validated; any failure → template for that report | The app never depends on the LLM |
-| AD9 | AI on/off is a **team setting in the DB**; key, model and URL stay in `.env` | Secrets never in the DB or the API |
-| AD10 | Stages and settings cached **in memory, write-through** | No DB read per request; no Redis |
+| AD9 | AI on/off and the **AI model** are team settings in the DB (the model is picked from the provider's list); the key and URL stay in `.env` | Secrets never in the DB or the API; the team can change the model without a deploy |
+| AD10 | Stages and settings cached **in memory, write-through**; the model list cached in memory for 30 minutes and saved in `ai_models` (used when the provider list cannot be loaded) | No DB read per request; no Redis |
 | AD11 | Duplicate uploads stopped by a **UNIQUE file hash** in MySQL (insert, catch duplicate, return existing) | Safe even for simultaneous uploads |
 
 ---
@@ -119,12 +123,13 @@ infra/      MySQL connection, config cache
 
 Parsing: UTF-8, optional BOM, one header row, headers matched exactly after trimming, columns in any order, extra
 columns ignored and not stored, blank records ignored, RFC 4180 quoting, LF or CRLF, values trimmed. Only `YYYY-MM-DD`
-counts as a date. Record numbers count the header as 1.
+counts as a date. Record numbers count the header as 1. A blank header is an extra column (ignored), because
+spreadsheets often add a trailing comma.
 
 ### C2. Hiring stages (configurable) [Decision]
-Each stage has: **name** (unique, 1–40 letters, digits, spaces, dashes), **type** (`watched` | `paused` | `final`),
+Each stage has: **name** (unique, 1–30 letters, digits, spaces, dashes), **type** (`watched` | `paused` | `final`),
 **threshold** in days (watched only, 1–90), **position** (pipeline order; later = more urgent), **aliases** (other names
-in CSVs), and a **follow-up action** chosen from a fixed list.
+in CSVs, up to 10), and a **follow-up action** chosen from a fixed list. Up to 30 stages.
 
 **Default stages (seeded):**
 | # | Stage | Type | Threshold | Aliases | Action code | Message goes to |
@@ -139,7 +144,8 @@ in CSVs), and a **follow-up action** chosen from a fixed list.
 | 8–10 | Hired, Rejected, Withdrawn | final | – | Withdrawn: Declined | – | – |
 
 `GENERIC_FOLLOW_UP` (to the candidate) is available for new stages. Paused and final stages are valid but never
-queued; paused rows are counted as "On hold". Saving requires at least one watched stage and unique names/aliases.
+queued; paused rows are counted as "On hold". Saving requires at least one watched stage and unique names/aliases,
+and the current stages `version` (an old version gets 409, so two saves cannot overwrite each other).
 
 ### C3. Stall rule
 - **Timer start** = the later of `stage_entered_at` and `last_activity_at` (an activity date earlier than
@@ -167,7 +173,7 @@ Ranks are assigned before any filter and never change with filters or sorting. R
 
 | Action | Template |
 |---|---|
-| `REVIEW_APPLICATION` | Hi, could you review {name}'s application for the {role} role? It is waiting in Applied and needs a decision on the next step. Thanks, {recruiter} |
+| `REVIEW_APPLICATION` | Hi, could you review {name}'s application for the {role} role? It needs a decision on the next step. Thanks, {recruiter} |
 | `SCHEDULE_SCREEN` | Hi {first_name}, thank you for your interest in the {role} position. I would like to schedule a short screening call. Could you share a few times that suit you? Best regards, {recruiter} |
 | `REQUEST_FEEDBACK` | Hi team, could you share your interview feedback on {name} for the {role} role? We need it to decide the next step. Thanks, {recruiter} |
 | `REVIEW_ASSESSMENT` | Hi, could you review {name}'s assessment for the {role} role and share your result? Thanks, {recruiter} |
@@ -182,18 +188,25 @@ ascending), each shown only if its count ≥ 2.
 ### C7. Validation
 **File errors** reject the whole file; nothing is stored; the previous queue and AI text are cleared:
 `FILE_TOO_LARGE` (413, > 5 MB) · `UNSUPPORTED_FILE` (415) · `INVALID_ENCODING` · `EMPTY_FILE` · `TOO_MANY_ROWS`
-(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) · `VALUE_TOO_LONG` (a known column over 255 characters, with the record and column) — 422 unless noted.
+(> 10,000) · `MISSING_HEADERS` (lists them) · `DUPLICATE_HEADERS` · `INVALID_CSV` (with the line) · `VALUE_TOO_LONG` (a known
+text column over its limit: `candidate_id` 36, `name` 50, `role` 50, `stage` 30, `recruiter` 50; with the record and
+column) — 422 unless noted.
 
 **Row errors** exclude the record; the rest still rank; the excluded count is shown. A record lists every error but
 counts once as invalid: field count differs · required value missing · date not a real `YYYY-MM-DD` · date after the
 reference date · stage not in the hiring stages ("add it, or add it as an alias") · duplicate `candidate_id` (every copy).
+A record with the wrong field count gets only that error and is left out of the duplicate-ID check: its columns may be
+shifted, so its ID cannot be trusted (same rule in `scripts/generate_expected.py`). Row error details come from
+`GET /imports/:id/errors`; the upload answer has the counts.
 
 ### C8. Export
 - Columns: `rank, candidate_id, name, role, stage, recruiter, reference_date, stage_threshold, timer_from,
   days_in_stage, overdue_days, reason, action, message_to, message_draft, message_source, ai_note_status`
 - `message_draft` is always filled (AI draft or template); `message_source` = `ai_draft` | `template`.
-- `ai_note_status`: `ai_draft` · `disabled` (team setting off) · `outside_ai_scope` (rank above N) · `pending` ·
-  `unavailable` (not set up on the server, or failed).
+- AI drafts are used for ranks 1…N only, the same as the insights screen; every other row uses its template.
+- `ai_note_status`: `ai_draft` · `disabled` (team setting off) · `not_in_top_n` (rank above N, template used) ·
+  `pending` (no AI answer for this report yet) · `unavailable` (not set up on the server, the last call failed, or no
+  draft for that action).
 - RFC 4180 escaping; **formula guard**: text starting with `=`, `+`, `-`, `@`, tab or CR gets a `'` prefix.
 - Follows the current view and order, keeps original ranks, works while AI is pending or failed.
 
@@ -219,65 +232,84 @@ Regenerate from the repo root with `python3 scripts/generate_expected.py --write
 ## Part E: AI layer
 
 ### E1. When AI runs
-AI runs only when **both**: the server has `AI_API_KEY` and `AI_MODEL` (`.env`) **and** the team setting
-**Use AI drafts** is on (Settings page, stored in the DB). One provider call per distinct report (import + reference
-date + stage config version + N + prompt version + model); repeats come from the cache; simultaneous requests share
-one call. Zero calls when AI is off or not set up, the file is rejected, nothing is stalled, or the user filters,
+AI runs only when **both**: the server has `AI_API_KEY` (`.env`) **and** the team setting **Use AI drafts** is on
+(Settings page, stored in the DB). The **model** is also a team setting: picked from `GET /settings/models` (OpenRouter
+models that support structured outputs), saved in the DB, default `inclusionai/ling-3.2-flash:free`. A model that is
+not in the list is rejected. One provider call per distinct report (import + reference date + stage config version + N
++ prompt version + model); repeats come from the cache; simultaneous requests share one call (the cache lookup and the
+call run as one step). Zero calls when AI is off or not set up, the file is rejected, nothing is stalled, or the user filters,
 sorts or exports. No automatic retries; a **Retry** button for recoverable failures. `/insights` is rate-limited.
 
 ### E2. Backend `.env` (server setup and secrets only)
-`AI_API_KEY` · `AI_MODEL` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
-`AI_MAX_OUTPUT_TOKENS` · `AI_MODE` (`live` | `fake` for tests) · `MYSQL_*`. Validated at startup.
+`AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
+`AI_MAX_OUTPUT_TOKENS` (1500) · `AI_REASONING_EFFORT` (`low`) · `MYSQL_*` · `WEB_ORIGIN` · `RATE_LIMIT_*`. Validated at
+startup. The model is not in `.env` (E1). An empty key = templates only.
 
 ### E3. Facts sent (allowlist, nothing else)
 Per rank 1…N: `rank`, `action_code`, `stage_threshold`, `days_in_stage`, `overdue_days`, `days_since_contact` or null,
 `recipient_type`, `recruiter_key` (R1…). Board: totals, stalled by action code, stalled by recruiter key (top 5 +
-others), bottlenecks. **Never sent:** names, candidate IDs, roles, recruiter names, stage names, action text, file name,
+others), bottlenecks (type, then the action code for a stage or the recruiter key for a recruiter, and the count).
+**Never sent:** names, candidate IDs, roles, recruiter names, stage names, action text, file name,
 reference date, raw CSV. A test asserts the exact key set and that the serialized prompt is ≤ 8 KiB at 10,000 rows.
 
 ### E4. Output and guardrails
 - Schema: `briefing` (≤ 450 chars), `bottleneck_notes[]` (one per supplied bottleneck, ≤ 220), `drafts[]` (one per
-  requested rank, ≤ 600). Drafts use only `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled on the server.
+  action code in `board.stalled_by_action`, ≤ 600). A draft is used for every top-N alert with that action. Drafts use
+  only `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled on the server.
 - Drafts address the action's recipient and carry out the action; no dates, digits, links, markup, promises of timing,
   guesses about why it stalled, or judgements of the candidate.
-- Checks after generation: exact rank coverage, lengths, allowed placeholders, no digits in drafts, numbers in the
-  briefing must exist in the board facts, no URLs/HTML. Any failure → the whole report uses templates.
+- Checks after generation, by code: shape (every action exactly once, no unknown action), lengths, allowed placeholders,
+  `{{recruiter}}` only once (the signature), no broken placeholders, **right recipient** (`{{first_name}}` and no
+  `{{name}}` for the candidate; `{{name}}` and no `{{first_name}}` for anyone else), no digits and **no timing words**
+  in drafts (weekdays, months except "May", today, tomorrow, tonight, this week, next week), no action codes in text,
+  numbers in the briefing and notes must exist in the facts, no URLs/HTML/markdown links. Any failure → the whole
+  report uses templates.
 - Cache only validated, unfilled output; fill names for the current report on every hit; never cache failures.
 
 ### E5. Testing the AI layer
-A fake generator in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown rank, too long, digits,
-URL, bad placeholder, timeout, refusal, rate limit, no key, setting off, cache hit (0 calls), two simultaneous requests
-(1 call), failure not cached, same facts with different names. Day 1 smoke test with a real key; manual `npm run eval`
-on fictional cases, target ≥ 95% guardrail pass, defects and fixes logged.
+A mock AI provider in tests (no real calls in CI). Cases: valid, missing/duplicate/unknown action, too long, digits,
+timing words, wrong recipient, URL, bad placeholder, timeout, refusal, provider errors (rate limit, auth, no credits),
+no key, setting off, cache hit (0 calls), simultaneous requests and a slow cache lookup (1 call), failure not cached,
+a new model (new call). Day 1 smoke test with a real key. **Not built yet:** the manual `npm run eval` on fictional
+cases (target ≥ 95% guardrail pass, defects and fixes logged).
 
 ---
 
 ## Part F: API (base `/api/v1`)
 | Method | Path | Does |
 |---|---|---|
-| POST | `/imports` | Upload CSV + reference date → counts, queue, row errors (or the existing import if the same file) |
-| GET | `/imports` | List imports (file, date, counts) |
-| GET | `/imports/:id?referenceDate=` | Recalculate; no re-upload |
-| POST | `/imports/:id/insights` | Briefing, bottlenecks and a message for every alert (AI or template) |
-| GET | `/imports/:id/export` | CSV download |
-| DELETE | `/imports/:id` | Delete the import, its rows and cached AI results |
-| GET · PUT | `/stages` | Read or save the hiring stages |
-| GET · PUT | `/settings` | Read or save team settings; shows whether AI is set up (never the key) |
+| POST | `/imports` | Upload CSV (`file`) + `referenceDate` → counts, bottlenecks, stage thresholds, first queue page. 201 new; 200 with `alreadyImported: true` for the same file |
+| GET | `/imports?offset=&limit=` | List imports, newest first |
+| GET | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Recalculate; no re-upload. Filters keep the original ranks |
+| GET | `/imports/:id/errors?referenceDate=&page=&pageSize=` | Row errors: record number, candidate ID, field, problem |
+| POST | `/imports/:id/insights` | Briefing, bottleneck notes and AI drafts for the top N (or templates, with the reason) |
+| GET | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=` | CSV download (C8); never calls the AI |
+| DELETE | `/imports/:id` | Delete the import, its rows and cached AI results (the AI call log is kept) |
+| GET · PUT | `/stages` | Read or save the hiring stages (PUT needs the current `version`, else 409) |
+| GET · PUT | `/settings` | Read or save `useAiDrafts` and `aiModel`; shows whether AI is set up (never the key) |
+| GET | `/settings/models` | Models the team can pick (cached 30 minutes, saved in the DB) |
 | GET | `/health` | API and database status (200 or 503) |
 
-Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7 or `E_INVALID_DATA` (400).
+Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7, `E_INVALID_DATA` (400),
+`E_NOT_FOUND` (404), `E_CONFLICT` (409), `E_PAYLOAD_TOO_LARGE` (413) or `E_TOO_MANY_REQUESTS` (429).
+Uploads and `/insights` are rate-limited per IP.
 
 ---
 
 ## Part G: Storage (MySQL 8)
+Every table has `id`, `created_at` and `updated_at`. Tables come from migrations (one file per table), never from
+`sequelize.sync()`; the API refuses to start while a migration is pending. History tables: `migrations`, `seeders`
+(names stored without the `.ts`/`.js` ending, so the dev setup and the built app agree).
+
 | Table | Contents |
 |---|---|
-| `imports` | id, file_name, file_hash (UNIQUE), record_count, created_at |
-| `import_records` | import_id (FK cascade), record_number, field_count, the 8 known columns as raw text |
-| `stages` | name, type, threshold, position, aliases (JSON), action_code; plus a `config_version` |
-| `settings` | use_ai_drafts, updated_at |
-| `ai_insights` | cache_key (UNIQUE), model, prompt_version, unfilled rank-keyed output (JSON), created_at |
-| `llm_calls` | cache_key, requested/served model, tokens, cost, latency, status, error code (never text) |
+| `imports` | file_name, file_hash (UNIQUE), file_size, header_count, record_count |
+| `import_records` | import_id (FK cascade), record_number (UNIQUE per import), field_count, the 8 known columns (text columns with C7 limits, dates as `DATE`), `invalid_dates` (JSON: which date columns held text that is not a date) |
+| `stages` | name (UNIQUE), type, threshold_days, position (UNIQUE), aliases (JSON), action_code |
+| `settings` | use_ai_drafts, ai_model, stages_version (the stages `version`) |
+| `ai_insights` | import_id (FK cascade), cache_key (UNIQUE), model, prompt_version, unfilled output with drafts by action (JSON) |
+| `llm_calls` | import_id (FK set null), cache_key, requested/served model, tokens, cost, latency, status, error code (never text) |
+| `ai_models` | model_id (UNIQUE), name, context_length: the last model list from the provider |
 
 **Duplicate uploads:** insert the import in a transaction; on the UNIQUE `file_hash` conflict, roll back and return the
 existing import with `alreadyImported: true`. Never "check then insert". A concurrency test uploads the same file twice
@@ -286,6 +318,8 @@ in parallel and expects one row and one shared ID.
 ---
 
 ## Part H: Frontend (Next.js, display only)
+**Status: not built yet** (`apps/frontend` is empty). This part is the plan.
+
 - **Shell:** full-height sidebar (Workspace: Follow-ups, Imports, Export; Configure: Hiring stages, Settings), top bar
   with the board picker, New import and help, slim footer `StallAlert 1.0 · API healthy · Docs · Privacy`.
 - **Screens:** Import · Follow-ups (counts, stage thresholds, insights panel, ranked queue with AI/Template badges, row
@@ -302,7 +336,7 @@ in parallel and expects one row and one shared ID.
 
 ## Part I: Quality, security, performance
 - **I1 Tests:** domain unit tests against all three expected files and both scenarios; repo and API tests (supertest,
-  MySQL); AI tests (E5); Playwright flow for the build gate; the concurrency test (G).
+  MySQL); AI tests (E5); the concurrency test (G). Planned: a Playwright flow for the build gate, with the frontend.
 - **I2 Security:** upload size/type/row limits; Joi validation; CORS to the web origin; rate limit on `/insights`;
   parameterised queries only; formula guard; secrets only in `.env`; no stack traces or candidate data in logs; no auth
   (single-user, local, fictional data) stated as a known limit.
@@ -349,8 +383,9 @@ invitation is the authority for formats and deadlines.
 6. Never send candidate names, IDs, roles, stage names or any free text to the LLM; never log prompts, responses,
    file contents or rows; never commit `.env` or real data.
 7. Don't add dependencies, services or infrastructure (queues, Redis, extra services) that aren't in Part B without asking.
-8. Follow the boilerplates' conventions (folders, naming, error responses, test style). Keep the rules module (`src/rules`) free of
-   Express, Sequelize, the AI adapter and the clock.
+8. Follow the boilerplates' conventions (folders, naming, error responses, test style): controller → service → repo,
+   repos only run queries, try/catch only when an error leads to another action. Keep the pipeline files
+   (`src/service/pipeline-*.ts`) free of Express, Sequelize, the AI adapter and the clock.
 
 ---
 
@@ -394,3 +429,14 @@ invitation is the authority for formats and deadlines.
   and two-scenario expected results from an independent script; P0/P1/P2 scope.
   *Reason:* real hiring stages take very different times and differ by company; the second model review found message,
   privacy and copy issues; the build gate needs committed fixtures with independently computed results.
+- **v5:** the directive now matches the shipped backend. The AI model is a team setting in the DB, picked from the
+  provider's model list (cached 30 minutes, saved in `ai_models`); `AI_MODEL` and `AI_MODE` left `.env`, and the fake
+  provider is gone (tests use a mock). Drafts are keyed by action code and used for the top N on the screen and in the
+  export (`not_in_top_n` for the rest). New code checks: right recipient and no timing words. The cache lookup and the
+  AI call run as one step. Migration names are stored without the file ending. The rules live in
+  `src/service/pipeline-*.ts`; the AI code is `ai.ts` + `ai-provider.ts` over a shared axios helper. Stage names up to
+  30 characters; text columns have their own limits. The Applied wording left the `REVIEW_APPLICATION` template.
+  Frontend, Playwright and the eval script are marked as not built yet.
+  *Reason:* an independent review ran the API end to end and found real gaps (built app saw pending migrations,
+  screen and export disagreed on AI drafts, a draft to the wrong person passed, a slow cache lookup allowed a second
+  call); the model choice belongs to the team, not the deploy; the spec must describe what ships.
