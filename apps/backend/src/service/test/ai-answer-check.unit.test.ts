@@ -128,10 +128,46 @@ describe("AiService answer check", () => {
     it("rejects digits in drafts (no dates or day counts)", async () => {
         const drafts = [
             VALID.drafts[0],
-            { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}, please reply by 20 November." },
+            { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}, please reply within 2 weeks." },
         ];
         expect(await problemsOf(withChange({ drafts }))).toEqual([
             "draft for CONFIRM_OFFER contains a digit (no dates or day counts in messages)",
+        ]);
+    });
+
+    it.each(["by Friday", "by the end of next week", "in November", "tomorrow"])(
+        'rejects a draft that promises a time ("%s")',
+        async (timing) => {
+            const drafts = [
+                VALID.drafts[0],
+                { action_code: ActionCode.CONFIRM_OFFER, text: `Hi {{first_name}}, please reply ${timing}.` },
+            ];
+            const problems = await problemsOf(withChange({ drafts }));
+            expect(problems).toHaveLength(1);
+            expect(problems[0]).toMatch(/^draft for CONFIRM_OFFER promises a time/);
+        }
+    );
+
+    it("accepts the normal word may", async () => {
+        const offer = {
+            action_code: ActionCode.CONFIRM_OFFER,
+            text: "Hi {{first_name}}, may I ask for your decision on the offer? Best regards, {{recruiter}}",
+        };
+        expect(await problemsOf(withChange({ drafts: [VALID.drafts[0], offer] }))).toEqual([]);
+    });
+
+    it("rejects a draft written to the wrong person", async () => {
+        const toCandidate = {
+            action_code: ActionCode.REVIEW_APPLICATION,
+            text: "Hi {{first_name}}, we will review your application. Best, {{recruiter}}",
+        };
+        const toTeam = {
+            action_code: ActionCode.CONFIRM_OFFER,
+            text: "Hello, could you confirm the offer for {{name}}? Thanks, {{recruiter}}",
+        };
+        expect(await problemsOf(withChange({ drafts: [toCandidate, toTeam] }))).toEqual([
+            "draft for REVIEW_APPLICATION is not for the candidate: name them as {{name}}, without {{first_name}}",
+            "draft for CONFIRM_OFFER goes to the candidate: greet them as {{first_name}}, without {{name}}",
         ]);
     });
 
@@ -167,8 +203,8 @@ describe("AiService answer check", () => {
 
     it("rejects unknown or broken placeholders", async () => {
         const drafts = [
-            { action_code: ActionCode.REVIEW_APPLICATION, text: "Hi {{last_name}}, thanks." },
-            { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {first_name}, thanks." },
+            { action_code: ActionCode.REVIEW_APPLICATION, text: "Hello {{last_name}}, about {{name}}, thanks." },
+            { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}, about {offer}, thanks." },
         ];
         expect(await problemsOf(withChange({ drafts }))).toEqual([
             "draft for REVIEW_APPLICATION uses an unknown placeholder {{last_name}}",

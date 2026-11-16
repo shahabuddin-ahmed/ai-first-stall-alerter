@@ -51,17 +51,19 @@ export interface InsightsView {
 export interface SavedDrafts {
     status: AiNoteStatus.AI_DRAFT | AiNoteStatus.DISABLED | AiNoteStatus.PENDING | AiNoteStatus.UNAVAILABLE;
     draftsByAction: Map<ActionCode, string>;
+    topN: number;
+}
+
+interface InsightResult {
+    output: AiOutput | null;
+    errorCode: AiErrorCode | null;
+    cached: boolean;
 }
 
 export interface InsightServiceInterface {
     getInsights(importId: number, referenceDate?: string): Promise<InsightsView>;
     getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
-
-const savedDrafts = (status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts => ({
-    status,
-    draftsByAction,
-});
 
 const toDraft = (item: QueueItem, text: string, source: MessageSource): InsightDraft => ({
     rank: item.rank,
@@ -74,7 +76,7 @@ const toDraft = (item: QueueItem, text: string, source: MessageSource): InsightD
 });
 
 export class InsightService implements InsightServiceInterface {
-    private inFlight = new Map<string, Promise<AiAttempt>>();
+    private inFlight = new Map<string, Promise<InsightResult>>();
 
     constructor(
         private importService: ImportServiceInterface,
@@ -105,37 +107,34 @@ export class InsightService implements InsightServiceInterface {
         const facts = buildInsightFacts(analysis, this.topN);
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
 
-        const cached = await this.aiInsightRepo.findByKey(cacheKey);
-        if (cached) {
-            return this.aiView(importId, analysis, aiModel, cached.output, true);
-        }
-
-        const attempt = await this.callOnce(cacheKey, importId, facts, aiModel);
-        return attempt.output
-            ? this.aiView(importId, analysis, aiModel, attempt.output, false)
-            : templates(AiStatus.FAILED, attempt.errorCode);
+        const result = await this.callOnce(cacheKey, importId, facts, aiModel);
+        return result.output
+            ? this.aiView(importId, analysis, aiModel, result.output, result.cached)
+            : templates(AiStatus.FAILED, result.errorCode);
     }
 
     async getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts> {
         const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
         if (!this.aiService.isConfigured()) {
-            return savedDrafts(AiNoteStatus.UNAVAILABLE);
+            return this.savedDrafts(AiNoteStatus.UNAVAILABLE);
         }
         if (!useAiDrafts) {
-            return savedDrafts(AiNoteStatus.DISABLED);
+            return this.savedDrafts(AiNoteStatus.DISABLED);
         }
 
         const cacheKey = this.cacheKey(importId, analysis.referenceDate, stagesVersion, aiModel);
         const cached = await this.aiInsightRepo.findByKey(cacheKey);
         if (cached) {
-            return savedDrafts(
+            return this.savedDrafts(
                 AiNoteStatus.AI_DRAFT,
                 new Map(cached.output.drafts.map((draft) => [draft.action_code, draft.text]))
             );
         }
 
         const lastCall = await this.llmCallRepo.findLatest(cacheKey);
-        return savedDrafts(lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING);
+        return this.savedDrafts(
+            lastCall?.status === LlmCallStatus.FAILED ? AiNoteStatus.UNAVAILABLE : AiNoteStatus.PENDING
+        );
     }
 
     cacheKey(importId: number, referenceDate: string, stagesVersion: number, model: string): string {
@@ -143,14 +142,34 @@ export class InsightService implements InsightServiceInterface {
         return sha256Hex(JSON.stringify(parts));
     }
 
-    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {
+    private savedDrafts(status: SavedDrafts["status"], draftsByAction = new Map<ActionCode, string>()): SavedDrafts {
+        return { status, draftsByAction, topN: this.topN };
+    }
+
+    private callOnce(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<InsightResult> {
         const running = this.inFlight.get(cacheKey);
         if (running) {
             return running;
         }
-        const attempt = this.attempt(cacheKey, importId, facts, model).finally(() => this.inFlight.delete(cacheKey));
-        this.inFlight.set(cacheKey, attempt);
-        return attempt;
+        const result = this.loadOrGenerate(cacheKey, importId, facts, model).finally(() =>
+            this.inFlight.delete(cacheKey)
+        );
+        this.inFlight.set(cacheKey, result);
+        return result;
+    }
+
+    private async loadOrGenerate(
+        cacheKey: string,
+        importId: number,
+        facts: InsightFacts,
+        model: string
+    ): Promise<InsightResult> {
+        const cached = await this.aiInsightRepo.findByKey(cacheKey);
+        if (cached) {
+            return { output: cached.output, errorCode: null, cached: true };
+        }
+        const attempt = await this.attempt(cacheKey, importId, facts, model);
+        return { output: attempt.output, errorCode: attempt.errorCode, cached: false };
     }
 
     private async attempt(cacheKey: string, importId: number, facts: InsightFacts, model: string): Promise<AiAttempt> {

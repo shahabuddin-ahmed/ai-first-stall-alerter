@@ -16,7 +16,7 @@ export const ACTIONS: Record<ActionCode, ActionDetails> = {
         instruction: "review the application",
         recipient: RecipientType.HIRING_MANAGER,
         template:
-            "Hi, could you review {{name}}'s application for the {{role}} role? It is waiting in Applied and needs a decision on the next step. Thanks, {{recruiter}}",
+            "Hi, could you review {{name}}'s application for the {{role}} role? It needs a decision on the next step. Thanks, {{recruiter}}",
     },
     [ActionCode.SCHEDULE_SCREEN]: {
         label: "Schedule a screening call",

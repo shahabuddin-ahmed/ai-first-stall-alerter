@@ -11,6 +11,7 @@ export enum AiNoteStatus {
     DISABLED = "disabled",
     PENDING = "pending",
     UNAVAILABLE = "unavailable",
+    NOT_IN_TOP_N = "not_in_top_n",
 }
 
 export enum MessageSource {
@@ -59,8 +60,19 @@ export const AI_COLUMN_LIMITS = {
 } as const;
 
 export const SENDER_PLACEHOLDER = "{{recruiter}}";
+export const FIRST_NAME_PLACEHOLDER = "{{first_name}}";
+export const NAME_PLACEHOLDER = "{{name}}";
 
-export const DRAFT_PLACEHOLDERS: readonly string[] = ["{{first_name}}", "{{name}}", "{{role}}", SENDER_PLACEHOLDER];
+export const DRAFT_PLACEHOLDERS: readonly string[] = [
+    FIRST_NAME_PLACEHOLDER,
+    NAME_PLACEHOLDER,
+    "{{role}}",
+    SENDER_PLACEHOLDER,
+];
+
+// "May" is left out on purpose: "may" is a normal word.
+export const TIMING_WORDS =
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|this week|next week|january|february|march|april|june|july|august|september|october|november|december)\b/i;
 
 export const AI_LIMITS = {
     BRIEFING_CHARS: 450,

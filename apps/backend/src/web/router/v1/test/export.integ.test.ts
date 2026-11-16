@@ -160,20 +160,32 @@ describe("GET /api/v1/imports/:id/export", () => {
         rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
-    it("reuses one AI draft per action for every row, with each candidate's name filled in", async () => {
-        await request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate: REFERENCE_DATE });
+    it("uses AI drafts for the top 5 like the insights screen, and templates for the rest", async () => {
+        const insights = await request(app)
+            .post(`/api/v1/imports/${importId}/insights`)
+            .send({ referenceDate: REFERENCE_DATE });
 
         const rows = readCsv((await download(app, importId)).body);
+        const top = rows.filter((row) => Number(row.rank) <= 5);
+        const rest = rows.filter((row) => Number(row.rank) > 5);
 
         expect(rows).toHaveLength(EXPECTED_B.queue.length);
-        rows.forEach((row) => {
+        expect(top.map((row) => row.message_draft)).toEqual(
+            insights.body.response.drafts.map((draft: { text: string }) => draft.text)
+        );
+        top.forEach((row) => {
             expect([row.ai_note_status, row.message_source]).toEqual([AiNoteStatus.AI_DRAFT, MessageSource.AI_DRAFT]);
             expect(row.message_draft).toContain(row.recruiter);
             expect(row.message_draft).not.toContain("{{");
         });
-        const offers = rows.filter((row) => row.stage === "Offer");
-        expect(offers.length).toBeGreaterThan(1);
-        offers.forEach((row) => expect(row.message_draft).toMatch(/^Hi .+, I am following up about the .+ role\./));
+        expect(rest.length).toBeGreaterThan(0);
+        rest.forEach((row) => {
+            expect([row.ai_note_status, row.message_source]).toEqual([
+                AiNoteStatus.NOT_IN_TOP_N,
+                MessageSource.TEMPLATE,
+            ]);
+            expect(row.message_draft).not.toContain("I am following up about");
+        });
         expect(generator.calls).toBe(1);
     });
 

@@ -10,7 +10,7 @@ import { AiError, AiProviderInterface, CompletionResult } from "../../../../serv
 import { MockAiProvider, mockCompletion } from "./mock-ai-provider";
 import newSequelize from "../../../../infra/sequelize";
 import { resetTestDatabase } from "../../../../infra/test/test-database";
-import { newAiInsightRepo } from "../../../../repo/ai-insight";
+import { AiInsightRepoInterface, newAiInsightRepo } from "../../../../repo/ai-insight";
 import { newImportRepo } from "../../../../repo/import";
 import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
@@ -52,14 +52,17 @@ class TestGenerator implements AiProviderInterface {
     }
 }
 
-const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
+const makeApi = async (
+    generator: AiProviderInterface | null,
+    aiInsightRepo?: AiInsightRepoInterface
+): Promise<Express> => {
     const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
         importService,
         configService,
-        await newAiInsightRepo(),
+        aiInsightRepo ?? (await newAiInsightRepo()),
         await newLlmCallRepo(),
         aiService,
         5
@@ -134,7 +137,7 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
             recipient: "hiring_manager",
             source: MessageSource.AI_DRAFT,
         });
-        expect(view.drafts[0].text).toContain("Hi Hana,");
+        expect(view.drafts[0].text).toContain("Hana Novak");
         expect(JSON.stringify(view.drafts)).not.toContain("{{");
         expect(generator.calls).toBe(1);
     });
@@ -164,6 +167,33 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
         };
 
         const results = await Promise.all([insights(app, importId), insights(app, importId), insights(app, importId)]);
+
+        expect(results.every((res) => res.body.response.aiStatus === AiStatus.AI_DRAFT)).toBe(true);
+        expect(generator.calls).toBe(1);
+    });
+
+    it("makes one AI call when the saved-answer lookup is slow", async () => {
+        generator.behaviour = async (facts) => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return mockCompletion(facts);
+        };
+        const realRepo = await newAiInsightRepo();
+        let lookups = 0;
+        const slowRepo: AiInsightRepoInterface = {
+            findByKey: async (cacheKey) => {
+                lookups += 1;
+                const lookup = lookups;
+                const found = await realRepo.findByKey(cacheKey);
+                if (lookup === 2) {
+                    await new Promise((resolve) => setTimeout(resolve, 300));
+                }
+                return found;
+            },
+            save: (insight) => realRepo.save(insight),
+        };
+        const slowApp = await makeApi(generator, slowRepo);
+
+        const results = await Promise.all([insights(slowApp, importId), insights(slowApp, importId)]);
 
         expect(results.every((res) => res.body.response.aiStatus === AiStatus.AI_DRAFT)).toBe(true);
         expect(generator.calls).toBe(1);

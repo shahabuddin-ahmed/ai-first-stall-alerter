@@ -1,13 +1,22 @@
 import Joi from "joi";
 import type { AiConfig } from "../config/config";
-import { AI_LIMITS, AI_MODEL_LIST, AiErrorCode, DRAFT_PLACEHOLDERS, SENDER_PLACEHOLDER } from "../constant/ai";
-import { ActionCode } from "../constant/stage";
+import {
+    AI_LIMITS,
+    AI_MODEL_LIST,
+    AiErrorCode,
+    DRAFT_PLACEHOLDERS,
+    FIRST_NAME_PLACEHOLDER,
+    NAME_PLACEHOLDER,
+    SENDER_PLACEHOLDER,
+    TIMING_WORDS,
+} from "../constant/ai";
+import { ActionCode, RecipientType } from "../constant/stage";
 import logger from "../infra/logger";
 import { AiModelInterface } from "../model/ai-model";
 import { AiModelRepoInterface } from "../repo/ai-model";
 import { isTimeoutError } from "../utils/http";
 import { AiError, AiProviderInterface, AiUsage, CompletionResult, newAiProvider } from "./ai-provider";
-import { actionsOf, InsightFacts } from "./pipeline-messages";
+import { ACTIONS, actionsOf, InsightFacts } from "./pipeline-messages";
 
 export interface ActionDraft {
     action_code: ActionCode;
@@ -117,7 +126,27 @@ const draftProblems = (label: string, text: string): string[] => {
     if (/\d/.test(withoutPlaceholders)) {
         problems.push(`${label} contains a digit (no dates or day counts in messages)`);
     }
+    const timingWord = withoutPlaceholders.match(TIMING_WORDS);
+    if (timingWord) {
+        problems.push(`${label} promises a time ("${timingWord[0]}")`);
+    }
     return problems;
+};
+
+const recipientProblems = (label: string, text: string, actionCode: ActionCode): string[] => {
+    const forCandidate = ACTIONS[actionCode].recipient === RecipientType.CANDIDATE;
+    const usesFirstName = text.includes(FIRST_NAME_PLACEHOLDER);
+    const usesName = text.includes(NAME_PLACEHOLDER);
+
+    if (forCandidate && (!usesFirstName || usesName)) {
+        return [`${label} goes to the candidate: greet them as ${FIRST_NAME_PLACEHOLDER}, without ${NAME_PLACEHOLDER}`];
+    }
+    if (!forCandidate && (usesFirstName || !usesName)) {
+        return [
+            `${label} is not for the candidate: name them as ${NAME_PLACEHOLDER}, without ${FIRST_NAME_PLACEHOLDER}`,
+        ];
+    }
+    return [];
 };
 
 const answerProblems = (answer: AiOutput, facts: InsightFacts): string[] => {
@@ -132,7 +161,11 @@ const answerProblems = (answer: AiOutput, facts: InsightFacts): string[] => {
     });
     for (const draft of answer.drafts) {
         const label = `draft for ${draft.action_code}`;
-        problems.push(...textProblems(label, draft.text), ...draftProblems(label, draft.text));
+        problems.push(
+            ...textProblems(label, draft.text),
+            ...draftProblems(label, draft.text),
+            ...recipientProblems(label, draft.text, draft.action_code)
+        );
     }
     return problems;
 };

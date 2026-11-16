@@ -63,6 +63,7 @@ describe("database migrations", () => {
 
         expect(pending.length).toBeGreaterThan(0);
         expect(done.map((migration) => migration.name)).toEqual(pending.map((migration) => migration.name));
+        done.forEach((migration) => expect(migration.name).not.toMatch(/\.(ts|js)$/));
         expect(await listTables()).toEqual(expect.arrayContaining(APP_TABLES));
     });
 

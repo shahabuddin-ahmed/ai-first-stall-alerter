@@ -67,7 +67,7 @@ describe("templateMessage", () => {
     it("addresses the hiring manager about the candidate", () => {
         expect(templateMessage(ActionCode.REVIEW_APPLICATION, facts)).toBe(
             "Hi, could you review Amara Okafor's application for the Backend Engineer role? " +
-                "It is waiting in Applied and needs a decision on the next step. Thanks, Recruiter A"
+                "It needs a decision on the next step. Thanks, Recruiter A"
         );
     });
 

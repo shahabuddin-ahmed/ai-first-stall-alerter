@@ -18,10 +18,16 @@ export interface ExportServiceInterface {
 }
 
 const noteStatusOf = (item: QueueItem, saved: SavedDrafts): AiNoteStatus => {
-    if (saved.status === AiNoteStatus.AI_DRAFT && !saved.draftsByAction.has(item.actionCode)) {
+    if (saved.status !== AiNoteStatus.AI_DRAFT) {
+        return saved.status;
+    }
+    if (item.rank > saved.topN) {
+        return AiNoteStatus.NOT_IN_TOP_N;
+    }
+    if (!saved.draftsByAction.has(item.actionCode)) {
         return AiNoteStatus.UNAVAILABLE;
     }
-    return saved.status;
+    return AiNoteStatus.AI_DRAFT;
 };
 
 export class ExportService implements ExportServiceInterface {

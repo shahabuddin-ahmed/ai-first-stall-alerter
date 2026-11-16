@@ -4,6 +4,7 @@ import { SequelizeStorage, Umzug } from "umzug";
 const MIGRATION_TABLE = "migrations";
 const SEEDER_TABLE = "seeders";
 const HISTORY_NAME_LENGTH = 100;
+const FILE_ENDING = /\.(ts|js)$/;
 
 const createHistoryTable = async (sequelize: Sequelize, tableName: string): Promise<void> => {
     await sequelize.query(
@@ -37,7 +38,11 @@ const historyModel = (sequelize: Sequelize, tableName: string) =>
 
 const newRunner = (sequelize: Sequelize, folder: string, tableName: string): Umzug<QueryInterface> => {
     const runner = new Umzug({
-        migrations: { glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }] },
+        migrations: {
+            glob: [`${folder}/*.{ts,js}`, { cwd: __dirname, ignore: ["**/*.d.ts"] }],
+            // Same name for .ts (dev) and .js (build), so both see the same history
+            resolve: (params) => ({ ...Umzug.defaultResolver(params), name: params.name.replace(FILE_ENDING, "") }),
+        },
         context: sequelize.getQueryInterface(),
         storage: new SequelizeStorage({ model: historyModel(sequelize, tableName) }),
         logger: undefined,
