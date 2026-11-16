@@ -1,0 +1,65 @@
+import { Model, DataTypes } from "sequelize";
+import newSequelize from "../infra/sequelize";
+import { HASH_COLUMN_LENGTH } from "../constant/hash";
+
+export interface ImportInterface {
+    id?: number;
+    fileName: string;
+    fileHash: string;
+    fileSize: number;
+    headerCount: number;
+    recordCount: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+class Import extends Model<ImportInterface> implements ImportInterface {
+    public id?: number;
+    public fileName!: string;
+    public fileHash!: string;
+    public fileSize!: number;
+    public headerCount!: number;
+    public recordCount!: number;
+    public readonly createdAt?: Date;
+    public readonly updatedAt?: Date;
+}
+
+Import.init(
+    {
+        id: {
+            type: DataTypes.INTEGER.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true,
+        },
+        fileName: {
+            type: new DataTypes.STRING(255),
+            allowNull: false,
+        },
+        fileHash: {
+            type: new DataTypes.STRING(HASH_COLUMN_LENGTH),
+            allowNull: false,
+        },
+        fileSize: {
+            type: DataTypes.INTEGER.UNSIGNED,
+            allowNull: false,
+        },
+        headerCount: {
+            type: DataTypes.SMALLINT.UNSIGNED,
+            allowNull: false,
+        },
+        recordCount: {
+            type: DataTypes.INTEGER.UNSIGNED,
+            allowNull: false,
+        },
+    },
+    {
+        tableName: "imports",
+        freezeTableName: true,
+        timestamps: true,
+        underscored: true,
+        sequelize: newSequelize(),
+        modelName: "imports",
+    }
+);
+
+export default Import;

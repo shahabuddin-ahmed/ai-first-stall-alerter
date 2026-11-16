@@ -1,0 +1,7 @@
+candidate_id,name,role,stage,stage_entered_at,recruiter,last_contacted_at
+001,Ayesha Rahman,Software Engineer,Screening,2026-11-01,Recruiter A,2026-11-12
+002,Rahim Karim,Software Engineer,Interview,2026-11-06,Recruiter B,
+003,Karim Hasan,Product Designer,Offer,2026-11-06,Recruiter A,
+004,Nadia Ali,Product Designer,Interview,2026-11-07,Recruiter B,
+005,Sadia Noor,Software Engineer,Hired,2026-10-25,Recruiter A,
+006,Imran Roy,Software Engineer,Offer,2026-11-06,Recruiter A,
