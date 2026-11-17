@@ -1,8 +1,5 @@
 # Intent
 
-> Draft written from `PROPOSAL.md`, `directive.md` and the git history. Read it, change anything that is not how you
-> think about it, and remove this note.
-
 ## What I am building
 
 **StallAlert**, a web app for recruiters (Option C: Stall Alerter).

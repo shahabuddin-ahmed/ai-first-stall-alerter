@@ -4,7 +4,7 @@
 
 > The final build proposal. `directive.md` holds the same rules plus instructions for the AI coding agent and a
 > changelog. Labels: **[Brief]** = required by the assessment. **[Decision]** = my choice, with the reason.
-> Clickable wireframe: the "StallAlert Prototype" Claude Design canvas (offline copy: `stallalert-prototype.zip`).
+> Clickable wireframe: the "StallAlert Prototype" Claude Design canvas, made on Day 2 (not included in the repository).
 
 ---
 

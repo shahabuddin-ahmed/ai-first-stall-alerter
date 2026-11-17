@@ -1,8 +1,5 @@
 # Unlearned
 
-> Draft from what actually happened in these five days (see the daily logs and the directive changelog). This one must
-> sound like you: rewrite it in your own words, keep what is true for you, and remove this note. One page.
-
 Five things I believed before this week, and what replaced them.
 
 ## 1. "Write the code, then the docs." → The spec is the code's source.
