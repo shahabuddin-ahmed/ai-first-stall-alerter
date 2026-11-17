@@ -255,16 +255,16 @@ reference date, raw CSV. A test asserts the exact key set and that the serialize
 
 ### E4. Output and guardrails
 - Schema: `briefing` (≤ 450 chars), `bottleneck_notes[]` (one per supplied bottleneck, ≤ 220), `drafts[]` (one per
-  action code in `stalled_by_action`, ≤ 600). A draft is used for every top-N alert with that action. Drafts use only
-  `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled on the server.
+  action code in `stalled_by_action`, ≤ 600). A draft is used for every alert with that action. Drafts use only
+  `{{first_name}}`, `{{name}}`, `{{role}}`, `{{recruiter}}`, filled for each row after the checks.
 - Drafts address the action's recipient and carry out the action; no dates, digits, links, markup, promises of timing,
   guesses about why it stalled, or judgements of the candidate.
 - Checks after generation, by code: shape (every action exactly once, no unknown action), lengths, allowed placeholders,
   `{{recruiter}}` only once (the signature), no broken placeholders, **right recipient** (`{{first_name}}` and no
   `{{name}}` for the candidate; `{{name}}` and no `{{first_name}}` for anyone else), no digits and **no timing words**
   in drafts (weekdays, months except "May", today, tomorrow, tonight, this week, next week), no action codes in text,
-  numbers in the briefing and notes must exist in the facts, no URLs/HTML/markdown links. Any failure → the whole
-  report uses templates.
+  numbers in the briefing and notes must exist in the facts, no URLs/HTML/markdown links. A part that fails uses its template;
+  the other parts stay. The whole answer fails only if its shape is wrong or no part passes.
 - These checks are **limited safeguards**, not a proof that a draft is true. They catch the shape, placeholders,
   recipient, numbers, links and common timing words, but not every unsupported claim (for example "your offer is
   approved"). So code keeps every decision (who, rank, action, recipient, counts), and every AI draft stays labelled
@@ -287,7 +287,7 @@ cases (target ≥ 95% guardrail pass, defects and fixes logged).
 | GET | `/imports?offset=&limit=` | List imports, newest first |
 | GET | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Recalculate; no re-upload. Filters keep the original ranks |
 | GET | `/imports/:id/errors?referenceDate=&page=&pageSize=` | Row errors: record number, candidate ID, field, problem |
-| POST | `/imports/:id/insights` | Briefing, bottleneck notes and AI drafts for the top N (or templates, with the reason). `retry: true` asks again after a failure |
+| POST | `/imports/:id/insights` | Briefing, bottleneck notes and one message per action code, used for every alert (or templates, with the reason). `retry: true` asks again after a failure |
 | GET | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=` | CSV download (C8); never calls the AI |
 | DELETE | `/imports/:id` | Delete the import, its rows and cached AI results (the AI call log is kept) |
 | GET · PUT | `/stages` | Read or save the hiring stages (PUT needs the current `version`, else 409) |
