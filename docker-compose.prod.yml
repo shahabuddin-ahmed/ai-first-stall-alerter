@@ -1,0 +1,5 @@
+# The whole app in production on one server: docker compose -f docker-compose.prod.yml up --build -d
+# Each app keeps its own Compose file and .env; this file only pulls them in (needs Docker Compose 2.20+).
+include:
+    - apps/backend/docker-compose.prod.yml
+    - apps/frontend/docker-compose.prod.yml

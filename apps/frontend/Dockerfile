@@ -8,9 +8,9 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY . .
 
-# Next.js puts NEXT_PUBLIC_* into the browser code at build time, so the API address is a build argument
-ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Next.js puts NEXT_PUBLIC_* into the browser code at build time.
+# The API address comes from this build argument when it is given, otherwise from .env.production.
+ARG NEXT_PUBLIC_API_URL
 ENV NEXT_OUTPUT=standalone
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN yarn build

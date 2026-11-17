@@ -35,15 +35,18 @@ Five-day assessment, Option C (Stall Alerter). Built AI-first.
 
 ## Run it (fresh clone)
 
-You only need Docker. From the repository root:
+You need Docker with Compose 2.20 or newer (`docker compose version`). Each app keeps its own Compose files and its
+own `.env`; the root Compose files only pull them in. From the repository root:
 
 ```bash
-cp .env.example .env   # optional: add AI_API_KEY for AI drafts
+cp apps/backend/.env.example apps/backend/.env     # optional: add AI_API_KEY for AI drafts
+cp apps/frontend/.env.example apps/frontend/.env
 docker compose up --build
 ```
 
-This starts MySQL, the API and the web app together. The API creates the database, runs the migrations and the seed
-(10 default hiring stages), then starts. When it is healthy, the web app starts.
+This is development mode: your code folders are linked into the containers, so saving a file reloads the app (the
+API restarts with nodemon, the web app refreshes with Next.js dev). The API creates the database, runs the migrations
+and the seed (10 default hiring stages), then starts.
 
 | What       | Address                             |
 | ---------- | ----------------------------------- |
@@ -53,18 +56,28 @@ This starts MySQL, the API and the web app together. The API creates the databas
 | MySQL      | localhost:3306 (root / root)        |
 | phpMyAdmin | http://localhost:8080               |
 
-AI limits (`AI_MAX_OUTPUT_TOKENS`, `AI_REASONING_EFFORT`, `AI_TIMEOUT_MS`, `AI_TOP_N`) are set in the same root `.env`;
-in Docker they win over `apps/backend/.env`. Ports busy? Change `WEB_PORT`, `API_PORT`, `MYSQL_HOST_PORT` or
-`PMA_PORT` in `.env`. Stop with `Ctrl+C`;
-`docker compose down -v` also deletes the database.
+AI limits (`AI_MAX_OUTPUT_TOKENS`, `AI_REASONING_EFFORT`, `AI_TIMEOUT_MS`, `AI_TOP_N`) are in `apps/backend/.env`.
+After you change `.env`, run `docker compose up -d backend` (a plain restart does not read it again). Stop with
+`Ctrl+C`; `docker compose down -v` also deletes the database.
 
-### Run for development (live reload)
+| Compose file                            | What it runs                                  |
+| --------------------------------------- | --------------------------------------------- |
+| `docker-compose.yml`                    | The whole app, development                    |
+| `docker-compose.prod.yml`               | The whole app, production                     |
+| `apps/backend/docker-compose.yml`       | MySQL, phpMyAdmin and the API, development    |
+| `apps/backend/docker-compose.prod.yml`  | MySQL and the API, production                 |
+| `apps/frontend/docker-compose.yml`      | The web app, development                      |
+| `apps/frontend/docker-compose.prod.yml` | The web app, production                       |
 
-Same command plus the dev file. Your code folders are linked into the containers, so saving a file reloads the app:
-the API restarts (nodemon) and the web app refreshes (Next.js dev).
+To run one app only, use the Compose file in its folder, for example `cd apps/backend && docker compose up --build`.
+
+### Run in production mode on one server
+
+The production files build the production images (no live reload, no phpMyAdmin, the database is not open to the
+host). Set real values in `apps/backend/.env` first, and the API address in `apps/frontend/.env.production`.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Without Docker: `cd apps/backend && yarn dev` and `cd apps/frontend && yarn dev`, each with its own `.env` from
@@ -73,15 +86,15 @@ Without Docker: `cd apps/backend && yarn dev` and `cd apps/frontend && yarn dev`
 Open http://localhost:3000, click **Start: import a board**, and use **Download sample CSV** (Sample B) with the
 reference date `2026-11-13`.
 
-**AI is optional.** Without `AI_API_KEY` in `.env`, everything works and every message is a template. To get AI
-drafts, put an OpenRouter key in `AI_API_KEY` (the root `.env` for Docker, `apps/backend/.env` for development) and
+**AI is optional.** Without `AI_API_KEY` in `apps/backend/.env`, everything works and every message is a template. To get AI
+drafts, put an OpenRouter key in `AI_API_KEY` in `apps/backend/.env` and
 restart. The model is picked in the settings (default
 `inclusionai/ling-3.2-flash:free`); `GET /settings/models` lists the choices.
 
 ## Deploy to production
 
 In production each part runs on its own server. Each app has its own Dockerfile and is built and deployed on its own;
-the root `docker-compose.yml` is only for running everything on one machine.
+the root Compose files are only for running everything on one machine.
 
 | Part     | Runs on                                 | Settings                                                                                    |
 | -------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
