@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/shared/date-picker';
 import type { StageThreshold } from '@/types';
 
 interface BoardSettingsProps {
@@ -17,15 +17,7 @@ export function BoardSettings({ referenceDate, maxDate, thresholds, onDateChange
         <label htmlFor="board-date" className="text-[13px] font-semibold">
           Reference date
         </label>
-        <Input
-          id="board-date"
-          type="date"
-          required
-          max={maxDate}
-          value={referenceDate}
-          onChange={(event) => event.target.value && onDateChange(event.target.value)}
-          className="w-44"
-        />
+        <DatePicker id="board-date" value={referenceDate} max={maxDate} onChange={onDateChange} className="w-48" />
       </div>
       <div className="flex flex-[1_1_420px] flex-col gap-1.5">
         <span className="text-[13px] font-semibold">Stage thresholds</span>
