@@ -216,6 +216,9 @@ was added.
 -   Joi checks every request. Parameterised queries only (Sequelize).
 -   CORS for the web app only, security headers (helmet), rate limits on uploads and AI insights.
 -   Export: values that could run as spreadsheet formulas get a `'` in front.
+-   Packages: `yarn audit --groups dependencies` shows 1 high and 1 moderate advisory, neither reachable:
+    `picomatch` (via `umzug`, only matches the fixed migration file pattern; no fixed version exists) and `uuid`
+    (via `sequelize`, which only uses v1 and v4; the bug is in v3/v5/v6 with a buffer).
 -   Logs: one JSON line per request with a request id, path (no query string), status and time. Server errors log only
     the error type; no stack traces or candidate data in responses. AI logs name a failed part, never the AI text.
 
