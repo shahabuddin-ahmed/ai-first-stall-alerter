@@ -4,7 +4,7 @@ const steps = [
   { title: 'Upload CSV', text: 'One hiring-board file, up to 5 MB and 10,000 rows. The same file twice is detected.' },
   { title: 'Validate', text: 'A broken file is rejected. Bad rows are listed with how to fix them; good rows continue.' },
   { title: 'Rank', text: 'Each stage has its own threshold. Most overdue first.' },
-  { title: 'Message', text: 'A template for every alert; an AI draft for the top 5 when AI is on.' },
+  { title: 'Message', text: 'A template for every alert; an AI draft for every alert when AI is on.' },
   { title: 'Export', text: 'Download the queue as CSV, in the same order.' }
 ];
 

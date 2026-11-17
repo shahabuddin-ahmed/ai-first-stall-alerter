@@ -19,7 +19,7 @@
 StallAlert is a web app for recruiters. They upload a hiring-board CSV. The app validates it, explains every bad row,
 finds applications that have stayed in a stage longer than that stage allows, and ranks who to follow up first, each
 with a factual reason, an approved action and a ready-to-send message addressed to whoever has to act. When AI is
-switched on, the top alerts get an AI-written draft instead of the template, labelled **AI draft · review before use**.
+switched on, every alert gets an AI-written draft (one per follow-up action) instead of the template, labelled **AI draft · review before use**.
 The queue can be exported as CSV.
 
 ### A3. Users
@@ -43,12 +43,12 @@ sees names, IDs, roles or any free text, and every output is checked before anyo
 ### A6. Definition of done
 1. Samples A, B and C produce **exactly** the committed expected results (`data/expected/*.json`), in both scenarios.
 2. A bad file never crashes the app. Every bad row shows its record number, field and fix.
-3. Every alert has a usable message. With AI on and working, the top 5 get validated AI drafts (one draft per action,
-   reused for each top-5 candidate with that action) on the screen and in the export; the rest, and every alert when AI
-   is off, not set up or failing, use the template, labelled as such.
+3. Every alert has a usable message. With AI on and working, every alert gets a validated AI draft (one draft per action,
+   filled in for each candidate with that action) on the screen and in the export; when AI is off, not set up or
+   failing, every alert uses the template, labelled as such.
 4. The LLM payload contains only the allowlisted facts (Part E3); a test asserts this.
 5. **Build gate (end of Day 3):** in the browser, upload Sample B, verify the expected queue, generate one real AI
-   briefing plus the top 5 drafts, download the CSV; repeat with the provider unavailable.
+   briefing plus the AI drafts, download the CSV; repeat with the provider unavailable.
 6. A 10,000-row file meets the targets in Part I3, with real timings recorded.
 7. A reviewer can run the app from a fresh clone with the README.
 8. All 7 submission deliverables are attached (Part K).
@@ -202,8 +202,9 @@ shifted, so its ID cannot be trusted (same rule in `scripts/generate_expected.py
 - Columns: `rank, candidate_id, name, role, stage, recruiter, reference_date, stage_threshold, timer_from,
   days_in_stage, overdue_days, reason, action, message_to, message_draft, message_source, ai_note_status`
 - `message_draft` is always filled (AI draft or template); `message_source` = `ai_draft` | `template`.
-- AI drafts are used for ranks 1…N only, the same as the insights screen; every other row uses its template.
-- `ai_note_status`: `ai_draft` · `disabled` (team setting off) · `not_in_top_n` (rank above N, template used) ·
+- The AI writes one message per follow-up action; every row with that action uses it, filled with the row's own
+  name, role and recruiter, the same as the insights screen.
+- `ai_note_status`: `ai_draft` · `disabled` (team setting off) ·
   `pending` (no AI answer for this report yet) · `unavailable` (not set up on the server, the last call failed, or no
   draft for that action).
 - RFC 4180 escaping; **formula guard**: text starting with `=`, `+`, `-`, `@`, tab or CR gets a `'` prefix.
@@ -241,8 +242,8 @@ sorts or exports. No automatic retries: a failed try is remembered (from the cal
 new call until the user clicks **Retry AI** (`retry: true`). `/insights` is rate-limited.
 
 ### E2. Backend `.env` (server setup and secrets only)
-`AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (15000) ·
-`AI_MAX_OUTPUT_TOKENS` (1500) · `AI_REASONING_EFFORT` (`low`) · `MYSQL_*` · `WEB_ORIGIN` · `RATE_LIMIT_*`. Validated at
+`AI_API_KEY` · `AI_BASE_URL` (default OpenRouter) · `AI_TOP_N` (default 5) · `AI_TIMEOUT_MS` (60000) ·
+`AI_MAX_OUTPUT_TOKENS` (8000) · `AI_REASONING_EFFORT` (`medium`) · `MYSQL_*` · `WEB_ORIGIN` · `RATE_LIMIT_*`. Validated at
 startup. The model is not in `.env` (E1). An empty key = templates only.
 
 ### E3. Facts sent (allowlist, nothing else)
@@ -307,7 +308,7 @@ Every table has `id`, `created_at` and `updated_at`. Tables come from migrations
 
 | Table | Contents |
 |---|---|
-| `imports` | file_name, file_hash (UNIQUE), file_size, header_count, record_count |
+| `imports` | public_id (UUID, UNIQUE; the only ID the API shows), file_name, file_hash (UNIQUE), file_size, header_count, record_count |
 | `import_records` | import_id (FK cascade), record_number (UNIQUE per import), field_count, the 5 text columns (C7 limits), the 3 dates as `DATE`, `invalid_dates` (which dates were not real dates) |
 | `stages` | name (UNIQUE), type, threshold_days, position (UNIQUE), aliases (JSON), action_code |
 | `settings` | status (AI on/off: 1 = active, 0 = inactive), ai_model (the OpenRouter model ID), stages_version (goes up on each stages save; part of the AI cache key and the save conflict check) |
@@ -405,3 +406,5 @@ invitation is the authority for formats and deadlines.
 - **v5.3:** the queue shows "Waiting on", the wait in plain words, the due date and "Step X of Y", in the words of Match Hire.
 - **v5.4:** no `ai_models` table; the model list is cached in memory for 1 day, and only the selected model is in the DB.
   Settings has a searchable model picker with prices. `settings.use_ai_drafts` is now `status` (1 = active, 0 = inactive).
+- **v5.7:** every queue row gets the AI message for its action (one AI call per board, as before).
+- **v5.8:** imports are shown by a random UUID (`public_id`), never by the database number.

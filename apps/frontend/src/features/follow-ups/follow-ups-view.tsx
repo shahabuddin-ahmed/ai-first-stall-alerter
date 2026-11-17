@@ -3,11 +3,12 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FileWarning, PartyPopper, SearchX } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { ImportGone } from '@/components/shared/import-gone';
 import { NoBoard } from '@/components/shared/no-board';
 import { PageState } from '@/components/shared/page-state';
 import { Pager } from '@/components/shared/pager';
-import { FileWarning, PartyPopper, SearchX } from 'lucide-react';
-import { EmptyState } from '@/components/shared/empty-state';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BoardSettings } from '@/features/follow-ups/board-settings';
@@ -18,8 +19,8 @@ import { RowErrorsTable } from '@/features/follow-ups/row-errors-table';
 import { SummaryStats } from '@/features/follow-ups/summary-stats';
 import { useAppDispatch } from '@/hooks/use-app-redux';
 import { useApiData } from '@/hooks/use-api-data';
-import { api } from '@/lib/api';
-import { BOARD_PARAMS, boardHref } from '@/lib/board-link';
+import { api, NOT_FOUND } from '@/lib/api';
+import { BOARD_PARAMS, boardHref, isImportId } from '@/lib/board-link';
 import { localIsoDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { selectBoard } from '@/stores/slices/board-slice';
@@ -69,7 +70,7 @@ export function FollowUpsView() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const importId = Number(searchParams.get(BOARD_PARAMS.IMPORT));
+  const importId = searchParams.get(BOARD_PARAMS.IMPORT) ?? '';
   const referenceDate = searchParams.get(BOARD_PARAMS.DATE) ?? '';
   const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
@@ -82,7 +83,7 @@ export function FollowUpsView() {
     () => (importId && referenceDate ? () => api.getQueue(importId, { referenceDate, page, ...filters }) : null),
     [importId, referenceDate, page, filters]
   );
-  const { data: view, error, loading } = useApiData(load);
+  const { data: view, error, errorCode, loading } = useApiData(load);
 
   // Runs once when the board opens. After a failure the backend does not ask the AI again: only Retry does
   const loadInsights = useMemo(
@@ -96,6 +97,12 @@ export function FollowUpsView() {
 
   if (!importId || !referenceDate) {
     return <NoBoard />;
+  }
+  if (!isImportId(importId)) {
+    return <ImportGone />;
+  }
+  if (errorCode === NOT_FOUND) {
+    return <ImportGone />;
   }
   if (error) {
     return <PageState message={error} error />;
@@ -208,10 +215,10 @@ export function FollowUpsView() {
             {view.queue.items.length > 0 ? (
               <>
                 <span className="px-1.5 pt-1 text-[13px] text-gray-600">
-                  Click a candidate to see the reason, the action and the message.
-                  {insights.loading && ' AI drafts for the top alerts are still being written; templates show until then.'}
+                  Click a row to see the reason, the action and the message.
+                  {insights.loading && ' AI messages are still being written; templates show until then.'}
                 </span>
-                <QueueTable items={view.queue.items} drafts={freshInsights?.drafts ?? []} />
+                <QueueTable items={view.queue.items} actionMessages={freshInsights?.actionMessages ?? []} />
                 <Pager page={view.queue.page} pageSize={view.queue.pageSize} total={view.queue.total} onChange={setPage} />
               </>
             ) : (

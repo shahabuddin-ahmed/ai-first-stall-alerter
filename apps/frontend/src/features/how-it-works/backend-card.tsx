@@ -27,7 +27,7 @@ const API_ROUTES = [
 const ENV = [
   { key: 'AI_API_KEY', text: 'Secret. Never sent to the browser, stored in the database, or logged.' },
   { key: 'AI_BASE_URL', text: 'OpenRouter by default (any OpenAI-compatible API).' },
-  { key: 'AI_TOP_N', text: 'How many top alerts get AI drafts (default 5).' },
+  { key: 'AI_TOP_N', text: 'How many top alerts the AI briefing looks at (default 5). Every alert gets an AI draft.' },
   { key: 'AI_TIMEOUT_MS', text: 'How long to wait for the AI (default 15000).' },
   { key: 'MYSQL_*', text: 'Database host, port, name, user, password.' },
   { key: 'WEB_ORIGIN', text: 'Which web app may call the API (CORS).' },

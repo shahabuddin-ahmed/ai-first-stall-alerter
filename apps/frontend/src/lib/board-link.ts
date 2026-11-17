@@ -6,6 +6,13 @@ export const BOARD_PARAMS = {
   DATE: 'date'
 } as const;
 
+const IMPORT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Imports are opened by their public UUID; an old link with a number (or any other text) is not a valid import
+export function isImportId(value: string): boolean {
+  return IMPORT_ID_PATTERN.test(value);
+}
+
 export type BoardPage = '/follow-ups' | '/export';
 
 const BOARD_PAGES: readonly string[] = ['/follow-ups', '/export'];

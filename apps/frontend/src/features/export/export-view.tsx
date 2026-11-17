@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Download } from 'lucide-react';
+import { ImportGone } from '@/components/shared/import-gone';
 import { NoBoard } from '@/components/shared/no-board';
 import { PageState } from '@/components/shared/page-state';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -12,26 +13,32 @@ import { ExportColumns } from '@/features/export/export-columns';
 import { ExportNotes } from '@/features/export/export-notes';
 import { ExportPreview } from '@/features/export/export-preview';
 import { useApiData } from '@/hooks/use-api-data';
-import { api } from '@/lib/api';
-import { BOARD_PARAMS, boardHref } from '@/lib/board-link';
+import { api, NOT_FOUND } from '@/lib/api';
+import { BOARD_PARAMS, boardHref, isImportId } from '@/lib/board-link';
 import { parseCsv, saveFile } from '@/lib/csv';
 
 const CSV_TYPE = 'text/csv;charset=utf-8';
 
 export function ExportView() {
   const searchParams = useSearchParams();
-  const importId = Number(searchParams.get(BOARD_PARAMS.IMPORT));
+  const importId = searchParams.get(BOARD_PARAMS.IMPORT) ?? '';
   const referenceDate = searchParams.get(BOARD_PARAMS.DATE) ?? '';
 
   const load = useMemo(
     () => (importId && referenceDate ? () => api.getExport(importId, referenceDate) : null),
     [importId, referenceDate]
   );
-  const { data: file, error } = useApiData(load);
+  const { data: file, error, errorCode } = useApiData(load);
   const [header = [], ...rows] = useMemo(() => (file ? parseCsv(file.text) : []), [file]);
 
   if (!importId || !referenceDate) {
     return <NoBoard />;
+  }
+  if (!isImportId(importId)) {
+    return <ImportGone />;
+  }
+  if (errorCode === NOT_FOUND) {
+    return <ImportGone />;
   }
   if (error) {
     return <PageState message={error} error />;

@@ -11,7 +11,7 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-1.5">
         <h1 className="text-[28px] font-bold tracking-tight">Settings</h1>
         <p className="text-[15px] text-gray-600">
-          Team preferences, saved in the database. The server key lives in the backend .env and is never shown here.
+          Team preferences, shared by everyone on the team. The AI key is managed on the server and is never shown here.
         </p>
       </div>
       <SettingsView />

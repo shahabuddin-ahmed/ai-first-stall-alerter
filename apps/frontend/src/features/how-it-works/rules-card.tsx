@@ -11,7 +11,6 @@ const STALL_RULES = [
 const DECISIONS = [
   { when: 'AI is not set up on the server', ai: false, status: 'unavailable', label: 'Template' },
   { when: 'AI drafts are switched off in Settings', ai: false, status: 'disabled', label: 'Template' },
-  { when: 'The rank is below the top alerts', ai: false, status: 'not_in_top_n', label: 'Template' },
   { when: 'No AI answer saved yet (exported before the board was opened)', ai: false, status: 'pending', label: 'Template' },
   { when: 'The last AI try failed', ai: false, status: 'unavailable', label: 'Template + Retry AI' },
   { when: 'A checked AI answer', ai: true, status: 'ai_draft', label: 'AI draft · review before use' }

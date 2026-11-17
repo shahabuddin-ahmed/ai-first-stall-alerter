@@ -55,9 +55,9 @@ packages and `dist/`. It runs the migrations and the seed, then starts the API. 
 | `RATE_LIMIT_INSIGHTS_PER_MINUTE`                                             | `10`                           | AI insights requests per IP per minute                                                   |
 | `AI_API_KEY`                                                                 | empty                          | OpenRouter key. Empty = templates only. The key never leaves the server                  |
 | `AI_BASE_URL`                                                                | `https://openrouter.ai/api/v1` | Any OpenAI-compatible endpoint                                                           |
-| `AI_TOP_N`                                                                   | `5`                            | The top N alerts get AI drafts (screen and CSV); the rest use templates                  |
-| `AI_TIMEOUT_MS`, `AI_MAX_OUTPUT_TOKENS`                                      | `15000`, `1500`                | Limits for one AI call (timeout up to 120000 = 2 minutes)                                |
-| `AI_REASONING_EFFORT`                                                        | `low`                          | Thinking models: `off` (fastest), `low`, `medium`, `high`; `none` = not sent             |
+| `AI_TOP_N`                                                                   | `5`                            | How many top alerts the AI briefing looks at; every row gets an AI message for its action |
+| `AI_TIMEOUT_MS`, `AI_MAX_OUTPUT_TOKENS`                                      | `60000`, `8000`                | Limits for one AI call (timeout up to 120000 = 2 minutes)                                |
+| `AI_REASONING_EFFORT`                                                        | `medium`                       | Thinking models: `off` (fastest), `low`, `medium`, `high`; `none` = not sent             |
 
 Every value is checked at start-up. A wrong value stops the API with a clear message.
 
@@ -78,7 +78,7 @@ answered in 9 seconds and passed every check.
 | GET       | `/imports/:id?referenceDate=&stage=&recruiter=&search=&page=&pageSize=` | Counts, bottlenecks and the ranked queue, recalculated                                                                        |
 | GET       | `/imports/:id/errors?referenceDate=&page=`                              | Row errors with record number, field and fix. The upload answer only has counts, so the screen gets the details here          |
 | POST      | `/imports/:id/insights`                                                 | Briefing, bottleneck notes and AI drafts for the top N (or templates). After a failed try, only `{"retry": true}` asks again |
-| GET       | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=`          | CSV download (never calls the AI). Top N rows use the saved AI drafts, the rest templates (`ai_note_status` = `not_in_top_n`) |
+| GET       | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=`          | CSV download (never calls the AI). Every row uses the saved AI message for its action, or its template |
 | DELETE    | `/imports/:id`                                                          | Delete an import, its rows and its cached AI answers                                                                          |
 
 Errors always look like `{ code, message, response: null, errors: [...] }`. File errors: `FILE_TOO_LARGE` (413),
@@ -112,7 +112,7 @@ yarn db:seed:down        # remove the default data
 
 | Table            | What it stores                                                                                                                                                                                         |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `imports`        | One uploaded file (unique file hash, so the same file is stored once)                                                                                                                                  |
+| `imports`        | One uploaded file (unique file hash, so the same file is stored once); the API uses its UUID `public_id`                                                                                                                                  |
 | `import_records` | The rows of a file: 5 text columns (candidate_id up to 36 characters, stage up to 30, name, role and recruiter up to 50), 3 DATE columns, and `invalid_dates` for wrong dates; deleted with the import |
 | `stages`         | Hiring stages: name, type, threshold, order, aliases, action code                                                                                                                                      |
 | `settings`       | One row: AI drafts on/off, the AI model and the stages version (goes up on each stages save)                                                                                                           |

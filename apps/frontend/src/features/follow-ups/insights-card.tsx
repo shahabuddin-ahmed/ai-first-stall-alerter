@@ -11,6 +11,7 @@ const FAILURE_TEXT: Record<AiErrorCode, string> = {
   [AiErrorCode.AUTH_FAILED]: 'The AI provider rejected the server key.',
   [AiErrorCode.NO_CREDITS]: 'The AI account has no credits left.',
   [AiErrorCode.PROVIDER_ERROR]: 'The AI provider returned an error.',
+  [AiErrorCode.CONNECTION_FAILED]: 'Could not connect to the AI provider.',
   [AiErrorCode.REFUSED]: 'The AI model refused to answer.',
   [AiErrorCode.INVALID_JSON]: 'The AI answer could not be read.',
   [AiErrorCode.INVALID_OUTPUT]: 'The AI answer did not pass the checks.'
@@ -80,7 +81,7 @@ export function InsightsCard({ insights, error, stalled, onRetry }: InsightsCard
           AI is writing
         </Badge>
         <span className="basis-full text-sm text-gray-600">
-          The briefing and the drafts for the top alerts are on their way. This can take a few seconds; the queue
+          The briefing and the messages for every alert are on their way. This can take up to a minute; the queue
           already works with template messages.
         </span>
       </Card>
@@ -107,7 +108,7 @@ export function InsightsCard({ insights, error, stalled, onRetry }: InsightsCard
         </div>
         {isAi && (
           <span className="text-[13px] text-gray-600">
-            AI notes for {insights.drafts.length} of {stalled} alerts
+            AI messages for all {stalled} alerts
           </span>
         )}
       </div>

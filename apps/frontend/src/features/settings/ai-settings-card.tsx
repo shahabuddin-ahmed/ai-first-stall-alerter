@@ -54,7 +54,7 @@ export function AiSettingsCard({ initial, models, modelsError }: AiSettingsCardP
             Use AI drafts
           </h2>
           <span className="text-sm leading-normal text-gray-600">
-            When on, the top alerts get an AI-written briefing note and message draft. Every alert always has a template
+            When on, AI writes a briefing note and a message draft for every alert. Every alert always has a template
             message, AI or not.
           </span>
         </div>
@@ -74,7 +74,7 @@ export function AiSettingsCard({ initial, models, modelsError }: AiSettingsCardP
 
       {locked && (
         <div role="note" className="rounded-[10px] border bg-secondary px-3.5 py-3 text-sm text-gray-700">
-          AI is not set up on the server (no AI_API_KEY in the backend .env). Messages use templates until it is set up.
+          AI is not set up on this server. Every message uses its template until an administrator adds an AI key.
         </div>
       )}
 
@@ -82,7 +82,7 @@ export function AiSettingsCard({ initial, models, modelsError }: AiSettingsCardP
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">AI on the server</span>
           <span className="text-sm font-semibold">{settings.aiConfigured ? 'Set up' : 'Not set up'}</span>
-          <span className="text-[13px] text-gray-600">From AI_API_KEY in the backend .env</span>
+          <span className="text-[13px] text-gray-600">Managed by your administrator</span>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="ai-model" className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">

@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 const RULES = [
   { server: 'Not set up', team: 'Any (switch disabled)', result: 'Templates only', ai: false },
   { server: 'Set up', team: 'Off', result: 'Templates only, no AI calls, no cost', ai: false },
-  { server: 'Set up', team: 'On', result: 'AI drafts for the top alerts; templates if AI fails', ai: true }
+  { server: 'Set up', team: 'On', result: 'AI drafts for every alert; templates if AI fails', ai: true }
 ];
 
 export function AiRulesCard() {
@@ -15,7 +15,7 @@ export function AiRulesCard() {
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
             <tr className="border-b">
-              <th scope="col" className="px-3 py-2.5 text-xs font-semibold text-gray-600">Server key (.env)</th>
+              <th scope="col" className="px-3 py-2.5 text-xs font-semibold text-gray-600">AI key on the server</th>
               <th scope="col" className="px-3 py-2.5 text-xs font-semibold text-gray-600">Use AI drafts (this page)</th>
               <th scope="col" className="px-3 py-2.5 text-xs font-semibold text-gray-600">Result</th>
             </tr>

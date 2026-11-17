@@ -25,7 +25,7 @@ export function StoredImports({ initial }: { initial: ImportSummary[] }) {
   const dispatch = useAppDispatch();
   const openId = useAppSelector((state) => state.board.current?.importId);
   const [imports, setImports] = useState(initial);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pending, setPending] = useState<ImportSummary | null>(null);
 
   const remove = async (item: ImportSummary) => {

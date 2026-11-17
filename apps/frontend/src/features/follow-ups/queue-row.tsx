@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { addDays, formatDate, formatWait } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { MessageSource, Recipient, TimerSource, type InsightDraft, type QueueItem } from '@/types';
+import { Recipient, TimerSource, type QueueItem } from '@/types';
 
 const RECIPIENT_LABEL: Record<Recipient, (firstName: string) => string> = {
   [Recipient.HIRING_MANAGER]: () => 'the hiring manager',
@@ -69,14 +70,13 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 
 interface QueueRowProps {
   item: QueueItem;
-  draft: InsightDraft | undefined;
+  aiDraft: string | null;
   open: boolean;
   onToggle: () => void;
 }
 
-export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
+export function QueueRow({ item, aiDraft, open, onToggle }: QueueRowProps) {
   const [useTemplate, setUseTemplate] = useState(false);
-  const aiDraft = draft?.source === MessageSource.AI_DRAFT ? draft.text : null;
   const showAi = aiDraft !== null && !useTemplate;
   const message = showAi ? aiDraft : item.templateMessage;
 
@@ -92,21 +92,34 @@ export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
 
   return (
     <>
-      <tr className={cn('border-b border-gray-100 transition-colors hover:bg-muted/50', open && 'bg-indigo-50/40 hover:bg-indigo-50/40')}>
+      {/* The whole row opens the details; the arrow button gives keyboard users the same */}
+      <tr
+        onClick={onToggle}
+        className={cn(
+          'cursor-pointer border-b border-gray-100 transition-colors hover:bg-muted/50',
+          open && 'bg-indigo-50/40 hover:bg-indigo-50/40'
+        )}
+      >
+        <td className="py-2 pr-0 pl-2">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={`${open ? 'Hide' : 'Show'} details for ${item.name}`}
+            className="flex size-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ChevronRight
+              aria-hidden="true"
+              className={cn('size-4 transition-transform duration-200', open && 'rotate-90 text-primary')}
+            />
+          </button>
+        </td>
         <td className="px-3 py-2.5">
           <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-xs font-bold text-gray-700 tabular-nums">
             {item.rank}
           </span>
         </td>
         <td className="px-3 py-2.5">
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={onToggle}
-            className="text-left font-semibold underline decoration-indigo-200 underline-offset-[3px] hover:text-indigo-800"
-          >
-            {item.name}
-          </button>
+          <span className="font-semibold">{item.name}</span>
           <div className="pt-0.5 text-xs text-muted-foreground">ID {item.candidateId}</div>
         </td>
         <td className="px-3 py-2.5">{item.role}</td>
@@ -145,9 +158,9 @@ export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
 
       {open && (
         <tr className="border-b border-gray-100 bg-indigo-50/30">
-          <td colSpan={10} className="px-3 pt-1 pb-3">
+          <td colSpan={11} className="px-3 pt-1 pb-3">
             {/* Kept to the visible width of the scroll area, so the message never needs a sideways scroll */}
-            <div className="sticky left-3 grid w-[calc(100cqw-1.5rem)] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+            <div className="fade-in sticky left-3 grid w-[calc(100cqw-1.5rem)] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
               <div className="flex flex-col gap-2.5">
                 <Detail label="Why">
                   <span className="leading-normal">{item.reason}</span>

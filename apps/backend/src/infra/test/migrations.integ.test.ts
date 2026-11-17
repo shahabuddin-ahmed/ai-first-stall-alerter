@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { QueryTypes, UniqueConstraintError } from "sequelize";
 import { DEFAULT_AI_MODEL } from "../../constant/ai";
 import { assertTestDatabase } from "./test-database";
@@ -20,8 +21,8 @@ const listTables = async (): Promise<string[]> => {
 
 const insertImport = async (fileHash: string): Promise<number> => {
     const [id] = await sequelize.query(
-        "INSERT INTO imports (file_name, file_hash, file_size, header_count, record_count) VALUES (?, ?, 100, 8, 1)",
-        { replacements: ["board.csv", fileHash], type: QueryTypes.INSERT }
+        "INSERT INTO imports (public_id, file_name, file_hash, file_size, header_count, record_count) VALUES (?, ?, ?, 100, 8, 1)",
+        { replacements: [randomUUID(), "board.csv", fileHash], type: QueryTypes.INSERT }
     );
     return id as number;
 };

@@ -110,11 +110,12 @@ describe("AiService answer check", () => {
 
     it("rejects text that is too long", async () => {
         expect(await problemsOf(withChange({ briefing: "a".repeat(451) }))).toEqual([
-            "briefing length must be less than or equal to 450 characters long",
+            "briefing is longer than 450 characters",
         ]);
         const long = { action_code: ActionCode.CONFIRM_OFFER, text: "a".repeat(601) };
         expect(await problemsOf(withChange({ drafts: [VALID.drafts[0], long] }))).toEqual([
-            "drafts[1].text length must be less than or equal to 600 characters long",
+            "draft for CONFIRM_OFFER is longer than 600 characters",
+            "draft for CONFIRM_OFFER goes to the candidate: greet them as {{first_name}}, without {{name}}",
         ]);
     });
 
@@ -221,7 +222,7 @@ describe("AiService answer check", () => {
         expect((await failing(new Error("network down"))).errorCode).toBe(AiErrorCode.PROVIDER_ERROR);
     });
 
-    it("logs only how many problems there were, never the AI text", async () => {
+    it("logs which parts failed, never the AI text", async () => {
         const loggerWarn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
         const drafts = [
             VALID.drafts[0],
@@ -230,11 +231,29 @@ describe("AiService answer check", () => {
 
         await check(withChange({ drafts }));
 
-        expect(loggerWarn).toHaveBeenCalledWith("AI answer failed the checks", {
+        expect(loggerWarn).toHaveBeenCalledWith("Some AI parts failed the checks and use templates", {
             model: "test/model",
-            problemCount: 2,
+            failedParts: "draft for CONFIRM_OFFER",
         });
         expect(JSON.stringify(loggerWarn.mock.calls)).not.toMatch(/Friday|secret/);
+    });
+
+    it("keeps the good parts and drops only the part that breaks a rule", async () => {
+        const drafts = [VALID.drafts[0], { action_code: ActionCode.CONFIRM_OFFER, text: "Hi {{first_name}}, reply by Friday." }];
+
+        const result = await check(withChange({ drafts }));
+
+        expect(result.errorCode).toBeNull();
+        expect(result.output?.briefing).toBe(VALID.briefing);
+        expect(result.output?.drafts).toEqual([VALID.drafts[0]]);
+    });
+
+    it("fails when no briefing and no message passes", async () => {
+        const drafts = VALID.drafts.map((draft) => ({ ...draft, text: "Reply by Friday." }));
+
+        const result = await check(withChange({ briefing: "a".repeat(451), drafts }));
+
+        expect(result).toMatchObject({ output: null, errorCode: AiErrorCode.INVALID_OUTPUT });
     });
 
     it("needs one note per bottleneck", async () => {

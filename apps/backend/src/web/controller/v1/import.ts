@@ -51,20 +51,22 @@ export class ImportController extends Controller implements ImportControllerInte
     getPipeline = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(pipelineSchema, req.query);
-        const data = await this.importService.getPipeline(params.id, query);
+        const id = await this.importService.resolveId(params.id);
+        const data = await this.importService.getPipeline(id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
     getRowErrors = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: query } = await this.validateRequest(rowErrorsSchema, req.query);
-        const data = await this.importService.getRowErrors(params.id, query);
+        const id = await this.importService.resolveId(params.id);
+        const data = await this.importService.getRowErrors(id, query);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 
     remove = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(idParamsSchema, req.params);
-        await this.importService.remove(value.id);
+        await this.importService.remove(await this.importService.resolveId(value.id));
         return this.sendResponse({ response: { deleted: true } }, HttpStatus.OK, res);
     };
 }

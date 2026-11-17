@@ -11,7 +11,6 @@ export enum AiNoteStatus {
     DISABLED = "disabled",
     PENDING = "pending",
     UNAVAILABLE = "unavailable",
-    NOT_IN_TOP_N = "not_in_top_n",
 }
 
 export enum MessageSource {
@@ -25,6 +24,7 @@ export enum AiErrorCode {
     AUTH_FAILED = "AUTH_FAILED",
     NO_CREDITS = "NO_CREDITS",
     PROVIDER_ERROR = "PROVIDER_ERROR",
+    CONNECTION_FAILED = "CONNECTION_FAILED",
     REFUSED = "REFUSED",
     INVALID_JSON = "INVALID_JSON",
     INVALID_OUTPUT = "INVALID_OUTPUT",
@@ -84,6 +84,16 @@ export const AI_LIMITS = {
 
 export const RECRUITER_KEY_PREFIX = "R";
 export const RECRUITER_KEY_PATTERN = /\bR\d+\b/g;
+
+// Retries only where the request never reached the provider (dead connection) or the provider asked to wait
+export const AI_RETRY = {
+    MAX_RETRIES: 2,
+    BASE_DELAY_MS: 500,
+    MAX_JITTER_MS: 250,
+    MAX_RETRY_AFTER_MS: 10_000,
+    // A retry starts only if this much of the overall timeout is still left
+    MIN_TIME_LEFT_MS: 1_000,
+} as const;
 
 export const AI_REQUEST = {
     CHAT_PATH: "/chat/completions",

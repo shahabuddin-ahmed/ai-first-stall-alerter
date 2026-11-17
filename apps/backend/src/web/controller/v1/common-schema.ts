@@ -3,7 +3,7 @@ import { ISO_DATE_PATTERN, PAGINATION, SEARCH_MAX_LENGTH } from "../../../consta
 import { PipelineColumn, TEXT_COLUMN_LIMITS } from "../../../constant/pipeline";
 
 export const idParamsSchema = Joi.object({
-    id: Joi.number().integer().positive().required(),
+    id: Joi.string().guid({ version: "uuidv4" }).required(),
 });
 
 export const referenceDateField = Joi.string().pattern(ISO_DATE_PATTERN).messages({

@@ -23,9 +23,10 @@ export interface ActionDraft {
     text: string;
 }
 
+// A part that failed its checks is null (or left out, for drafts): the screen uses its template instead
 export interface AiOutput {
-    briefing: string;
-    bottleneck_notes: string[];
+    briefing: string | null;
+    bottleneck_notes: (string | null)[];
     drafts: ActionDraft[];
 }
 
@@ -63,9 +64,9 @@ const PLACEHOLDER = /\{\{[^{}]*\}\}/g;
 const answerSchema = (facts: InsightFacts): Joi.ObjectSchema<AiOutput> => {
     const actions = actionsOf(facts);
     return Joi.object<AiOutput>({
-        briefing: Joi.string().trim().max(AI_LIMITS.BRIEFING_CHARS).required(),
+        briefing: Joi.string().trim().required(),
         bottleneck_notes: Joi.array()
-            .items(Joi.string().trim().max(AI_LIMITS.BOTTLENECK_NOTE_CHARS))
+            .items(Joi.string().trim())
             .length(facts.bottlenecks.length)
             .required(),
         drafts: Joi.array()
@@ -74,7 +75,7 @@ const answerSchema = (facts: InsightFacts): Joi.ObjectSchema<AiOutput> => {
                     action_code: Joi.string()
                         .valid(...actions)
                         .required(),
-                    text: Joi.string().trim().max(AI_LIMITS.DRAFT_CHARS).required(),
+                    text: Joi.string().trim().required(),
                 })
             )
             .unique("action_code")
@@ -94,8 +95,11 @@ const numbersIn = (value: unknown, found = new Set<number>()): Set<number> => {
     return found;
 };
 
-const textProblems = (label: string, text: string): string[] => {
+const textProblems = (label: string, text: string, maxChars: number): string[] => {
     const problems: string[] = [];
+    if (text.length > maxChars) {
+        problems.push(`${label} is longer than ${maxChars} characters`);
+    }
     if (LINK_OR_MARKUP.test(text)) {
         problems.push(`${label} contains a link or markup`);
     }
@@ -149,25 +153,49 @@ const recipientProblems = (label: string, text: string, actionCode: ActionCode):
     return [];
 };
 
-const answerProblems = (answer: AiOutput, facts: InsightFacts): string[] => {
+interface CheckedAnswer {
+    output: AiOutput;
+    problems: string[];
+    // Only our own labels, such as "draft for CONFIRM_OFFER": safe to log, unlike the problems that quote the AI text
+    failedParts: string[];
+}
+
+// Each part is checked on its own: a part that breaks a rule is dropped, the good parts are kept
+const checkParts = (answer: AiOutput, facts: InsightFacts): CheckedAnswer => {
     const allowedNumbers = numbersIn(facts);
-    const problems = [
-        ...textProblems("briefing", answer.briefing),
-        ...numberProblems("briefing", answer.briefing, allowedNumbers),
+    const proseProblems = (label: string, text: string, maxChars: number) => [
+        ...textProblems(label, text, maxChars),
+        ...numberProblems(label, text, allowedNumbers),
     ];
-    answer.bottleneck_notes.forEach((note, index) => {
-        const label = `bottleneck note ${index + 1}`;
-        problems.push(...textProblems(label, note), ...numberProblems(label, note, allowedNumbers));
-    });
-    for (const draft of answer.drafts) {
+
+    const briefingProblems = proseProblems("briefing", answer.briefing as string, AI_LIMITS.BRIEFING_CHARS);
+    const noteProblems = answer.bottleneck_notes.map((note, index) =>
+        proseProblems(`bottleneck note ${index + 1}`, note as string, AI_LIMITS.BOTTLENECK_NOTE_CHARS)
+    );
+    const draftProblemsList = answer.drafts.map((draft) => {
         const label = `draft for ${draft.action_code}`;
-        problems.push(
-            ...textProblems(label, draft.text),
+        return [
+            ...textProblems(label, draft.text, AI_LIMITS.DRAFT_CHARS),
             ...draftProblems(label, draft.text),
-            ...recipientProblems(label, draft.text, draft.action_code)
-        );
-    }
-    return problems;
+            ...recipientProblems(label, draft.text, draft.action_code),
+        ];
+    });
+
+    return {
+        output: {
+            briefing: briefingProblems.length > 0 ? null : answer.briefing,
+            bottleneck_notes: answer.bottleneck_notes.map((note, index) => (noteProblems[index].length > 0 ? null : note)),
+            drafts: answer.drafts.filter((_draft, index) => draftProblemsList[index].length === 0),
+        },
+        problems: [...briefingProblems, ...noteProblems.flat(), ...draftProblemsList.flat()],
+        failedParts: [
+            ...(briefingProblems.length > 0 ? ["briefing"] : []),
+            ...noteProblems.flatMap((problems, index) => (problems.length > 0 ? [`bottleneck note ${index + 1}`] : [])),
+            ...answer.drafts.flatMap((draft, index) =>
+                draftProblemsList[index].length > 0 ? [`draft for ${draft.action_code}`] : []
+            ),
+        ],
+    };
 };
 
 export class AiService implements AiServiceInterface {
@@ -191,14 +219,22 @@ export class AiService implements AiServiceInterface {
             return { output: null, errorCode: errorCodeOf(err), problems: [], usage: NO_USAGE };
         }
 
+        // A broken shape (missing parts, unknown action codes) cannot be used at all
         const { value: answer, error } = answerSchema(facts).validate(generated.output, ANSWER_CHECK_OPTIONS);
-        const problems = error ? error.details.map((detail) => detail.message) : answerProblems(answer, facts);
-        if (problems.length > 0) {
-            // Only the count: the problem text can quote parts of the AI answer
-            logger.warn("AI answer failed the checks", { model, problemCount: problems.length });
+        if (error) {
+            const problems = error.details.map((detail) => detail.message);
+            logger.warn("AI answer has the wrong shape", { model, problemCount: problems.length });
             return { output: null, errorCode: AiErrorCode.INVALID_OUTPUT, problems, usage: generated };
         }
-        return { output: this.sortDrafts(answer, facts), errorCode: null, problems: [], usage: generated };
+
+        const { output, problems, failedParts } = checkParts(answer, facts);
+        if (failedParts.length > 0) {
+            logger.warn("Some AI parts failed the checks and use templates", { model, failedParts: failedParts.join(", ") });
+        }
+        if (output.briefing === null && output.drafts.length === 0) {
+            return { output: null, errorCode: AiErrorCode.INVALID_OUTPUT, problems, usage: generated };
+        }
+        return { output: this.sortDrafts(output, facts), errorCode: null, problems, usage: generated };
     }
 
     async listModels(): Promise<AiModel[]> {

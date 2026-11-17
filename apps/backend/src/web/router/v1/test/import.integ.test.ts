@@ -20,6 +20,9 @@ import { globalErrorHandler } from "../../../middleware/global-error-handler";
 import { newImportRouter } from "../import";
 import { newStageRouter } from "../stage";
 
+// A valid UUID that no import has
+const MISSING_ID = "00000000-0000-4000-8000-000000000000";
+
 // Needs MySQL with the test database (docker compose up db). Each test starts with no imports.
 const sequelize = newSequelize();
 const DATA_DIR = path.resolve(__dirname, "../../../../../../../data");
@@ -174,7 +177,7 @@ describe("POST /api/v1/imports", () => {
 });
 
 describe("GET /api/v1/imports/:id", () => {
-    let importId: number;
+    let importId: string;
 
     beforeEach(async () => {
         importId = (await upload(app, SAMPLE_B)).body.response.import.id;
@@ -251,8 +254,14 @@ describe("GET /api/v1/imports/:id", () => {
         });
     });
 
+    it("rejects an import ID that is not a UUID, such as a database number", async () => {
+        const res = await request(app).get(`/api/v1/imports/1?referenceDate=${REFERENCE_DATE}`);
+
+        expect(res.status).toBe(HttpStatus.BAD_REQUEST);
+    });
+
     it("returns 404 for an import that does not exist", async () => {
-        const res = await request(app).get(`/api/v1/imports/999999?referenceDate=${REFERENCE_DATE}`);
+        const res = await request(app).get(`/api/v1/imports/${MISSING_ID}?referenceDate=${REFERENCE_DATE}`);
 
         expect(res.status).toBe(HttpStatus.NOT_FOUND);
         expect(res.body.code).toBe(ERROR_CODES.E_NOT_FOUND);
@@ -270,7 +279,8 @@ describe("stored dates", () => {
         const [stored] = await sequelize.query<Record<string, unknown>>(
             `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
                     last_contacted_at AS contacted, invalid_dates AS invalid
-             FROM import_records WHERE import_id = ?`,
+             FROM import_records
+             WHERE import_id = (SELECT id FROM imports WHERE public_id = ?)`,
             { replacements: [importId], type: QueryTypes.SELECT }
         );
         expect(stored).toEqual({
@@ -292,7 +302,7 @@ describe("stored dates", () => {
 });
 
 describe("other import endpoints", () => {
-    let importId: number;
+    let importId: string;
 
     beforeEach(async () => {
         importId = (await upload(app, SAMPLE_B)).body.response.import.id;

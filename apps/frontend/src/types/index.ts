@@ -12,7 +12,7 @@ export interface HealthReport {
 }
 
 export interface Board {
-  importId: number;
+  importId: string;
   fileName: string;
   referenceDate: string;
 }
@@ -50,7 +50,8 @@ export interface StageList {
 }
 
 export interface ImportSummary {
-  id: number;
+  // The public UUID of the import
+  id: string;
   fileName: string;
   fileSize: number;
   recordCount: number;
@@ -120,6 +121,7 @@ export interface QueueItem {
   stage: string;
   stageStep: number;
   stageSteps: number;
+  actionCode: string;
   recruiter: string;
   timerFrom: string;
   timerSource: TimerSource;
@@ -190,6 +192,7 @@ export enum AiErrorCode {
   AUTH_FAILED = 'AUTH_FAILED',
   NO_CREDITS = 'NO_CREDITS',
   PROVIDER_ERROR = 'PROVIDER_ERROR',
+  CONNECTION_FAILED = 'CONNECTION_FAILED',
   REFUSED = 'REFUSED',
   INVALID_JSON = 'INVALID_JSON',
   INVALID_OUTPUT = 'INVALID_OUTPUT'
@@ -200,12 +203,10 @@ export enum MessageSource {
   TEMPLATE = 'template'
 }
 
-export interface InsightDraft {
-  rank: number;
-  candidateId: string;
-  name: string;
+// One AI message per follow-up action, with blanks such as {{first_name}} that each row fills in
+export interface ActionMessage {
+  actionCode: string;
   text: string;
-  source: MessageSource;
 }
 
 export interface BottleneckNote extends Bottleneck {
@@ -222,7 +223,7 @@ export interface InsightsView {
   topN: number;
   briefing: { text: string; source: MessageSource };
   bottleneckNotes: BottleneckNote[];
-  drafts: InsightDraft[];
+  actionMessages: ActionMessage[];
 }
 
 export interface CsvFile {
