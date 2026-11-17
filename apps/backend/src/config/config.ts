@@ -71,7 +71,7 @@ const envSchema = Joi.object<Env>({
     AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(8000),
     AI_REASONING_EFFORT: Joi.string()
         .valid(...Object.values(ReasoningEffort))
-        .default(ReasoningEffort.MEDIUM),
+        .default(ReasoningEffort.LOW),
 
     WEB_ORIGIN: Joi.string()
         .custom((value: string) =>
