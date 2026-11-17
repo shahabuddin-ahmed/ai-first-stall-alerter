@@ -1,4 +1,4 @@
-# StallAlert: Final Proposal (v5.4)
+# StallAlert: Final Proposal (v5.9)
 
 **Five-day assessment · Option C: Stall Alerter** · Repository `ai-first-stall-alerter`
 
@@ -408,3 +408,5 @@ invitation is the authority for formats and deadlines.
   Settings has a searchable model picker with prices. `settings.use_ai_drafts` is now `status` (1 = active, 0 = inactive).
 - **v5.7:** every queue row gets the AI message for its action (one AI call per board, as before).
 - **v5.8:** imports are shown by a random UUID (`public_id`), never by the database number.
+- **v5.9:** AI answers are checked part by part: a part that breaks a rule uses its template and the good parts
+  stay; AI settings default to medium thinking, 8000 output tokens and a 60-second timeout, with a safe retry.

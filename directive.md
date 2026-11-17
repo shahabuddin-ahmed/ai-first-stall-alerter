@@ -6,7 +6,7 @@
 >
 > Labels: **[Brief]** = mandated by the assessment. **[Decision]** = my implementation choice, with its reason.
 >
-> Version: v5.4
+> Version: v5.9
 
 ---
 
@@ -469,6 +469,8 @@ invitation is the authority for formats and deadlines.
   *Reason:* with a free key, every visit after a failed answer cost a new call; a reload must not lose the board.
 - **v5.3:** the queue shows "Waiting on" (candidate or hiring team), the wait in plain words, the due date, and "Step X of Y" for the stage.
   Display only; no rule changed.
+  *Reason:* MUST's own job-seeker app (Match Hire) speaks in these terms ("waiting on you", "with the hiring team",
+  "3 months"); the recruiter side should match.
 - **v5.4:** the `ai_models` table is removed. The model list comes from OpenRouter and stays in memory for 1 day;
   if it cannot be loaded, `/settings/models` answers 503 and the saved model keeps working. Settings has a searchable
   model picker that shows the current model and each model's price per 1M tokens. `settings.use_ai_drafts` is renamed
@@ -492,5 +494,3 @@ invitation is the authority for formats and deadlines.
   action's message) falls back to its template; the good parts stay. The log names the failed parts, never the AI text.
   The whole answer fails only if its shape is wrong or no briefing and no message passes.
   *Reason:* one small slip (for example a date in one message) threw away every good AI message.
-  *Reason:* MUST's own job-seeker app (Match Hire) speaks in these terms ("waiting on you", "with the hiring team",
-  "3 months"); the recruiter side should match.
