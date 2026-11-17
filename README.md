@@ -24,6 +24,7 @@ Five-day assessment, Option C (Stall Alerter). Built AI-first.
 | See how it is built (diagrams, AI flow, tradeoffs) | [docs/DESIGN.md](docs/DESIGN.md)                |
 | See the database tables                            | [docs/erd.md](docs/erd.md)                      |
 | See the rules the app is built from                | [directive.md](directive.md) (with a changelog) |
+| See the submission (intent, daily logs, unlearned) | [submission/](submission/README.md)             |
 | Work on the API                                    | [Backend README](apps/backend/README.md)        |
 | Call the API (samples for every endpoint)          | [API reference](apps/backend/API.md)            |
 | Work on the web app                                | [Frontend README](apps/frontend/README.md)      |
@@ -37,6 +38,7 @@ Five-day assessment, Option C (Stall Alerter). Built AI-first.
 | `data/sample-*.csv`            | Fictional sample files A, B and C                                    |
 | `data/expected/*.json`         | Expected results for the samples                                     |
 | `docs/`                        | Design and ERD, with Mermaid diagrams                                |
+| `submission/`                  | The assessment deliverables: intent, daily logs, unlearned           |
 | `scripts/generate_expected.py` | Makes the expected results, written separately from the app (Python) |
 | `docker-compose.yml`           | The whole app, development (pulls in each app's Compose file)        |
 | `docker-compose.prod.yml`      | The whole app, production on one server                              |
