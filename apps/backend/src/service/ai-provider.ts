@@ -1,6 +1,7 @@
 import type { AiConfig } from "../config/config";
 import { AI_MODEL_LIST, AI_REQUEST, AI_RETRY, AiErrorCode, ChatRole, FinishReason, ReasoningEffort } from "../constant/ai";
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "../constant/ai-prompt";
+import { MS_PER_SECOND } from "../constant/api";
 import { HttpStatus } from "../constant/http";
 import logger from "../infra/logger";
 import { httpRequest, HttpResponse, isConnectionError } from "../utils/http";
@@ -76,8 +77,6 @@ const RETRY_STATUSES: number[] = [
     HttpStatus.SERVICE_UNAVAILABLE,
     HttpStatus.GATEWAY_TIMEOUT,
 ];
-
-const MS_PER_SECOND = 1000;
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 

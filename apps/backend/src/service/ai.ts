@@ -160,7 +160,6 @@ interface CheckedAnswer {
     failedParts: string[];
 }
 
-// Each part is checked on its own: a part that breaks a rule is dropped, the good parts are kept
 const checkParts = (answer: AiOutput, facts: InsightFacts): CheckedAnswer => {
     const allowedNumbers = numbersIn(facts);
     const proseProblems = (label: string, text: string, maxChars: number) => [
@@ -219,7 +218,6 @@ export class AiService implements AiServiceInterface {
             return { output: null, errorCode: errorCodeOf(err), problems: [], usage: NO_USAGE };
         }
 
-        // A broken shape (missing parts, unknown action codes) cannot be used at all
         const { value: answer, error } = answerSchema(facts).validate(generated.output, ANSWER_CHECK_OPTIONS);
         if (error) {
             const problems = error.details.map((detail) => detail.message);

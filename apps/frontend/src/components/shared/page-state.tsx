@@ -17,7 +17,6 @@ export function PageState({ message, error = false }: { message: string; error?:
     );
   }
 
-  // Grey placeholder blocks while loading; screen readers hear the message
   return (
     <Card role="status">
       <CardContent className="flex flex-col gap-3 py-6">

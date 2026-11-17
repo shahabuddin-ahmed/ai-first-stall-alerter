@@ -50,7 +50,6 @@ export interface StageList {
 }
 
 export interface ImportSummary {
-  // The public UUID of the import
   id: string;
   fileName: string;
   fileSize: number;
@@ -232,7 +231,6 @@ export interface CsvFile {
   text: string;
 }
 
-// AI on/off for the team: 1 = active, 0 = inactive
 export enum SettingStatus {
   INACTIVE = 0,
   ACTIVE = 1

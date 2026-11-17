@@ -26,8 +26,7 @@ import {
 } from "./pipeline-messages";
 import { PipelineAnalysis } from "./pipeline-types";
 
-// One AI message per follow-up action, with {{first_name}}, {{name}}, {{role}} and {{recruiter}} still in it.
-// Every queue row with that action uses it, filled with the row's own details.
+// One AI message per follow-up action, still with its placeholders; every row with that action uses it
 export interface ActionMessage {
     actionCode: ActionCode;
     text: string;
@@ -61,7 +60,6 @@ export interface InsightServiceInterface {
     getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts>;
 }
 
-// A part that failed its checks is null: show its template instead
 const aiOrTemplate = (
     aiText: string | null,
     templateText: string,
