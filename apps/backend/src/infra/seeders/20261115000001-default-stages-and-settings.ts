@@ -59,7 +59,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
             })),
             { transaction }
         );
-        await queryInterface.bulkInsert("settings", [{ id: SETTINGS_ID, use_ai_drafts: true, stages_version: 1 }], {
+        await queryInterface.bulkInsert("settings", [{ id: SETTINGS_ID, status: 1, stages_version: 1 }], {
             transaction,
         });
     });

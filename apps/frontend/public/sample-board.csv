@@ -1,0 +1,44 @@
+candidate_id,name,role,stage,stage_entered_at,recruiter,last_contacted_at
+101,Amara Okafor,Backend Engineer,Offer,2026-11-03,Recruiter A,2026-11-05
+102,Lucas Ferreira,Frontend Engineer,Screening,2026-11-12,Recruiter B,2026-11-12
+103,Mei Tanaka,Product Designer,Interview,2026-10-30,Recruiter C,2026-11-02
+104,Jonas Berg,QA Engineer,Applied,2026-10-20,Recruiter A,
+105,Priya Raman,Backend Engineer,Assessment,2026-11-03,Recruiter B,2026-11-12
+106,Diego Alvarez,Data Analyst,Hired,2026-10-15,Recruiter C,
+107,Sofia Rossi,Frontend Engineer,Rejected,2026-10-01,Recruiter B,
+108,Kwame Mensah,Backend Engineer,Screening,2026-10-28,Recruiter A,2026-10-29
+109,Elena Petrova,Product Designer,Interview,2026-11-07,Recruiter C,
+110,Hassan Ali,QA Engineer,Offer,2026-11-06,Recruiter B,2026-11-10
+111,Grace Kim,Data Analyst,Assessment,2026-11-05,Recruiter C,
+112,Mateo Silva,Frontend Engineer,Applied,2026-11-13,Recruiter A,
+113,Nadia Haddad,Backend Engineer,Withdrawn,2026-10-22,Recruiter A,
+114,Oliver Brown,Product Designer,Screening,2026-11-04,Recruiter C,
+115,Yuki Sato,Frontend Engineer,Interview,,Recruiter B,
+116,Fatima Zahra,Data Analyst,Applied,2026-11-01,,
+117,Liam Murphy,QA Engineer, interview ,2026-11-02,Recruiter A,2026-11-03
+118,Chloe Martin,Backend Engineer,Technical Test,2026-11-01,Recruiter A,
+119,Arjun Mehta,Frontend Engineer,Screening,2026-11-20,Recruiter B,
+102,Lucas Ferreira,Frontend Engineer,Interview,2026-11-12,Recruiter B,
+121,Isabel Costa,Product Designer,Offer,2026-11-09,Recruiter C,2026-11-09
+122,Noah Wilson,Data Analyst,Interview,2026-10-25,Recruiter B,2026-10-26
+123,"Lopes, Ana",QA Engineer,Assessment,2026-11-11,Recruiter A,
+124,Ethan Clark,Backend Engineer,Applied,2026-11-06,Recruiter A,
+125,Leila Nasser,Frontend Engineer,Offer,2026-11-03,Recruiter B,2026-11-11
+126,Samuel Adeyemi,Data Analyst,Screening,2026-02-30,Recruiter C,
+127,Hana Novak,Product Designer,Applied,2026-10-10,Recruiter C,
+128,Ivan Horvat,QA Engineer,Screening,13/11/2026,Recruiter B,
+129,Ruth Mwangi,Backend Engineer,Interview,2026-11-04,Recruiter A,2026-11-15
+130,Pablo Ortega,Frontend Engineer,Hired,2026-10-20,Recruiter B,
+131,Mina Choi,Data Analyst,Applied,2026-11-06,Recruiter B,
+132,Lars Nielsen,QA Engineer,Interview,2026-11-06,Recruiter C,
+133,Bianca Pop,Product Designer,Rejected,2026-11-02,Recruiter C,
+134,Kofi Boateng,Backend Engineer,Offer,2026-11-12,Recruiter A,
+135,Sara Lindqvist,Frontend Engineer,Assessment,2026-11-02,Recruiter B,2026-11-04
+,Omar Farouk,Data Analyst,Offer,2026-11-10,Recruiter C,
+137,Julia Weber,QA Engineer,Applied,2026-11-03,Recruiter A,
+138,Ravi Kumar,Product Designer,Screening,2026-11-12,Recruiter C,2026-11-12
+139,Emma Dubois,Backend Engineer,Screening,2026-11-06,Recruiter A,2026-11-08
+140,Ngozi Eze,Frontend Engineer,Applied,2026-11-09,Recruiter B,
+141,Rosa Lopez,QA Engineer, Mobile,Interview,2026-11-01,Recruiter C,
+0142,Wei Zhang,Data Analyst,offer,2026-11-05,Recruiter A,
+143,Zara Khan,Product Designer,Interview,2026-10-31,Recruiter B,2026-11-12

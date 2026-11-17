@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { UniqueConstraintError } from "sequelize";
 import { PIPELINE_LIMITS, LATEST_UTC_OFFSET_MS } from "../constant/pipeline";
 import { ERROR_CODES } from "../constant/error";
@@ -25,7 +26,8 @@ import { toPipelineRecord, toStoredRecord } from "../repo/stored-record";
 import { ConfigServiceInterface } from "./config";
 
 export interface ImportSummary {
-    id: number;
+    // The public UUID; the number id stays inside the server
+    id: string;
     fileName: string;
     fileSize: number;
     recordCount: number;
@@ -79,11 +81,12 @@ export interface ImportServiceInterface {
     getRowErrors(id: number, query: PipelineQuery): Promise<RowErrorsView>;
     analyse(id: number, referenceDate?: string): Promise<AnalysedImport>;
     list(offset: number, limit: number): Promise<ImportList>;
+    resolveId(publicId: string): Promise<number>;
     remove(id: number): Promise<boolean>;
 }
 
 const toSummary = (found: ImportInterface): ImportSummary => ({
-    id: found.id as number,
+    id: found.publicId,
     fileName: found.fileName,
     fileSize: found.fileSize,
     recordCount: found.recordCount,
@@ -112,6 +115,7 @@ export class ImportService implements ImportServiceInterface {
         }
 
         const details: ImportInterface = {
+            publicId: randomUUID(),
             fileName: file.fileName.slice(0, PIPELINE_LIMITS.MAX_FILE_NAME_LENGTH),
             fileHash: sha256Hex(file.bytes),
             fileSize: file.bytes.length,
@@ -176,6 +180,14 @@ export class ImportService implements ImportServiceInterface {
     async list(offset: number, limit: number): Promise<ImportList> {
         const [data, total] = await Promise.all([this.importRepo.list(offset, limit), this.importRepo.count()]);
         return { data: data.map(toSummary), offset, limit, total };
+    }
+
+    async resolveId(publicId: string): Promise<number> {
+        const found = await this.importRepo.findByPublicId(publicId);
+        if (!found) {
+            throw new NotFoundException(ERROR_CODES.E_NOT_FOUND, "Import not found");
+        }
+        return found.id as number;
     }
 
     async remove(id: number): Promise<boolean> {

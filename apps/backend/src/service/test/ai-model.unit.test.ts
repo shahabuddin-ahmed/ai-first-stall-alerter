@@ -1,47 +1,32 @@
 import { AiService } from "../ai";
-import { AiProviderInterface, CompletionResult } from "../ai-provider";
+import { AiModel, AiProviderInterface, CompletionResult } from "../ai-provider";
 import { AI_MODEL_LIST } from "../../constant/ai";
-import { AiModelInterface } from "../../model/ai-model";
-import { AiModelRepoInterface } from "../../repo/ai-model";
+import { ServiceUnavailableException } from "../../web/exception/service-unavailable-exception";
 
-const LING: AiModelInterface = { modelId: "inclusionai/ling-3.2-flash:free", name: "Ling", contextLength: null };
-const OTHER: AiModelInterface = { modelId: "other/model:free", name: "Other", contextLength: null };
-
-class MemoryRepo implements AiModelRepoInterface {
-    models: AiModelInterface[] = [];
-
-    async list(): Promise<AiModelInterface[]> {
-        return this.models;
-    }
-
-    async replaceAll(models: AiModelInterface[]): Promise<void> {
-        this.models = models;
-    }
-}
+const LING: AiModel = { modelId: "inclusionai/ling-3.2-flash:free", name: "Ling", contextLength: null, inputPrice: 0, outputPrice: 0 };
+const OTHER: AiModel = { modelId: "other/model:free", name: "Other", contextLength: null, inputPrice: 1, outputPrice: 2 };
 
 class CountingSource implements AiProviderInterface {
     calls = 0;
-    answer: () => Promise<AiModelInterface[]> = async () => [LING];
+    answer: () => Promise<AiModel[]> = async () => [LING];
 
     async createCompletion(): Promise<CompletionResult> {
         throw new Error("not used");
     }
 
-    async fetchModels(): Promise<AiModelInterface[]> {
+    async fetchModels(): Promise<AiModel[]> {
         this.calls += 1;
         return this.answer();
     }
 }
 
-let repo: MemoryRepo;
 let source: CountingSource;
 let service: AiService;
 let now: number;
 
 beforeEach(() => {
-    repo = new MemoryRepo();
     source = new CountingSource();
-    service = new AiService(repo, source, true);
+    service = new AiService(source, true);
     now = Date.now();
     jest.spyOn(Date, "now").mockImplementation(() => now);
 });
@@ -49,14 +34,14 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe("AiService model list", () => {
-    it("fetches the list once, saves it in the DB and keeps it in memory for 30 minutes", async () => {
+    it("fetches the list once and keeps it in memory for 1 day", async () => {
         expect(await service.listModels()).toEqual([LING]);
+        now += AI_MODEL_LIST.CACHE_MS - 1;
         expect(await service.listModels()).toEqual([LING]);
         expect(source.calls).toBe(1);
-        expect(repo.models).toEqual([LING]);
     });
 
-    it("fetches again after 30 minutes", async () => {
+    it("fetches again after 1 day", async () => {
         await service.listModels();
         now += AI_MODEL_LIST.CACHE_MS;
         source.answer = async () => [LING, OTHER];
@@ -65,13 +50,15 @@ describe("AiService model list", () => {
         expect(source.calls).toBe(2);
     });
 
-    it("uses the list saved in the DB when OpenRouter cannot be reached", async () => {
-        repo.models = [OTHER];
+    it("says the list is unavailable when OpenRouter cannot be reached, and tries again next time", async () => {
         source.answer = async () => {
             throw new Error("network error");
         };
+        await expect(service.listModels()).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-        expect(await service.listModels()).toEqual([OTHER]);
+        source.answer = async () => [LING];
+        expect(await service.listModels()).toEqual([LING]);
+        expect(source.calls).toBe(2);
     });
 
     it("knows whether a model is in the list", async () => {

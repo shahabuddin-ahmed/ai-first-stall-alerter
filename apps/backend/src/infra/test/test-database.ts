@@ -23,7 +23,6 @@ export const resetTestDatabase = async (): Promise<void> => {
     const seeder = newSeeder(sequelize);
     await seeder.down({ to: 0 });
     await sequelize.query("DELETE FROM llm_calls");
-    await sequelize.query("DELETE FROM ai_models");
     await sequelize.query("DELETE FROM imports");
     await sequelize.query("DELETE FROM stages");
     await sequelize.query("DELETE FROM settings");

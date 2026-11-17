@@ -17,7 +17,6 @@ import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { InsightFacts } from "../../../../service/pipeline-messages";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newExportService } from "../../../../service/export";
 import { newImportService } from "../../../../service/import";
@@ -31,6 +30,9 @@ import { newExportRouter } from "../export";
 import { newImportRouter } from "../import";
 import { newInsightRouter } from "../insight";
 import { newSettingRouter } from "../setting";
+
+// A valid UUID that no import has
+const MISSING_ID = "00000000-0000-4000-8000-000000000000";
 
 // Needs MySQL with the test database. No real AI calls.
 const sequelize = newSequelize();
@@ -55,7 +57,7 @@ class CountingGenerator implements AiProviderInterface {
 }
 
 const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const aiService = new AiService(generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -77,7 +79,7 @@ const makeApi = async (generator: AiProviderInterface | null): Promise<Express> 
     return app;
 };
 
-const upload = async (app: Express, bytes: Buffer = SAMPLE_B): Promise<number> => {
+const upload = async (app: Express, bytes: Buffer = SAMPLE_B): Promise<string> => {
     const res = await request(app)
         .post("/api/v1/imports")
         .field("referenceDate", REFERENCE_DATE)
@@ -85,7 +87,7 @@ const upload = async (app: Express, bytes: Buffer = SAMPLE_B): Promise<number> =
     return res.body.response.import.id;
 };
 
-const download = (app: Express, importId: number, query = "") =>
+const download = (app: Express, importId: string, query = "") =>
     request(app)
         .get(`/api/v1/imports/${importId}/export?referenceDate=${REFERENCE_DATE}${query}`)
         .buffer(true)
@@ -100,7 +102,7 @@ const readCsv = (text: string): Record<string, string>[] => parse(text, { bom: t
 
 let generator: CountingGenerator;
 let app: Express;
-let importId: number;
+let importId: string;
 let warnLog: jest.SpyInstance;
 
 beforeEach(async () => {
@@ -124,7 +126,7 @@ describe("GET /api/v1/imports/:id/export", () => {
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.headers["content-type"]).toBe("text/csv; charset=utf-8");
         expect(res.headers["content-disposition"]).toBe(
-            `attachment; filename="stallalert-${REFERENCE_DATE}-import-${importId}.csv"`
+            `attachment; filename="stallalert-${REFERENCE_DATE}-${importId.split("-")[0]}.csv"`
         );
 
         const rows = readCsv(res.body);
@@ -160,31 +162,17 @@ describe("GET /api/v1/imports/:id/export", () => {
         rows.forEach((row) => expect(row.message_source).toBe(MessageSource.TEMPLATE));
     });
 
-    it("uses AI drafts for the top 5 like the insights screen, and templates for the rest", async () => {
-        const insights = await request(app)
-            .post(`/api/v1/imports/${importId}/insights`)
-            .send({ referenceDate: REFERENCE_DATE });
+    it("uses the AI message of each row's action for every row, filled with the row's details", async () => {
+        await request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate: REFERENCE_DATE });
 
         const rows = readCsv((await download(app, importId)).body);
-        const top = rows.filter((row) => Number(row.rank) <= 5);
-        const rest = rows.filter((row) => Number(row.rank) > 5);
 
         expect(rows).toHaveLength(EXPECTED_B.queue.length);
-        expect(top.map((row) => row.message_draft)).toEqual(
-            insights.body.response.drafts.map((draft: { text: string }) => draft.text)
-        );
-        top.forEach((row) => {
+        expect(rows.length).toBeGreaterThan(5);
+        rows.forEach((row) => {
             expect([row.ai_note_status, row.message_source]).toEqual([AiNoteStatus.AI_DRAFT, MessageSource.AI_DRAFT]);
             expect(row.message_draft).toContain(row.recruiter);
             expect(row.message_draft).not.toContain("{{");
-        });
-        expect(rest.length).toBeGreaterThan(0);
-        rest.forEach((row) => {
-            expect([row.ai_note_status, row.message_source]).toEqual([
-                AiNoteStatus.NOT_IN_TOP_N,
-                MessageSource.TEMPLATE,
-            ]);
-            expect(row.message_draft).not.toContain("I am following up about");
         });
         expect(generator.calls).toBe(1);
     });
@@ -204,7 +192,7 @@ describe("GET /api/v1/imports/:id/export", () => {
     it("marks every row as disabled when the team turned AI drafts off", async () => {
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .send({ status: 0, aiModel: DEFAULT_AI_MODEL })
             .expect(HttpStatus.OK);
 
         const rows = readCsv((await download(app, importId)).body);
@@ -242,7 +230,7 @@ describe("GET /api/v1/imports/:id/export", () => {
     });
 
     it("returns 404 (JSON) for an import that does not exist", async () => {
-        const res = await request(app).get(`/api/v1/imports/999999/export?referenceDate=${REFERENCE_DATE}`);
+        const res = await request(app).get(`/api/v1/imports/${MISSING_ID}/export?referenceDate=${REFERENCE_DATE}`);
 
         expect(res.status).toBe(HttpStatus.NOT_FOUND);
         expect(res.body.code).toBe("E_NOT_FOUND");

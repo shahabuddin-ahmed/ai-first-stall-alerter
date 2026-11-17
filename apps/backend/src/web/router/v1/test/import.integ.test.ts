@@ -12,7 +12,6 @@ import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { AiService } from "../../../../service/ai";
 import { MockAiProvider } from "./mock-ai-provider";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
 import { newImportV1Controller } from "../../../controller/v1/import";
@@ -20,6 +19,9 @@ import { newStageV1Controller } from "../../../controller/v1/stage";
 import { globalErrorHandler } from "../../../middleware/global-error-handler";
 import { newImportRouter } from "../import";
 import { newStageRouter } from "../stage";
+
+// A valid UUID that no import has
+const MISSING_ID = "00000000-0000-4000-8000-000000000000";
 
 // Needs MySQL with the test database (docker compose up db). Each test starts with no imports.
 const sequelize = newSequelize();
@@ -29,7 +31,7 @@ const EXPECTED_B = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "expected", "s
 const REFERENCE_DATE = "2026-11-13";
 
 const makeApi = async (): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), new MockAiProvider(), false);
+    const aiService = new AiService(new MockAiProvider(), false);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const app = express();
@@ -175,7 +177,7 @@ describe("POST /api/v1/imports", () => {
 });
 
 describe("GET /api/v1/imports/:id", () => {
-    let importId: number;
+    let importId: string;
 
     beforeEach(async () => {
         importId = (await upload(app, SAMPLE_B)).body.response.import.id;
@@ -252,8 +254,14 @@ describe("GET /api/v1/imports/:id", () => {
         });
     });
 
+    it("rejects an import ID that is not a UUID, such as a database number", async () => {
+        const res = await request(app).get(`/api/v1/imports/1?referenceDate=${REFERENCE_DATE}`);
+
+        expect(res.status).toBe(HttpStatus.BAD_REQUEST);
+    });
+
     it("returns 404 for an import that does not exist", async () => {
-        const res = await request(app).get(`/api/v1/imports/999999?referenceDate=${REFERENCE_DATE}`);
+        const res = await request(app).get(`/api/v1/imports/${MISSING_ID}?referenceDate=${REFERENCE_DATE}`);
 
         expect(res.status).toBe(HttpStatus.NOT_FOUND);
         expect(res.body.code).toBe(ERROR_CODES.E_NOT_FOUND);
@@ -271,7 +279,8 @@ describe("stored dates", () => {
         const [stored] = await sequelize.query<Record<string, unknown>>(
             `SELECT DATE_FORMAT(stage_entered_at, '%Y-%m-%d') AS entered, last_activity_at AS activity,
                     last_contacted_at AS contacted, invalid_dates AS invalid
-             FROM import_records WHERE import_id = ?`,
+             FROM import_records
+             WHERE import_id = (SELECT id FROM imports WHERE public_id = ?)`,
             { replacements: [importId], type: QueryTypes.SELECT }
         );
         expect(stored).toEqual({
@@ -293,7 +302,7 @@ describe("stored dates", () => {
 });
 
 describe("other import endpoints", () => {
-    let importId: number;
+    let importId: string;
 
     beforeEach(async () => {
         importId = (await upload(app, SAMPLE_B)).body.response.import.id;

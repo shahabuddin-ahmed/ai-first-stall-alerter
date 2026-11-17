@@ -14,15 +14,15 @@ export interface ExportFile {
 }
 
 export interface ExportServiceInterface {
-    exportCsv(importId: number, query: ReportQuery): Promise<ExportFile>;
+    exportCsv(publicId: string, query: ReportQuery): Promise<ExportFile>;
 }
+
+// The first part of the public ID is enough to tell exports apart
+const fileNameOf = (publicId: string): string => publicId.split("-")[0];
 
 const noteStatusOf = (item: QueueItem, saved: SavedDrafts): AiNoteStatus => {
     if (saved.status !== AiNoteStatus.AI_DRAFT) {
         return saved.status;
-    }
-    if (item.rank > saved.topN) {
-        return AiNoteStatus.NOT_IN_TOP_N;
     }
     if (!saved.draftsByAction.has(item.actionCode)) {
         return AiNoteStatus.UNAVAILABLE;
@@ -36,7 +36,8 @@ export class ExportService implements ExportServiceInterface {
         private insightService: InsightServiceInterface
     ) {}
 
-    async exportCsv(importId: number, query: ReportQuery): Promise<ExportFile> {
+    async exportCsv(publicId: string, query: ReportQuery): Promise<ExportFile> {
+        const importId = await this.importService.resolveId(publicId);
         const { analysis } = await this.importService.analyse(importId, query.referenceDate);
         const saved = await this.insightService.getSavedDrafts(importId, analysis);
 
@@ -66,7 +67,7 @@ export class ExportService implements ExportServiceInterface {
         });
 
         return {
-            fileName: `${EXPORT_FILE_PREFIX}-${analysis.referenceDate}-import-${importId}.csv`,
+            fileName: `${EXPORT_FILE_PREFIX}-${analysis.referenceDate}-${fileNameOf(publicId)}.csv`,
             csv: buildExportCsv(rows),
             rowCount: rows.length,
         };

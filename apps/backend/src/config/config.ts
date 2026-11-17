@@ -67,11 +67,11 @@ const envSchema = Joi.object<Env>({
         .replace(/\/+$/, "")
         .default("https://openrouter.ai/api/v1"),
     AI_TOP_N: Joi.number().integer().min(1).max(20).default(5),
-    AI_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(15000),
-    AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(1500),
+    AI_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(60000),
+    AI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(200).max(8000).default(8000),
     AI_REASONING_EFFORT: Joi.string()
         .valid(...Object.values(ReasoningEffort))
-        .default(ReasoningEffort.LOW),
+        .default(ReasoningEffort.MEDIUM),
 
     WEB_ORIGIN: Joi.string()
         .custom((value: string) =>

@@ -15,7 +15,6 @@ import { analysePipeline } from "../../../../service/pipeline-analysis";
 import { parsePipelineCsv } from "../../../../service/pipeline-csv";
 import { AiService } from "../../../../service/ai";
 import { MOCK_MODELS, MockAiProvider } from "./mock-ai-provider";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { ConfigService, newConfigService } from "../../../../service/config";
 import { newSettingV1Controller } from "../../../controller/v1/setting";
 import { newStageV1Controller } from "../../../controller/v1/stage";
@@ -29,7 +28,7 @@ const SAMPLE_B = path.resolve(__dirname, "../../../../../../../data/sample-b.csv
 
 // One API process: its own memory copy of stages and settings.
 const makeApi = async (): Promise<{ app: Express; service: ConfigService }> => {
-    const aiService = new AiService(await newAiModelRepo(), new MockAiProvider(), false);
+    const aiService = new AiService(new MockAiProvider(), false);
     const service = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const app = express();
     app.use(express.json());
@@ -221,7 +220,7 @@ describe("/api/v1/settings", () => {
 
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.body.response).toEqual({
-            useAiDrafts: true,
+            status: 1,
             aiConfigured: false,
             aiModel: DEFAULT_AI_MODEL,
             stagesVersion: 1,
@@ -232,27 +231,27 @@ describe("/api/v1/settings", () => {
     it("turns AI drafts off in MySQL and memory", async () => {
         const res = await request(api.app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL });
+            .send({ status: 0, aiModel: DEFAULT_AI_MODEL });
 
         expect(res.status).toBe(HttpStatus.OK);
-        expect(res.body.response.useAiDrafts).toBe(false);
-        expect(await dbValue("SELECT use_ai_drafts AS value FROM settings")).toBe(0);
-        expect(api.service.getSnapshot().useAiDrafts).toBe(false);
+        expect(res.body.response.status).toBe(0);
+        expect(await dbValue("SELECT status AS value FROM settings")).toBe(0);
+        expect(api.service.getSnapshot().status).toBe(0);
     });
 
     it("rejects a value that is not true or false", async () => {
         const res = await request(api.app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: "yes", aiModel: DEFAULT_AI_MODEL });
+            .send({ status: "yes", aiModel: DEFAULT_AI_MODEL });
 
         expect(res.status).toBe(HttpStatus.BAD_REQUEST);
-        expect(await dbValue("SELECT use_ai_drafts AS value FROM settings")).toBe(1);
+        expect(await dbValue("SELECT status AS value FROM settings")).toBe(1);
     });
 
     it("saves the picked AI model in MySQL and memory", async () => {
         const res = await request(api.app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: true, aiModel: "mock/other-model:free" });
+            .send({ status: 1, aiModel: "mock/other-model:free" });
 
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.body.response.aiModel).toBe("mock/other-model:free");
@@ -261,18 +260,17 @@ describe("/api/v1/settings", () => {
     });
 
     it("rejects a model that is not in the model list", async () => {
-        const res = await request(api.app).put("/api/v1/settings").send({ useAiDrafts: true, aiModel: "paid/model" });
+        const res = await request(api.app).put("/api/v1/settings").send({ status: 1, aiModel: "paid/model" });
 
         expect(res.status).toBe(HttpStatus.BAD_REQUEST);
         expect(res.body.errors).toEqual(['"paid/model" is not an available AI model.']);
         expect(await dbValue("SELECT ai_model AS value FROM settings")).toBe(DEFAULT_AI_MODEL);
     });
 
-    it("lists the models and saves them in MySQL", async () => {
+    it("lists the models from the provider", async () => {
         const res = await request(api.app).get("/api/v1/settings/models");
 
         expect(res.status).toBe(HttpStatus.OK);
         expect(res.body.response).toEqual([...MOCK_MODELS].sort((a, b) => a.name.localeCompare(b.name)));
-        expect(await dbValue("SELECT COUNT(*) AS value FROM ai_models")).toBe(MOCK_MODELS.length);
     });
 });

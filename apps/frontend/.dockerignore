@@ -1,0 +1,16 @@
+node_modules
+.next
+coverage
+Dockerfile*
+.dockerignore
+.git
+.gitignore
+README.md
+LICENSE
+tsconfig.tsbuildinfo
+
+# Secrets: never copied into an image
+.env
+.env.*
+# Public values only (NEXT_PUBLIC_*), read by the production build
+!.env.production

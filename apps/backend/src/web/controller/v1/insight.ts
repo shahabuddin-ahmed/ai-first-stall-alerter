@@ -11,6 +11,7 @@ export interface InsightControllerInterface {
 
 const bodySchema = Joi.object({
     referenceDate: referenceDateField,
+    retry: Joi.boolean().default(false),
 });
 
 export class InsightController extends Controller implements InsightControllerInterface {
@@ -21,7 +22,7 @@ export class InsightController extends Controller implements InsightControllerIn
     create = async (req: Request, res: Response): Promise<any> => {
         const { value: params } = await this.validateRequest(idParamsSchema, req.params);
         const { value: body } = await this.validateRequest(bodySchema, req.body ?? {});
-        const data = await this.insightService.getInsights(params.id, body.referenceDate);
+        const data = await this.insightService.getInsights(params.id, body.referenceDate, body.retry);
         return this.sendResponse({ response: data }, HttpStatus.OK, res);
     };
 }
