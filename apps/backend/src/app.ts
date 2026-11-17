@@ -13,7 +13,6 @@ import { newImportRepo } from "./repo/import";
 import { newImportService } from "./service/import";
 import { newImportV1Controller } from "./web/controller/v1/import";
 import { newAiService } from "./service/ai";
-import { newAiModelRepo } from "./repo/ai-model";
 import { newAiInsightRepo } from "./repo/ai-insight";
 import { newLlmCallRepo } from "./repo/llm-call";
 import { newInsightService } from "./service/insight";
@@ -45,9 +44,8 @@ export const appReady: Promise<void> = (async () => {
     const importRepo = await newImportRepo();
     const aiInsightRepo = await newAiInsightRepo();
     const llmCallRepo = await newLlmCallRepo();
-    const aiModelRepo = await newAiModelRepo();
 
-    const aiService = await newAiService(config.AI, aiModelRepo);
+    const aiService = await newAiService(config.AI);
     const configService = await newConfigService(stageRepo, settingRepo, aiService);
     const importService = await newImportService(importRepo, configService);
     const insightService = await newInsightService(

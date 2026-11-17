@@ -181,8 +181,62 @@ describe("OpenRouterProvider.createCompletion", () => {
             maxOutputTokens: 100,
             reasoningEffort: ReasoningEffort.NONE,
         });
-        const error = await thrownBy(unreachable.createCompletion(FACTS, "test/model"));
-        expect(error).not.toBeInstanceOf(AiError);
-        expect(isTimeoutError(error)).toBe(false);
+        expect(await errorCodeOf(unreachable.createCompletion(FACTS, "test/model"))).toBe(
+            AiErrorCode.CONNECTION_FAILED
+        );
+    });
+});
+
+describe("OpenRouterProvider retries", () => {
+    let calls: number;
+
+    // Answers with `first` for the first `times` calls, then with a good answer
+    const failThenAnswer =
+        (first: Handler, times = 1): Handler =>
+        (body, req, res) => {
+            calls += 1;
+            const next = calls <= times ? first : reply(200, completion(JSON.stringify(ANSWER)));
+            next(body, req, res);
+        };
+
+    beforeEach(() => {
+        calls = 0;
+    });
+
+    it("sends again on a fresh connection when the reused one is dead (socket hang up)", async () => {
+        handler = failThenAnswer((_body, req) => req.socket.destroy());
+
+        const result = await generator().createCompletion(FACTS, "test/model");
+
+        expect(result.output).toEqual(ANSWER);
+        expect(calls).toBe(2);
+    });
+
+    it("waits for Retry-After on a rate limit, then succeeds", async () => {
+        handler = failThenAnswer((_body, _req, res) => {
+            res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "0" });
+            res.end("{}");
+        });
+
+        const result = await generator().createCompletion(FACTS, "test/model");
+
+        expect(result.output).toEqual(ANSWER);
+        expect(calls).toBe(2);
+    });
+
+    it("tries at most 3 times while the provider stays busy", async () => {
+        handler = failThenAnswer(reply(503, {}), Infinity);
+
+        expect(await errorCodeOf(generator(10000).createCompletion(FACTS, "test/model"))).toBe(
+            AiErrorCode.PROVIDER_ERROR
+        );
+        expect(calls).toBe(3);
+    });
+
+    it("does not retry a wrong key", async () => {
+        handler = failThenAnswer(reply(401, {}), Infinity);
+
+        expect(await errorCodeOf(generator().createCompletion(FACTS, "test/model"))).toBe(AiErrorCode.AUTH_FAILED);
+        expect(calls).toBe(1);
     });
 });

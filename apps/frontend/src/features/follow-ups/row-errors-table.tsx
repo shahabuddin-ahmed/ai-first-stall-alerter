@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { ImportGone } from '@/components/shared/import-gone';
 import { PageState } from '@/components/shared/page-state';
 import { Pager } from '@/components/shared/pager';
 import { Badge } from '@/components/ui/badge';
 import { useApiData } from '@/hooks/use-api-data';
-import { api } from '@/lib/api';
+import { api, NOT_FOUND } from '@/lib/api';
 import { RowErrorCode } from '@/types';
 
 const FIXES: Record<RowErrorCode, string> = {
@@ -20,15 +21,18 @@ const FIXES: Record<RowErrorCode, string> = {
 const COLUMNS = ['Record', 'Candidate ID', 'Field', 'Problem', 'How to fix'];
 
 interface RowErrorsTableProps {
-  importId: number;
+  importId: string;
   referenceDate: string;
 }
 
 export function RowErrorsTable({ importId, referenceDate }: RowErrorsTableProps) {
   const [page, setPage] = useState(1);
   const load = useCallback(() => api.getRowErrors(importId, referenceDate, page), [importId, referenceDate, page]);
-  const { data, error } = useApiData(load);
+  const { data, error, errorCode } = useApiData(load);
 
+  if (errorCode === NOT_FOUND) {
+    return <ImportGone />;
+  }
   if (error) {
     return <PageState message={error} error />;
   }

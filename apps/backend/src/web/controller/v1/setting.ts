@@ -3,6 +3,7 @@ import Joi from "joi";
 import { Controller } from "../controller";
 import { HttpStatus } from "../../../constant/http";
 import { AI_COLUMN_LIMITS } from "../../../constant/ai";
+import { SettingStatus } from "../../../constant/setting";
 import { ConfigServiceInterface } from "../../../service/config";
 import { AiServiceInterface } from "../../../service/ai";
 
@@ -13,7 +14,7 @@ export interface SettingControllerInterface {
 }
 
 const updateSchema = Joi.object({
-    useAiDrafts: Joi.boolean().strict().required(),
+    status: Joi.number().valid(SettingStatus.INACTIVE, SettingStatus.ACTIVE).strict().required(),
     aiModel: Joi.string().max(AI_COLUMN_LIMITS.MODEL_ID).required(),
 });
 
@@ -33,7 +34,7 @@ export class SettingController extends Controller implements SettingControllerIn
     update = async (req: Request, res: Response): Promise<any> => {
         const { value } = await this.validateRequest(updateSchema, req.body);
         const data = await this.configService.updateSettings({
-            useAiDrafts: value.useAiDrafts,
+            status: value.status,
             aiModel: value.aiModel,
         });
         return this.sendResponse({ response: data }, HttpStatus.OK, res);

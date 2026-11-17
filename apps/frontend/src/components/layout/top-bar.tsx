@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, CircleHelp, FileText } from 'lucide-react';
+import { ChevronDown, CircleHelp, FileText, Plus } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { useAppSelector } from '@/hooks/use-app-redux';
 import { formatDate } from '@/lib/format';
@@ -14,12 +14,12 @@ export function TopBar() {
       <Link
         href="/imports"
         aria-label="Current board. Change board"
-        className="inline-flex h-10 items-center gap-2 rounded-[10px] border bg-secondary px-3 text-sm font-medium text-foreground hover:bg-muted"
+        className="inline-flex h-10 max-w-full items-center gap-2 rounded-[10px] border bg-secondary px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
       >
         <FileText aria-hidden="true" className="size-4" />
         {board ? (
           <>
-            <span>{board.fileName}</span>
+            <span className="truncate">{board.fileName}</span>
             <span className="text-muted-foreground">· {formatDate(board.referenceDate)}</span>
           </>
         ) : (
@@ -30,6 +30,7 @@ export function TopBar() {
 
       <div className="flex items-center gap-2">
         <Link href="/imports" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          <Plus aria-hidden="true" className="size-4" />
           New import
         </Link>
         <Link href="/how-it-works" aria-label="Help and docs" className={buttonVariants({ variant: 'ghost', size: 'icon' })}>

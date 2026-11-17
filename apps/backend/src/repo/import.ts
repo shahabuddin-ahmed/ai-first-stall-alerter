@@ -7,6 +7,7 @@ export interface ImportRepoInterface {
     create(details: ImportInterface, transaction: Transaction): Promise<ImportInterface>;
     createRecords(records: ImportRecordInterface[], transaction: Transaction): Promise<void>;
     findById(id: number): Promise<ImportInterface | null>;
+    findByPublicId(publicId: string): Promise<ImportInterface | null>;
     findByHash(fileHash: string): Promise<ImportInterface | null>;
     list(offset: number, limit: number): Promise<ImportInterface[]>;
     count(): Promise<number>;
@@ -29,6 +30,10 @@ export class ImportRepo implements ImportRepoInterface {
 
     public async findById(id: number): Promise<ImportInterface | null> {
         return Import.findByPk(id);
+    }
+
+    public async findByPublicId(publicId: string): Promise<ImportInterface | null> {
+        return Import.findOne({ where: { publicId } });
     }
 
     public async findByHash(fileHash: string): Promise<ImportInterface | null> {

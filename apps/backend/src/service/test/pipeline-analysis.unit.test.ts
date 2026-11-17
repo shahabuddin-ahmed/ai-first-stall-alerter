@@ -66,6 +66,34 @@ describe("stall rule", () => {
     });
 });
 
+describe("stage step", () => {
+    it("counts only watched stages, in their order", () => {
+        const result = analyse(
+            "001,Ana Ruiz,QA,Screening,2026-10-01,Recruiter A,,",
+            "002,Ben Okoro,QA,Offer,2026-10-01,Recruiter A,,"
+        );
+        expect(result.queue.map((item) => [item.stage, item.stageStep, item.stageSteps])).toEqual([
+            ["Offer", 6, 6],
+            ["Screening", 2, 6],
+        ]);
+    });
+
+    it("skips a paused stage placed between watched stages", () => {
+        const onHold = DEFAULT_STAGES.find((stage) => stage.type === StageType.PAUSED) as StageConfig;
+        const [applied, ...others] = DEFAULT_STAGES.filter((stage) => stage !== onHold);
+        const stages = [applied, onHold, ...others].map((stage, index) => ({
+            ...stage,
+            position: index + 1,
+        }));
+        const [item] = analysePipeline(
+            pipeline("001,Ana Ruiz,QA,Screening,2026-10-01,Recruiter A,,"),
+            stages,
+            REFERENCE_DATE
+        ).queue;
+        expect(item).toMatchObject({ stageStep: 2, stageSteps: 6 });
+    });
+});
+
 describe("ranking", () => {
     it("orders by overdue days, then later stage, then candidate ID", () => {
         const result = analyse(

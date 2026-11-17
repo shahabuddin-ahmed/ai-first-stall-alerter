@@ -3,6 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FileWarning, PartyPopper, SearchX } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
+import { ImportGone } from '@/components/shared/import-gone';
 import { NoBoard } from '@/components/shared/no-board';
 import { PageState } from '@/components/shared/page-state';
 import { Pager } from '@/components/shared/pager';
@@ -16,8 +19,8 @@ import { RowErrorsTable } from '@/features/follow-ups/row-errors-table';
 import { SummaryStats } from '@/features/follow-ups/summary-stats';
 import { useAppDispatch } from '@/hooks/use-app-redux';
 import { useApiData } from '@/hooks/use-api-data';
-import { api } from '@/lib/api';
-import { BOARD_PARAMS, boardHref } from '@/lib/board-link';
+import { api, NOT_FOUND } from '@/lib/api';
+import { BOARD_PARAMS, boardHref, isImportId } from '@/lib/board-link';
 import { localIsoDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { selectBoard } from '@/stores/slices/board-slice';
@@ -33,51 +36,54 @@ const NO_FILTERS: Filters = { stage: '', recruiter: '', search: '' };
 function QueueEmpty({ view, onShowErrors }: { view: PipelineView; onShowErrors: () => void }) {
   if (view.counts.valid === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 p-5">
-        <p className="font-semibold">None of the {view.counts.total.toLocaleString('en-US')} rows could be used.</p>
-        <p className="text-sm text-gray-600">Open Row errors to see what is wrong in each row, fix the file, and import it again.</p>
-        <div className="flex flex-wrap gap-2.5">
-          <Button size="sm" onClick={onShowErrors}>
-            See row errors
-          </Button>
-          <Link href="/imports" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-            Choose another file
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        icon={FileWarning}
+        title={`None of the ${view.counts.total.toLocaleString('en-US')} rows could be used.`}
+        text="Open Row errors to see what is wrong in each row, fix the file, and import it again."
+      >
+        <Button size="sm" onClick={onShowErrors}>
+          See row errors
+        </Button>
+        <Link href="/imports" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          Choose another file
+        </Link>
+      </EmptyState>
     );
   }
   if (view.counts.stalled === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 p-5">
-        <p className="font-semibold">Everyone is moving. No application has passed its stage threshold.</p>
-        <p className="text-sm text-gray-600">To look closer, lower a stage threshold in Hiring stages.</p>
+      <EmptyState
+        icon={PartyPopper}
+        title="Everyone is moving. No application has passed its stage threshold."
+        text="To look closer, lower a stage threshold in Hiring stages."
+      >
         <Link href="/stages" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
           Edit thresholds
         </Link>
-      </div>
+      </EmptyState>
     );
   }
-  return <p className="p-5 text-sm text-gray-600">No follow-ups match these filters.</p>;
+  return <EmptyState icon={SearchX} title="No follow-ups match these filters." text="Clear the search or pick another stage or recruiter." />;
 }
 
 export function FollowUpsView() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const importId = Number(searchParams.get(BOARD_PARAMS.IMPORT));
+  const importId = searchParams.get(BOARD_PARAMS.IMPORT) ?? '';
   const referenceDate = searchParams.get(BOARD_PARAMS.DATE) ?? '';
   const [filters, setFilters] = useState(NO_FILTERS);
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState(Tab.QUEUE);
-  const [retry, setRetry] = useState<{ board: string; count: number } | null>(null);
+  // Set only by a click on Retry AI. A new object per click, so a second click runs again too.
+  const [retry, setRetry] = useState<{ board: string } | null>(null);
   const boardKey = `${importId}|${referenceDate}`;
 
   const load = useMemo(
     () => (importId && referenceDate ? () => api.getQueue(importId, { referenceDate, page, ...filters }) : null),
     [importId, referenceDate, page, filters]
   );
-  const { data: view, error, loading } = useApiData(load);
+  const { data: view, error, errorCode, loading } = useApiData(load);
 
   // Runs once when the board opens. After a failure the backend does not ask the AI again: only Retry does
   const loadInsights = useMemo(
@@ -92,6 +98,12 @@ export function FollowUpsView() {
   if (!importId || !referenceDate) {
     return <NoBoard />;
   }
+  if (!isImportId(importId)) {
+    return <ImportGone />;
+  }
+  if (errorCode === NOT_FOUND) {
+    return <ImportGone />;
+  }
   if (error) {
     return <PageState message={error} error />;
   }
@@ -100,6 +112,8 @@ export function FollowUpsView() {
   }
 
   const changeDate = (date: string) => {
+    // Leaving this date ends its Retry: coming back must not ask the AI again by itself
+    setRetry(null);
     const board = { importId, fileName: view.import.fileName, referenceDate: date };
     dispatch(selectBoard(board));
     setPage(1);
@@ -165,7 +179,7 @@ export function FollowUpsView() {
           insights={freshInsights}
           error={insights.error}
           stalled={view.counts.stalled}
-          onRetry={() => setRetry({ board: boardKey, count: (retry?.count ?? 0) + 1 })}
+          onRetry={() => setRetry({ board: boardKey })}
         />
       )}
 
@@ -179,8 +193,8 @@ export function FollowUpsView() {
               aria-selected={tab === item.id}
               onClick={() => setTab(item.id)}
               className={cn(
-                'h-11 border-b-2 border-transparent px-4 text-sm font-semibold text-gray-600',
-                tab === item.id && 'border-primary text-indigo-800'
+                'h-11 border-b-2 border-transparent px-4 text-sm font-semibold text-gray-600 transition-colors hover:text-foreground',
+                tab === item.id && 'border-primary text-indigo-800 hover:text-indigo-800'
               )}
             >
               {item.label}
@@ -201,10 +215,10 @@ export function FollowUpsView() {
             {view.queue.items.length > 0 ? (
               <>
                 <span className="px-1.5 pt-1 text-[13px] text-gray-600">
-                  Click a candidate to see the reason, the action and the message.
-                  {insights.loading && ' AI drafts for the top alerts are still being written; templates show until then.'}
+                  Click a row to see the reason, the action and the message.
+                  {insights.loading && ' AI messages are still being written; templates show until then.'}
                 </span>
-                <QueueTable items={view.queue.items} drafts={freshInsights?.drafts ?? []} />
+                <QueueTable items={view.queue.items} actionMessages={freshInsights?.actionMessages ?? []} />
                 <Pager page={view.queue.page} pageSize={view.queue.pageSize} total={view.queue.total} onChange={setPage} />
               </>
             ) : (

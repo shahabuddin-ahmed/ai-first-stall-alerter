@@ -1,17 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { errorMessage } from '@/lib/api';
+import { ApiError, errorMessage } from '@/lib/api';
 
 interface Result<T> {
   load: () => Promise<T>;
   data: T | null;
   error: string;
+  errorCode: string;
 }
 
 interface ApiData<T> {
   data: T | null;
   error: string;
+  // The backend error code (for example E_NOT_FOUND); empty when the API could not be reached
+  errorCode: string;
   loading: boolean;
 }
 
@@ -26,8 +29,15 @@ export function useApiData<T>(load: (() => Promise<T>) | null): ApiData<T> {
     }
     let current = true;
     load().then(
-      (data) => current && setResult({ load, data, error: '' }),
-      (error: unknown) => current && setResult({ load, data: null, error: errorMessage(error) })
+      (data) => current && setResult({ load, data, error: '', errorCode: '' }),
+      (error: unknown) =>
+        current &&
+        setResult({
+          load,
+          data: null,
+          error: errorMessage(error),
+          errorCode: error instanceof ApiError ? error.code : ''
+        })
     );
     return () => {
       current = false;
@@ -38,6 +48,7 @@ export function useApiData<T>(load: (() => Promise<T>) | null): ApiData<T> {
   return {
     data: result?.data ?? null,
     error: fresh ? result.error : '',
+    errorCode: fresh ? result.errorCode : '',
     loading: load !== null && !fresh
   };
 }

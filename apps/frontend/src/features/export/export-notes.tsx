@@ -2,7 +2,6 @@ import { Card } from '@/components/ui/card';
 
 const NOTE_STATUSES = [
   { value: 'ai_draft', text: 'A checked AI draft is in message_draft.' },
-  { value: 'not_in_top_n', text: 'The rank is below the top 5, so the template is used.' },
   { value: 'pending', text: 'No AI answer was saved yet when you exported; the template is used.' },
   { value: 'unavailable', text: 'AI is not set up, or the last AI try failed; the template is used.' },
   { value: 'disabled', text: 'AI drafts are switched off in Settings; the template is used.' }

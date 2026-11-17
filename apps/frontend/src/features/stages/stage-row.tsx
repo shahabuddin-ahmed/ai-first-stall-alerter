@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DEFAULT_ACTION,
   DEFAULT_THRESHOLD_DAYS,
@@ -11,7 +12,6 @@ import {
 } from '@/features/stages/stage-draft';
 import { StageType, type StageAction } from '@/types';
 
-const SELECT_CLASS = 'h-10 w-full rounded-[10px] border border-input bg-card px-2.5 text-sm';
 
 const TYPE_LABEL: Record<StageType, string> = {
   [StageType.WATCHED]: 'Watched',
@@ -57,18 +57,18 @@ export function StageRow({ draft, position, isFirst, isLast, actions, onChange, 
         />
       </td>
       <td className="px-2 py-2">
-        <select
-          aria-label={`Type of ${label}`}
-          className={`${SELECT_CLASS} min-w-28`}
-          value={draft.type}
-          onChange={(event) => changeType(event.target.value as StageType)}
-        >
-          {Object.values(StageType).map((type) => (
-            <option key={type} value={type}>
-              {TYPE_LABEL[type]}
-            </option>
-          ))}
-        </select>
+        <Select value={draft.type} onValueChange={(type) => changeType(type as StageType)}>
+          <SelectTrigger aria-label={`Type of ${label}`} className="min-w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.values(StageType).map((type) => (
+              <SelectItem key={type} value={type}>
+                {TYPE_LABEL[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </td>
       <td className="px-2 py-2">
         <Input
@@ -93,18 +93,18 @@ export function StageRow({ draft, position, isFirst, isLast, actions, onChange, 
       </td>
       <td className="px-2 py-2">
         {watched ? (
-          <select
-            aria-label={`Follow-up action for ${label}`}
-            className={`${SELECT_CLASS} min-w-52`}
-            value={draft.actionCode}
-            onChange={(event) => onChange({ actionCode: event.target.value })}
-          >
-            {actions.map((action) => (
-              <option key={action.code} value={action.code}>
-                {action.label}
-              </option>
-            ))}
-          </select>
+          <Select value={draft.actionCode} onValueChange={(actionCode) => onChange({ actionCode })}>
+            <SelectTrigger aria-label={`Follow-up action for ${label}`} className="min-w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {actions.map((action) => (
+                <SelectItem key={action.code} value={action.code}>
+                  {action.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           <span className="text-sm text-muted-foreground">Not watched</span>
         )}

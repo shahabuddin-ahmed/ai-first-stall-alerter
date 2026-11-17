@@ -5,19 +5,14 @@ export interface ApiEnvelope<T> {
   errors: string[];
 }
 
-export enum ServiceStatus {
-  OK = 'ok',
-  DEGRADED = 'degraded'
-}
-
 export interface HealthReport {
   service: string;
-  status: ServiceStatus;
+  status: string;
   database: string;
 }
 
 export interface Board {
-  importId: number;
+  importId: string;
   fileName: string;
   referenceDate: string;
 }
@@ -55,7 +50,8 @@ export interface StageList {
 }
 
 export interface ImportSummary {
-  id: number;
+  // The public UUID of the import
+  id: string;
   fileName: string;
   fileSize: number;
   recordCount: number;
@@ -123,6 +119,9 @@ export interface QueueItem {
   firstName: string;
   role: string;
   stage: string;
+  stageStep: number;
+  stageSteps: number;
+  actionCode: string;
   recruiter: string;
   timerFrom: string;
   timerSource: TimerSource;
@@ -193,6 +192,7 @@ export enum AiErrorCode {
   AUTH_FAILED = 'AUTH_FAILED',
   NO_CREDITS = 'NO_CREDITS',
   PROVIDER_ERROR = 'PROVIDER_ERROR',
+  CONNECTION_FAILED = 'CONNECTION_FAILED',
   REFUSED = 'REFUSED',
   INVALID_JSON = 'INVALID_JSON',
   INVALID_OUTPUT = 'INVALID_OUTPUT'
@@ -203,12 +203,10 @@ export enum MessageSource {
   TEMPLATE = 'template'
 }
 
-export interface InsightDraft {
-  rank: number;
-  candidateId: string;
-  name: string;
+// One AI message per follow-up action, with blanks such as {{first_name}} that each row fills in
+export interface ActionMessage {
+  actionCode: string;
   text: string;
-  source: MessageSource;
 }
 
 export interface BottleneckNote extends Bottleneck {
@@ -225,7 +223,7 @@ export interface InsightsView {
   topN: number;
   briefing: { text: string; source: MessageSource };
   bottleneckNotes: BottleneckNote[];
-  drafts: InsightDraft[];
+  actionMessages: ActionMessage[];
 }
 
 export interface CsvFile {
@@ -234,8 +232,14 @@ export interface CsvFile {
   text: string;
 }
 
+// AI on/off for the team: 1 = active, 0 = inactive
+export enum SettingStatus {
+  INACTIVE = 0,
+  ACTIVE = 1
+}
+
 export interface Settings {
-  useAiDrafts: boolean;
+  status: SettingStatus;
   aiConfigured: boolean;
   aiModel: string;
   stagesVersion: number;
@@ -245,4 +249,6 @@ export interface AiModel {
   modelId: string;
   name: string;
   contextLength: number | null;
+  inputPrice: number | null;
+  outputPrice: number | null;
 }

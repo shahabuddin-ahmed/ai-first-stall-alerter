@@ -1,3 +1,4 @@
+import { SettingStatus } from "../constant/setting";
 import { ERROR_CODES } from "../constant/error";
 import { StageType } from "../constant/stage";
 import { StageRepoInterface } from "../repo/stage";
@@ -13,12 +14,12 @@ import { AiServiceInterface } from "./ai";
 export interface ConfigSnapshot {
     stages: StageConfig[];
     stagesVersion: number;
-    useAiDrafts: boolean;
+    status: SettingStatus;
     aiModel: string;
 }
 
 export interface SettingsView {
-    useAiDrafts: boolean;
+    status: SettingStatus;
     aiConfigured: boolean;
     aiModel: string;
     stagesVersion: number;
@@ -59,7 +60,7 @@ export class ConfigService implements ConfigServiceInterface {
         this.snapshot = {
             stages: stages.map(toStageConfig),
             stagesVersion: settings.stagesVersion,
-            useAiDrafts: settings.useAiDrafts,
+            status: settings.status,
             aiModel: settings.aiModel,
         };
     }
@@ -102,8 +103,8 @@ export class ConfigService implements ConfigServiceInterface {
     }
 
     getSettings(): SettingsView {
-        const { useAiDrafts, aiModel, stagesVersion } = this.getSnapshot();
-        return { useAiDrafts, aiConfigured: this.aiService.isConfigured(), aiModel, stagesVersion };
+        const { status, aiModel, stagesVersion } = this.getSnapshot();
+        return { status, aiConfigured: this.aiService.isConfigured(), aiModel, stagesVersion };
     }
 
     async updateSettings(update: SettingsUpdate): Promise<SettingsView> {

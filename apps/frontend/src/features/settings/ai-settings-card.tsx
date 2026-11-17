@@ -5,33 +5,38 @@ import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { api, errorMessage } from '@/lib/api';
-import type { AiModel, Settings } from '@/types';
+import { ModelPicker } from '@/features/settings/model-picker';
+import { SettingStatus, type AiModel, type Settings } from '@/types';
 
 interface AiSettingsCardProps {
   initial: Settings;
   models: AiModel[];
+  modelsError: string;
 }
 
 function stateLabel(settings: Settings): string {
   if (!settings.aiConfigured) {
     return 'Not available';
   }
-  return settings.useAiDrafts ? 'On' : 'Off';
+  return settings.status === SettingStatus.ACTIVE ? 'On' : 'Off';
 }
 
-export function AiSettingsCard({ initial, models }: AiSettingsCardProps) {
+export function AiSettingsCard({ initial, models, modelsError }: AiSettingsCardProps) {
   const [settings, setSettings] = useState(initial);
   const [saving, setSaving] = useState(false);
   const locked = !settings.aiConfigured;
   // The saved model may be missing from the list (for example when the list could not be loaded)
   const modelOptions = models.some((model) => model.modelId === settings.aiModel)
     ? models
-    : [{ modelId: settings.aiModel, name: settings.aiModel, contextLength: null }, ...models];
+    : [
+        { modelId: settings.aiModel, name: settings.aiModel, contextLength: null, inputPrice: null, outputPrice: null },
+        ...models
+      ];
 
-  const save = async (change: Partial<Pick<Settings, 'useAiDrafts' | 'aiModel'>>) => {
+  const save = async (change: Partial<Pick<Settings, 'status' | 'aiModel'>>) => {
     setSaving(true);
     try {
-      const data = await api.saveSettings({ useAiDrafts: settings.useAiDrafts, aiModel: settings.aiModel, ...change });
+      const data = await api.saveSettings({ status: settings.status, aiModel: settings.aiModel, ...change });
       setSettings(data);
       toast.success('Settings saved.');
     } catch (error) {
@@ -49,7 +54,7 @@ export function AiSettingsCard({ initial, models }: AiSettingsCardProps) {
             Use AI drafts
           </h2>
           <span className="text-sm leading-normal text-gray-600">
-            When on, the top alerts get an AI-written briefing note and message draft. Every alert always has a template
+            When on, AI writes a briefing note and a message draft for every alert. Every alert always has a template
             message, AI or not.
           </span>
         </div>
@@ -60,16 +65,16 @@ export function AiSettingsCard({ initial, models }: AiSettingsCardProps) {
           <Switch
             aria-labelledby="ai-drafts-heading"
             aria-describedby="ai-drafts-state"
-            checked={settings.useAiDrafts && !locked}
+            checked={settings.status === SettingStatus.ACTIVE && !locked}
             disabled={locked || saving}
-            onChange={(useAiDrafts) => save({ useAiDrafts })}
+            onChange={(on) => save({ status: on ? SettingStatus.ACTIVE : SettingStatus.INACTIVE })}
           />
         </div>
       </div>
 
       {locked && (
         <div role="note" className="rounded-[10px] border bg-secondary px-3.5 py-3 text-sm text-gray-700">
-          AI is not set up on the server (no AI_API_KEY in the backend .env). Messages use templates until it is set up.
+          AI is not set up on this server. Every message uses its template until an administrator adds an AI key.
         </div>
       )}
 
@@ -77,25 +82,24 @@ export function AiSettingsCard({ initial, models }: AiSettingsCardProps) {
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">AI on the server</span>
           <span className="text-sm font-semibold">{settings.aiConfigured ? 'Set up' : 'Not set up'}</span>
-          <span className="text-[13px] text-gray-600">From AI_API_KEY in the backend .env</span>
+          <span className="text-[13px] text-gray-600">Managed by your administrator</span>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="ai-model" className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">
             AI model
           </label>
-          <select
+          <ModelPicker
             id="ai-model"
-            className="h-10 rounded-[10px] border border-input bg-card px-2.5 text-sm"
+            models={modelOptions}
             value={settings.aiModel}
             disabled={locked || saving}
-            onChange={(event) => save({ aiModel: event.target.value })}
-          >
-            {modelOptions.map((model) => (
-              <option key={model.modelId} value={model.modelId}>
-                {model.name}
-              </option>
-            ))}
-          </select>
+            onSelect={(aiModel) => save({ aiModel })}
+          />
+          {modelsError && (
+            <span role="alert" className="text-[13px] text-red-700">
+              {modelsError} The saved model still works.
+            </span>
+          )}
           <span className="text-[13px] text-gray-600">
             Only models that support structured answers are listed. A new model writes new AI drafts the next time each
             board is opened (one AI call per board and date).

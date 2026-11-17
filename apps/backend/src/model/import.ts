@@ -1,10 +1,11 @@
 import { Model, DataTypes } from "sequelize";
 import newSequelize from "../infra/sequelize";
-import { HASH_COLUMN_LENGTH } from "../constant/hash";
+import { HASH_COLUMN_LENGTH, PUBLIC_ID_LENGTH } from "../constant/hash";
 import { PIPELINE_LIMITS } from "../constant/pipeline";
 
 export interface ImportInterface {
     id?: number;
+    publicId: string;
     fileName: string;
     fileHash: string;
     fileSize: number;
@@ -16,6 +17,7 @@ export interface ImportInterface {
 
 class Import extends Model<ImportInterface> implements ImportInterface {
     public id?: number;
+    public publicId!: string;
     public fileName!: string;
     public fileHash!: string;
     public fileSize!: number;
@@ -31,6 +33,10 @@ Import.init(
             type: DataTypes.INTEGER.UNSIGNED,
             autoIncrement: true,
             primaryKey: true,
+        },
+        publicId: {
+            type: new DataTypes.CHAR(PUBLIC_ID_LENGTH),
+            allowNull: false,
         },
         fileName: {
             type: new DataTypes.STRING(PIPELINE_LIMITS.MAX_FILE_NAME_LENGTH),

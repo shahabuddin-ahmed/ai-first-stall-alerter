@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface Filters {
   stage: string;
@@ -17,7 +18,10 @@ interface QueueFiltersProps {
   onChange: (filters: Filters) => void;
 }
 
-const SELECT_CLASS = 'h-10 rounded-[10px] border border-input bg-card px-2.5 text-sm';
+// Radix Select cannot use an empty value, so "all" has its own key
+const ALL = '__all__';
+
+const fromSelect = (value: string) => (value === ALL ? '' : value);
 
 export function QueueFilters({ filters, stages, recruiters, onChange }: QueueFiltersProps) {
   const [search, setSearch] = useState(filters.search);
@@ -41,28 +45,38 @@ export function QueueFilters({ filters, stages, recruiters, onChange }: QueueFil
           Search
         </Button>
       </div>
-      <select
-        aria-label="Stage"
-        className={SELECT_CLASS}
-        value={filters.stage}
-        onChange={(event) => onChange({ ...filters, stage: event.target.value })}
+      <Select
+        value={filters.stage || ALL}
+        onValueChange={(value) => onChange({ ...filters, stage: fromSelect(value) })}
       >
-        <option value="">All stages</option>
-        {stages.map((stage) => (
-          <option key={stage}>{stage}</option>
-        ))}
-      </select>
-      <select
-        aria-label="Recruiter"
-        className={SELECT_CLASS}
-        value={filters.recruiter}
-        onChange={(event) => onChange({ ...filters, recruiter: event.target.value })}
+        <SelectTrigger aria-label="Stage" className="w-44">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All stages</SelectItem>
+          {stages.map((stage) => (
+            <SelectItem key={stage} value={stage}>
+              {stage}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={filters.recruiter || ALL}
+        onValueChange={(value) => onChange({ ...filters, recruiter: fromSelect(value) })}
       >
-        <option value="">All recruiters</option>
-        {recruiters.map((recruiter) => (
-          <option key={recruiter}>{recruiter}</option>
-        ))}
-      </select>
+        <SelectTrigger aria-label="Recruiter" className="w-44">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All recruiters</SelectItem>
+          {recruiters.map((recruiter) => (
+            <SelectItem key={recruiter} value={recruiter}>
+              {recruiter}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </form>
   );
 }

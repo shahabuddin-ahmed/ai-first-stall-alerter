@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { AppShell } from '@/components/layout/app-shell';
 import { StagesEditor } from '@/features/stages/stages-editor';
+
+export const metadata: Metadata = { title: 'Hiring stages' };
 
 export default function StagesPage() {
   return (

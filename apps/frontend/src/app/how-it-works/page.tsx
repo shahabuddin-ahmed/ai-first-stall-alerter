@@ -1,8 +1,11 @@
+import type { Metadata } from 'next';
 import { AppShell } from '@/components/layout/app-shell';
 import { AiPrivacyCard } from '@/components/shared/ai-privacy-card';
 import { BackendCard } from '@/features/how-it-works/backend-card';
 import { FlowCard } from '@/features/how-it-works/flow-card';
 import { RulesCard } from '@/features/how-it-works/rules-card';
+
+export const metadata: Metadata = { title: 'How it works' };
 
 export default function HowItWorksPage() {
   return (

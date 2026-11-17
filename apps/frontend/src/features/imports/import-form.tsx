@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { DatePicker } from '@/components/shared/date-picker';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { FilePicker } from '@/features/imports/file-picker';
 import { isFileError } from '@/features/imports/file-errors';
 import { StageThresholds } from '@/features/imports/stage-thresholds';
@@ -71,14 +71,7 @@ export function ImportForm({ onRejected }: ImportFormProps) {
             <label htmlFor="reference-date" className="text-sm font-semibold">
               Reference date
             </label>
-            <Input
-              id="reference-date"
-              type="date"
-              required
-              max={today}
-              value={referenceDate}
-              onChange={(event) => setReferenceDate(event.target.value)}
-            />
+            <DatePicker id="reference-date" value={referenceDate} max={today} onChange={setReferenceDate} />
             <span className="text-[13px] text-gray-600">
               Defaults to today. Earlier dates are allowed, future dates are not.
             </span>

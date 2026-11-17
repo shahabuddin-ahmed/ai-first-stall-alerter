@@ -1,7 +1,7 @@
 ###############################################################################
 # Step 1 : Builder image (all packages, compiles TypeScript to dist/)
 #
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /home/node/app
 COPY . .
@@ -10,7 +10,7 @@ RUN yarn install --frozen-lockfile && yarn run build
 ###############################################################################
 # Step 2 : Run image (production packages and compiled code only)
 #
-FROM node:22-alpine
+FROM node:24-alpine
 
 ARG PORT
 

@@ -1,22 +1,10 @@
-'use client';
-
-import { useState } from 'react';
-import dynamic from 'next/dynamic';
+import type { Metadata } from 'next';
 import { AppShell } from '@/components/layout/app-shell';
-import { CsvColumns } from '@/features/imports/csv-columns';
-import { FileRejected } from '@/features/imports/file-rejected';
-import type { Rejection } from '@/features/imports/import-form';
-import { RecentImports } from '@/features/imports/recent-imports';
-import { RejectionCodes } from '@/features/imports/rejection-codes';
+import { ImportsView } from '@/features/imports/imports-view';
 
-// Client only: the default reference date is "today" on the user's clock, not the build server's
-const ImportForm = dynamic(() => import('@/features/imports/import-form').then((module) => module.ImportForm), {
-  ssr: false
-});
+export const metadata: Metadata = { title: 'Imports' };
 
 export default function ImportsPage() {
-  const [rejection, setRejection] = useState<Rejection | null>(null);
-
   return (
     <AppShell>
       <span className="text-[13px] text-gray-600">StallAlert / Import a board</span>
@@ -28,18 +16,7 @@ export default function ImportsPage() {
         </p>
       </div>
 
-      {rejection ? (
-        <>
-          <FileRejected rejection={rejection} onRetry={() => setRejection(null)} />
-          <RejectionCodes />
-        </>
-      ) : (
-        <>
-          <ImportForm onRejected={setRejection} />
-          <RecentImports />
-          <CsvColumns />
-        </>
-      )}
+      <ImportsView />
     </AppShell>
   );
 }

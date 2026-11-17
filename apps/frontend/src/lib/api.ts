@@ -28,6 +28,8 @@ export class ApiError extends Error {
   }
 }
 
+export const NOT_FOUND = 'E_NOT_FOUND';
+
 export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Could not reach the StallAlert API.';
 }
@@ -62,15 +64,15 @@ export const api = {
     request<StageList>('/stages', { method: 'PUT', body: JSON.stringify({ version, stages }) }),
 
   getSettings: () => request<Settings>('/settings'),
-  saveSettings: (settings: Pick<Settings, 'useAiDrafts' | 'aiModel'>) =>
+  saveSettings: (settings: Pick<Settings, 'status' | 'aiModel'>) =>
     request<Settings>('/settings', { method: 'PUT', body: JSON.stringify(settings) }),
   getModels: () => request<AiModel[]>('/settings/models'),
 
   getImports: () => request<ImportList>('/imports'),
-  deleteImport: (id: number) => request<{ deleted: boolean }>(`/imports/${id}`, { method: 'DELETE' }),
-  getImport: (id: number, referenceDate: string) =>
+  deleteImport: (id: string) => request<{ deleted: boolean }>(`/imports/${id}`, { method: 'DELETE' }),
+  getImport: (id: string, referenceDate: string) =>
     request<PipelineView>(`/imports/${id}?${new URLSearchParams({ referenceDate, pageSize: '1' })}`),
-  getQueue: (id: number, query: QueueQuery) => {
+  getQueue: (id: string, query: QueueQuery) => {
     const params = new URLSearchParams({ referenceDate: query.referenceDate, page: String(query.page) });
     // Empty filters are left out: the backend rejects an empty stage or recruiter
     for (const [key, value] of Object.entries({ stage: query.stage, recruiter: query.recruiter, search: query.search })) {
@@ -80,12 +82,12 @@ export const api = {
     }
     return request<PipelineView>(`/imports/${id}?${params}`);
   },
-  getRowErrors: (id: number, referenceDate: string, page: number) =>
+  getRowErrors: (id: string, referenceDate: string, page: number) =>
     request<Page<RowError>>(`/imports/${id}/errors?${new URLSearchParams({ referenceDate, page: String(page) })}`),
-  getInsights: (id: number, referenceDate: string, retry: boolean) =>
+  getInsights: (id: string, referenceDate: string, retry: boolean) =>
     request<InsightsView>(`/imports/${id}/insights`, { method: 'POST', body: JSON.stringify({ referenceDate, retry }) }),
   // The CSV is not a JSON envelope: keep the raw bytes (with the BOM Excel needs) and the text for the preview
-  getExport: async (id: number, referenceDate: string): Promise<CsvFile> => {
+  getExport: async (id: string, referenceDate: string): Promise<CsvFile> => {
     const response = await fetch(`${API_URL}/imports/${id}/export?${new URLSearchParams({ referenceDate })}`, {
       cache: 'no-store'
     });

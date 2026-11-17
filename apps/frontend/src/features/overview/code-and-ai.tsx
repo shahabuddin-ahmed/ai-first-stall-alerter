@@ -11,7 +11,7 @@ const byCode = [
   'The bottlenecks (stage and recruiter)'
 ];
 
-const byAi = ['A short board briefing', 'A note on each bottleneck', 'A follow-up message draft for each of the top 5'];
+const byAi = ['A short board briefing', 'A note on each bottleneck', 'One follow-up message draft per action, used for every alert'];
 
 function Points({ items }: { items: string[] }) {
   return (

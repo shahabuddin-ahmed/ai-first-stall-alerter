@@ -1,13 +1,12 @@
 import { DEFAULT_AI_MODEL } from "../../../../constant/ai";
 import { BottleneckType } from "../../../../constant/pipeline";
 import { ActionCode, RecipientType } from "../../../../constant/stage";
-import { AiModelInterface } from "../../../../model/ai-model";
-import { AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
+import { AiModel, AiProviderInterface, CompletionResult } from "../../../../service/ai-provider";
 import { ACTIONS, actionsOf, InsightFacts } from "../../../../service/pipeline-messages";
 
-export const MOCK_MODELS: AiModelInterface[] = [
-    { modelId: DEFAULT_AI_MODEL, name: "Ling 3.2 Flash (free)", contextLength: null },
-    { modelId: "mock/other-model:free", name: "Other model (free)", contextLength: null },
+export const MOCK_MODELS: AiModel[] = [
+    { modelId: DEFAULT_AI_MODEL, name: "Ling 3.2 Flash (free)", contextLength: null, inputPrice: 0, outputPrice: 0 },
+    { modelId: "mock/other-model:free", name: "Other model (free)", contextLength: null, inputPrice: 0, outputPrice: 0 },
 ];
 
 export const MOCK_CANDIDATE_DRAFT = "Hi {{first_name}}, I am following up about the {{role}} role. Best, {{recruiter}}";
@@ -37,7 +36,7 @@ export class MockAiProvider implements AiProviderInterface {
         return mockCompletion(facts, model);
     }
 
-    async fetchModels(): Promise<AiModelInterface[]> {
+    async fetchModels(): Promise<AiModel[]> {
         return MOCK_MODELS;
     }
 }

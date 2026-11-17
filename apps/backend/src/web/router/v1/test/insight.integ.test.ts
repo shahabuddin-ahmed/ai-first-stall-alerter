@@ -17,7 +17,6 @@ import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { InsightFacts } from "../../../../service/pipeline-messages";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
 import { newInsightService } from "../../../../service/insight";
@@ -28,6 +27,9 @@ import { globalErrorHandler } from "../../../middleware/global-error-handler";
 import { newImportRouter } from "../import";
 import { newInsightRouter } from "../insight";
 import { newSettingRouter } from "../setting";
+
+// A valid UUID that no import has
+const MISSING_ID = "00000000-0000-4000-8000-000000000000";
 
 // Needs MySQL with the test database. No real AI calls: a counting stand-in replaces the provider.
 const sequelize = newSequelize();
@@ -57,7 +59,7 @@ const makeApi = async (
     generator: AiProviderInterface | null,
     aiInsightRepo?: AiInsightRepoInterface
 ): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const aiService = new AiService(generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -77,7 +79,7 @@ const makeApi = async (
     return app;
 };
 
-const uploadSampleB = async (app: Express): Promise<number> => {
+const uploadSampleB = async (app: Express): Promise<string> => {
     const res = await request(app)
         .post("/api/v1/imports")
         .field("referenceDate", REFERENCE_DATE)
@@ -85,7 +87,7 @@ const uploadSampleB = async (app: Express): Promise<number> => {
     return res.body.response.import.id;
 };
 
-const insights = (app: Express, importId: number, referenceDate = REFERENCE_DATE, retry = false) =>
+const insights = (app: Express, importId: string, referenceDate = REFERENCE_DATE, retry = false) =>
     request(app).post(`/api/v1/imports/${importId}/insights`).send({ referenceDate, retry });
 
 const llmCalls = () =>
@@ -96,7 +98,7 @@ const llmCalls = () =>
 
 let generator: TestGenerator;
 let app: Express;
-let importId: number;
+let importId: string;
 let warnLog: jest.SpyInstance;
 
 beforeEach(async () => {
@@ -114,7 +116,7 @@ afterAll(async () => {
 });
 
 describe("POST /api/v1/imports/:id/insights with AI", () => {
-    it("writes a briefing, bottleneck notes and drafts for the top 5, with names filled in on the server", async () => {
+    it("writes a briefing, bottleneck notes and one message per action, with the blanks left for each row", async () => {
         const res = await insights(app, importId);
 
         expect(res.status).toBe(HttpStatus.OK);
@@ -132,14 +134,11 @@ describe("POST /api/v1/imports/:id/insights with AI", () => {
             ["Recruiter A", MessageSource.AI_DRAFT],
         ]);
         expect(view.bottleneckNotes[1].text).toContain("Recruiter A"); // "R2" turned back into the name
-        expect(view.drafts.map((draft: any) => draft.rank)).toEqual([1, 2, 3, 4, 5]);
-        expect(view.drafts[0]).toMatchObject({
-            candidateId: "127",
-            recipient: "hiring_manager",
-            source: MessageSource.AI_DRAFT,
-        });
-        expect(view.drafts[0].text).toContain("Hana Novak");
-        expect(JSON.stringify(view.drafts)).not.toContain("{{");
+        // One message for each action anywhere in the queue, not only in the top 5
+        const queueActions = Object.keys(generator.seenFacts[0].board.stalled_by_action);
+        expect(view.actionMessages.map((message: any) => message.actionCode).sort()).toEqual(queueActions.sort());
+        view.actionMessages.forEach((message: any) => expect(message.text).toContain("{{"));
+        expect(JSON.stringify(view.actionMessages)).not.toContain("Hana Novak");
         expect(generator.calls).toBe(1);
     });
 
@@ -233,9 +232,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
     const expectTemplates = (view: any) => {
         expect(view.briefing.source).toBe(MessageSource.TEMPLATE);
         expect(view.briefing.text).toContain("18 of 32 valid candidates are past their stage threshold");
-        expect(view.drafts).toHaveLength(5);
-        view.drafts.forEach((draft: any) => expect(draft.source).toBe(MessageSource.TEMPLATE));
-        expect(view.drafts[0].text).toContain("could you review Hana Novak's application");
+        expect(view.actionMessages).toEqual([]);
     };
 
     it.each([
@@ -267,26 +264,32 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         ]);
     });
 
-    it("when the answer breaks a rule (a date in a message), uses templates for the whole report", async () => {
+    it("when one message breaks a rule (a date), keeps the good parts and uses the template for that action", async () => {
+        let badAction = "";
         generator.behaviour = async (facts) => {
             const good = mockCompletion(facts);
             const output = good.output as any;
             output.drafts[2].text = "Hi {{first_name}}, please reply by 20 November.";
+            badAction = output.drafts[2].action_code;
             return good;
         };
 
         const res = await insights(app, importId);
+        const view = res.body.response;
 
-        expect(res.body.response).toMatchObject({ aiStatus: AiStatus.FAILED, errorCode: AiErrorCode.INVALID_OUTPUT });
-        expectTemplates(res.body.response);
-        expect(await sequelize.query("SELECT id FROM ai_insights", { type: QueryTypes.SELECT })).toHaveLength(0);
+        expect(view).toMatchObject({ aiStatus: AiStatus.AI_DRAFT, errorCode: null });
+        expect(view.briefing.source).toBe(MessageSource.AI_DRAFT);
+        const actions = view.actionMessages.map((message: any) => message.actionCode);
+        expect(actions).not.toContain(badAction);
+        expect(actions.length).toBeGreaterThan(0);
+        expect(await sequelize.query("SELECT id FROM ai_insights", { type: QueryTypes.SELECT })).toHaveLength(1);
     });
 
     it("uses the model picked in the settings, and a new model makes a new AI call", async () => {
         await insights(app, importId).expect(HttpStatus.OK);
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: true, aiModel: "mock/other-model:free" })
+            .send({ status: 1, aiModel: "mock/other-model:free" })
             .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);
@@ -302,7 +305,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
     it("when the team turned AI drafts off: no AI call", async () => {
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .send({ status: 0, aiModel: DEFAULT_AI_MODEL })
             .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);
@@ -325,12 +328,12 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         const res = await insights(app, importId, "2026-10-01");
 
         expect(res.body.response.aiStatus).toBe(AiStatus.NOTHING_STALLED);
-        expect(res.body.response.drafts).toEqual([]);
+        expect(res.body.response.actionMessages).toEqual([]);
         expect(generator.calls).toBe(0);
     });
 
     it("returns 404 for an import that does not exist", async () => {
-        const res = await insights(app, 999999);
+        const res = await insights(app, MISSING_ID);
         expect(res.status).toBe(HttpStatus.NOT_FOUND);
         expect(generator.calls).toBe(0);
     });
