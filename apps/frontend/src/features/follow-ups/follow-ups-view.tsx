@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { NoBoard } from '@/components/shared/no-board';
 import { PageState } from '@/components/shared/page-state';
 import { Pager } from '@/components/shared/pager';
+import { FileWarning, PartyPopper, SearchX } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BoardSettings } from '@/features/follow-ups/board-settings';
@@ -33,32 +35,34 @@ const NO_FILTERS: Filters = { stage: '', recruiter: '', search: '' };
 function QueueEmpty({ view, onShowErrors }: { view: PipelineView; onShowErrors: () => void }) {
   if (view.counts.valid === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 p-5">
-        <p className="font-semibold">None of the {view.counts.total.toLocaleString('en-US')} rows could be used.</p>
-        <p className="text-sm text-gray-600">Open Row errors to see what is wrong in each row, fix the file, and import it again.</p>
-        <div className="flex flex-wrap gap-2.5">
-          <Button size="sm" onClick={onShowErrors}>
-            See row errors
-          </Button>
-          <Link href="/imports" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-            Choose another file
-          </Link>
-        </div>
-      </div>
+      <EmptyState
+        icon={FileWarning}
+        title={`None of the ${view.counts.total.toLocaleString('en-US')} rows could be used.`}
+        text="Open Row errors to see what is wrong in each row, fix the file, and import it again."
+      >
+        <Button size="sm" onClick={onShowErrors}>
+          See row errors
+        </Button>
+        <Link href="/imports" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          Choose another file
+        </Link>
+      </EmptyState>
     );
   }
   if (view.counts.stalled === 0) {
     return (
-      <div className="flex flex-col items-start gap-3 p-5">
-        <p className="font-semibold">Everyone is moving. No application has passed its stage threshold.</p>
-        <p className="text-sm text-gray-600">To look closer, lower a stage threshold in Hiring stages.</p>
+      <EmptyState
+        icon={PartyPopper}
+        title="Everyone is moving. No application has passed its stage threshold."
+        text="To look closer, lower a stage threshold in Hiring stages."
+      >
         <Link href="/stages" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
           Edit thresholds
         </Link>
-      </div>
+      </EmptyState>
     );
   }
-  return <p className="p-5 text-sm text-gray-600">No follow-ups match these filters.</p>;
+  return <EmptyState icon={SearchX} title="No follow-ups match these filters." text="Clear the search or pick another stage or recruiter." />;
 }
 
 export function FollowUpsView() {
@@ -182,8 +186,8 @@ export function FollowUpsView() {
               aria-selected={tab === item.id}
               onClick={() => setTab(item.id)}
               className={cn(
-                'h-11 border-b-2 border-transparent px-4 text-sm font-semibold text-gray-600',
-                tab === item.id && 'border-primary text-indigo-800'
+                'h-11 border-b-2 border-transparent px-4 text-sm font-semibold text-gray-600 transition-colors hover:text-foreground',
+                tab === item.id && 'border-primary text-indigo-800 hover:text-indigo-800'
               )}
             >
               {item.label}

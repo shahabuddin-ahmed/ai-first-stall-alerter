@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -69,7 +69,12 @@ export function InsightsCard({ insights, error, stalled, onRetry }: InsightsCard
   if (!insights) {
     return (
       <Card role="status" className="flex flex-wrap items-center gap-2.5 p-5">
-        <h2 className="text-[17px] font-semibold">Insights</h2>
+        <h2 className="flex items-center gap-2 text-[17px] font-semibold">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-50">
+            <Sparkles aria-hidden="true" className="size-4 text-indigo-700" />
+          </span>
+          Insights
+        </h2>
         <Badge variant="ai">
           <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
           AI is writing
@@ -85,10 +90,15 @@ export function InsightsCard({ insights, error, stalled, onRetry }: InsightsCard
   const isAi = insights.aiStatus === AiStatus.AI_DRAFT;
 
   return (
-    <Card className="flex flex-col gap-3.5 p-5">
+    <Card className="flex flex-col gap-3.5 border-indigo-100 bg-gradient-to-b from-indigo-50/40 to-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[17px] font-semibold">Insights</h2>
+          <h2 className="flex items-center gap-2 text-[17px] font-semibold">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-50">
+              <Sparkles aria-hidden="true" className="size-4 text-indigo-700" />
+            </span>
+            Insights
+          </h2>
           {isAi ? (
             <Badge variant="ai">AI draft · review before use</Badge>
           ) : (

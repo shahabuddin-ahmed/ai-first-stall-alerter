@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { PageState } from '@/components/shared/page-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FileSpreadsheet } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
 import { Card } from '@/components/ui/card';
 import { useAppDispatch, useAppSelector } from '@/hooks/use-app-redux';
 import { api } from '@/lib/api';
@@ -47,7 +49,7 @@ export function RecentImports() {
     <Card className="flex flex-col gap-3 p-[22px]">
       <h2 className="text-[17px] font-semibold">Recent imports</h2>
       {imports.length === 0 ? (
-        <p className="text-sm text-gray-600">No imports yet. Upload a CSV above to start.</p>
+        <EmptyState icon={FileSpreadsheet} title="No imports yet" text="Upload a CSV above to start." />
       ) : (
         <ul className="flex flex-col divide-y">
           {imports.map((item) => (

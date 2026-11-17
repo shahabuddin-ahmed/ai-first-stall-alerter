@@ -25,6 +25,19 @@ const WAITING_ON: Record<Recipient, string> = {
 
 const days = (count: number) => (count === 1 ? '1 day' : `${count} days`);
 
+// A week or more past the threshold is urgent
+const URGENT_OVERDUE_DAYS = 7;
+
+function overdueTone(overdueDays: number): string {
+  if (overdueDays >= URGENT_OVERDUE_DAYS) {
+    return 'bg-red-50 text-red-800 ring-red-200';
+  }
+  if (overdueDays > 0) {
+    return 'bg-amber-50 text-amber-800 ring-amber-200';
+  }
+  return 'bg-gray-100 text-gray-700 ring-gray-200';
+}
+
 // The follow-up was due once the stage threshold was reached
 const dueDate = (item: QueueItem) => formatDate(addDays(item.timerFrom, item.stageThreshold));
 
@@ -79,8 +92,12 @@ export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
 
   return (
     <>
-      <tr className={cn('border-b border-gray-100', open && 'bg-indigo-50/30')}>
-        <td className="px-3 py-2.5 font-bold text-gray-600">{item.rank}</td>
+      <tr className={cn('border-b border-gray-100 transition-colors hover:bg-muted/50', open && 'bg-indigo-50/40 hover:bg-indigo-50/40')}>
+        <td className="px-3 py-2.5">
+          <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-xs font-bold text-gray-700 tabular-nums">
+            {item.rank}
+          </span>
+        </td>
         <td className="px-3 py-2.5">
           <button
             type="button"
@@ -111,8 +128,15 @@ export function QueueRow({ item, draft, open, onToggle }: QueueRowProps) {
         </td>
         <td className="px-3 py-2.5 text-gray-600">{item.stageThreshold}d</td>
         <td className="px-3 py-2.5 whitespace-nowrap">
-          <span className={cn(item.overdueDays > 0 && 'font-bold')}>{item.overdueDays}</span>
-          <div className="text-xs text-muted-foreground">due {dueDate(item)}</div>
+          <span
+            className={cn(
+              'inline-flex min-w-9 justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-inset',
+              overdueTone(item.overdueDays)
+            )}
+          >
+            {item.overdueDays}d
+          </span>
+          <div className="pt-1 text-xs text-muted-foreground">due {dueDate(item)}</div>
         </td>
         <td className="px-3 py-2.5">
           {showAi ? <Badge variant="ai">AI draft</Badge> : <Badge variant="template">Template</Badge>}

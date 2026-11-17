@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { FileSpreadsheet } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
 import { Card } from '@/components/ui/card';
 import { useAppDispatch, useAppSelector } from '@/hooks/use-app-redux';
 import { api, errorMessage } from '@/lib/api';
@@ -42,7 +44,7 @@ export function StoredImports({ initial }: { initial: ImportSummary[] }) {
         Only the 8 CSV columns StallAlert uses are stored. Deleting an import removes its rows and saved AI results.
       </p>
       {imports.length === 0 ? (
-        <p className="text-sm text-gray-600">No imports are stored.</p>
+        <EmptyState icon={FileSpreadsheet} title="No imports are stored" />
       ) : (
         <ul className="flex flex-col divide-y rounded-[10px] border">
           {imports.map((item) => (
