@@ -1,10 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { FileSpreadsheet, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { FileSpreadsheet } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAppDispatch, useAppSelector } from '@/hooks/use-app-redux';
 import { api, errorMessage } from '@/lib/api';
@@ -17,11 +26,9 @@ export function StoredImports({ initial }: { initial: ImportSummary[] }) {
   const openId = useAppSelector((state) => state.board.current?.importId);
   const [imports, setImports] = useState(initial);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pending, setPending] = useState<ImportSummary | null>(null);
 
   const remove = async (item: ImportSummary) => {
-    if (!window.confirm(`Delete ${item.fileName}? Its rows and saved AI results are removed. This cannot be undone.`)) {
-      return;
-    }
     setDeletingId(item.id);
     try {
       await api.deleteImport(item.id);
@@ -58,14 +65,28 @@ export function StoredImports({ initial }: { initial: ImportSummary[] }) {
                 size="sm"
                 className="border-red-200 text-red-700 hover:bg-red-50"
                 disabled={deletingId !== null}
-                onClick={() => remove(item)}
+                onClick={() => setPending(item)}
               >
+                <Trash2 aria-hidden="true" className="size-3.5" />
                 {deletingId === item.id ? 'Deleting…' : 'Delete import'}
               </Button>
             </li>
           ))}
         </ul>
       )}
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete {pending?.fileName}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Its rows and saved AI results are removed. This cannot be undone.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => pending && remove(pending)}>Delete import</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
