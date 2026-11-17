@@ -2,8 +2,6 @@ import { AxiosError } from "axios";
 import { AiErrorCode } from "../../constant/ai";
 import { ActionCode, RecipientType } from "../../constant/stage";
 import { InsightFacts } from "../pipeline-messages";
-import { AiModelInterface } from "../../model/ai-model";
-import { AiModelRepoInterface } from "../../repo/ai-model";
 import { AiOutput, AiService } from "../ai";
 import { BottleneckType } from "../../constant/pipeline";
 import logger from "../../infra/logger";
@@ -49,14 +47,8 @@ const VALID: AiOutput = {
     ],
 };
 
-const NO_MODELS: AiModelRepoInterface = {
-    list: async (): Promise<AiModelInterface[]> => [],
-    replaceAll: async () => undefined,
-};
-
 const check = (raw: unknown) =>
     new AiService(
-        NO_MODELS,
         {
             createCompletion: async () => ({
                 output: raw,
@@ -216,7 +208,6 @@ describe("AiService answer check", () => {
     it("turns a timeout into TIMEOUT and other errors into PROVIDER_ERROR", async () => {
         const failing = (error: Error) =>
             new AiService(
-                NO_MODELS,
                 {
                     createCompletion: async () => {
                         throw error;

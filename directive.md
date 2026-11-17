@@ -6,7 +6,7 @@
 >
 > Labels: **[Brief]** = mandated by the assessment. **[Decision]** = my implementation choice, with its reason.
 >
-> Version: v5.3
+> Version: v5.4
 
 ---
 
@@ -102,7 +102,7 @@ infra/      MySQL connection, migrations, seeders, logger
 | AD7 | Messages go to **whoever has to act** (recipient per action code) | A message that carries out the action |
 | AD8 | Every LLM output is validated; any failure → template for that report | The app never depends on the LLM |
 | AD9 | AI on/off and the **AI model** are team settings in the DB (the model is picked from the provider's list); the key and URL stay in `.env` | Secrets never in the DB or the API; the team can change the model without a deploy |
-| AD10 | Stages and settings cached **in memory, write-through**; the model list cached in memory for 30 minutes and saved in `ai_models` (used when the provider list cannot be loaded) | No DB read per request; no Redis |
+| AD10 | Stages and settings cached **in memory, write-through**; the model list loaded from OpenRouter and cached **in memory only, for 1 day** (no DB copy) | No DB read per request; no Redis |
 | AD11 | Duplicate uploads stopped by a **UNIQUE file hash** in MySQL (insert, catch duplicate, return existing) | Safe even for simultaneous uploads |
 
 ---
@@ -291,8 +291,8 @@ cases (target ≥ 95% guardrail pass, defects and fixes logged).
 | GET | `/imports/:id/export?referenceDate=&stage=&recruiter=&search=` | CSV download (C8); never calls the AI |
 | DELETE | `/imports/:id` | Delete the import, its rows and cached AI results (the AI call log is kept) |
 | GET · PUT | `/stages` | Read or save the hiring stages (PUT needs the current `version`, else 409) |
-| GET · PUT | `/settings` | Read or save `useAiDrafts` and `aiModel`; shows whether AI is set up (never the key) |
-| GET | `/settings/models` | Models the team can pick (cached 30 minutes, saved in the DB) |
+| GET · PUT | `/settings` | Read or save `status` (AI on/off: 1 = active, 0 = inactive) and `aiModel`; shows whether AI is set up (never the key) |
+| GET | `/settings/models` | Models the team can pick, with input/output price per 1M tokens (from OpenRouter, cached in memory for 1 day) |
 | GET | `/health` | API and database status (200 or 503) |
 
 Errors: `{ code, message, response: null, errors: [...] }` with the codes in C7, `E_INVALID_DATA` (400),
@@ -311,10 +311,9 @@ Every table has `id`, `created_at` and `updated_at`. Tables come from migrations
 | `imports` | file_name, file_hash (UNIQUE), file_size, header_count, record_count |
 | `import_records` | import_id (FK cascade), record_number (UNIQUE per import), field_count, the 8 known columns (text columns with C7 limits, dates as `DATE`), `invalid_dates` (JSON: which date columns held text that is not a date) |
 | `stages` | name (UNIQUE), type, threshold_days, position (UNIQUE), aliases (JSON), action_code |
-| `settings` | use_ai_drafts, ai_model, stages_version (the stages `version`) |
+| `settings` | status (AI on/off: 1 = active, 0 = inactive), ai_model (the OpenRouter model ID), stages_version (goes up on each stages save; part of the AI cache key and the save conflict check) |
 | `ai_insights` | import_id (FK cascade), cache_key (UNIQUE), model, prompt_version, unfilled output with drafts by action (JSON) |
 | `llm_calls` | import_id (FK set null), cache_key, requested/served model, tokens, cost, latency, status, error code (never text) |
-| `ai_models` | model_id (UNIQUE), name, context_length: the last model list from the provider |
 
 **Duplicate uploads:** insert the import in a transaction; on the UNIQUE `file_hash` conflict, roll back and return the
 existing import with `alreadyImported: true`. Never "check then insert". A concurrency test uploads the same file twice
@@ -468,5 +467,10 @@ invitation is the authority for formats and deadlines.
   *Reason:* with a free key, every visit after a failed answer cost a new call; a reload must not lose the board.
 - **v5.3:** the queue shows "Waiting on" (candidate or hiring team), the wait in plain words, the due date, and "Step X of Y" for the stage.
   Display only; no rule changed.
+- **v5.4:** the `ai_models` table is removed. The model list comes from OpenRouter and stays in memory for 1 day;
+  if it cannot be loaded, `/settings/models` answers 503 and the saved model keeps working. Settings has a searchable
+  model picker that shows the current model and each model's price per 1M tokens. `settings.use_ai_drafts` is renamed
+  to `status` (1 = active, 0 = inactive; API field `status`).
+  *Reason:* only the selected model needs the DB (`settings`); a saved copy of the full list was not needed.
   *Reason:* MUST's own job-seeker app (Match Hire) speaks in these terms ("waiting on you", "with the hiring team",
   "3 months"); the recruiter side should match.

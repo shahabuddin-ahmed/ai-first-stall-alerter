@@ -231,8 +231,14 @@ export interface CsvFile {
   text: string;
 }
 
+// AI on/off for the team: 1 = active, 0 = inactive
+export enum SettingStatus {
+  INACTIVE = 0,
+  ACTIVE = 1
+}
+
 export interface Settings {
-  useAiDrafts: boolean;
+  status: SettingStatus;
   aiConfigured: boolean;
   aiModel: string;
   stagesVersion: number;
@@ -242,4 +248,6 @@ export interface AiModel {
   modelId: string;
   name: string;
   contextLength: number | null;
+  inputPrice: number | null;
+  outputPrice: number | null;
 }

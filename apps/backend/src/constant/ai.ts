@@ -56,7 +56,6 @@ export const AI_COLUMN_LIMITS = {
     ERROR_CODE: 20,
     PROMPT_VERSION: 10,
     MODEL_ID: 100,
-    MODEL_NAME: 100,
 } as const;
 
 export const SENDER_PLACEHOLDER = "{{recruiter}}";
@@ -102,6 +101,8 @@ export const DEFAULT_AI_MODEL = "inclusionai/ling-3.2-flash:free";
 export const AI_MODEL_LIST = {
     PATH: "/models",
     REQUIRED_PARAMETER: "structured_outputs",
-    CACHE_MS: 30 * 60 * 1000,
+    CACHE_MS: 24 * 60 * 60 * 1000,
+    PRICE_PER_TOKENS: 1_000_000,
+    PRICE_DECIMALS: 4,
     TIMEOUT_MS: 10_000,
 } as const;

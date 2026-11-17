@@ -17,7 +17,6 @@ import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { InsightFacts } from "../../../../service/pipeline-messages";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newImportService } from "../../../../service/import";
 import { newInsightService } from "../../../../service/insight";
@@ -57,7 +56,7 @@ const makeApi = async (
     generator: AiProviderInterface | null,
     aiInsightRepo?: AiInsightRepoInterface
 ): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const aiService = new AiService(generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -286,7 +285,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
         await insights(app, importId).expect(HttpStatus.OK);
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: true, aiModel: "mock/other-model:free" })
+            .send({ status: 1, aiModel: "mock/other-model:free" })
             .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);
@@ -302,7 +301,7 @@ describe("POST /api/v1/imports/:id/insights falls back to templates", () => {
     it("when the team turned AI drafts off: no AI call", async () => {
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .send({ status: 0, aiModel: DEFAULT_AI_MODEL })
             .expect(HttpStatus.OK);
 
         const res = await insights(app, importId);

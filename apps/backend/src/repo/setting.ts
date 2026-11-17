@@ -1,9 +1,9 @@
 import { literal, Transaction } from "sequelize";
-import { SETTINGS_ID } from "../constant/setting";
+import { SettingStatus, SETTINGS_ID } from "../constant/setting";
 import Setting, { SettingInterface } from "../model/setting";
 
 export interface SettingsUpdate {
-    useAiDrafts: boolean;
+    status: SettingStatus;
     aiModel: string;
 }
 

@@ -62,7 +62,7 @@ export const api = {
     request<StageList>('/stages', { method: 'PUT', body: JSON.stringify({ version, stages }) }),
 
   getSettings: () => request<Settings>('/settings'),
-  saveSettings: (settings: Pick<Settings, 'useAiDrafts' | 'aiModel'>) =>
+  saveSettings: (settings: Pick<Settings, 'status' | 'aiModel'>) =>
     request<Settings>('/settings', { method: 'PUT', body: JSON.stringify(settings) }),
   getModels: () => request<AiModel[]>('/settings/models'),
 

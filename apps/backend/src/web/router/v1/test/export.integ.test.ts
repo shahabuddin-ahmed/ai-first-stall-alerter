@@ -17,7 +17,6 @@ import { newLlmCallRepo } from "../../../../repo/llm-call";
 import { newSettingRepo } from "../../../../repo/setting";
 import { newStageRepo } from "../../../../repo/stage";
 import { InsightFacts } from "../../../../service/pipeline-messages";
-import { newAiModelRepo } from "../../../../repo/ai-model";
 import { newConfigService } from "../../../../service/config";
 import { newExportService } from "../../../../service/export";
 import { newImportService } from "../../../../service/import";
@@ -55,7 +54,7 @@ class CountingGenerator implements AiProviderInterface {
 }
 
 const makeApi = async (generator: AiProviderInterface | null): Promise<Express> => {
-    const aiService = new AiService(await newAiModelRepo(), generator ?? new MockAiProvider(), generator !== null);
+    const aiService = new AiService(generator ?? new MockAiProvider(), generator !== null);
     const configService = await newConfigService(await newStageRepo(), await newSettingRepo(), aiService);
     const importService = await newImportService(await newImportRepo(), configService);
     const insightService = await newInsightService(
@@ -204,7 +203,7 @@ describe("GET /api/v1/imports/:id/export", () => {
     it("marks every row as disabled when the team turned AI drafts off", async () => {
         await request(app)
             .put("/api/v1/settings")
-            .send({ useAiDrafts: false, aiModel: DEFAULT_AI_MODEL })
+            .send({ status: 0, aiModel: DEFAULT_AI_MODEL })
             .expect(HttpStatus.OK);
 
         const rows = readCsv((await download(app, importId)).body);

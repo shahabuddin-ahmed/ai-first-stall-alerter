@@ -94,7 +94,7 @@ curl -o stallalert.csv "http://localhost:4000/api/v1/imports/1/export?referenceD
 To see the template fallback with a key set, turn AI off and ask again:
 
 ```bash
-curl -X PUT -H "Content-Type: application/json" -d '{"useAiDrafts":false,"aiModel":"inclusionai/ling-3.2-flash:free"}' http://localhost:4000/api/v1/settings
+curl -X PUT -H "Content-Type: application/json" -d '{"status":0,"aiModel":"inclusionai/ling-3.2-flash:free"}' http://localhost:4000/api/v1/settings
 ```
 
 The full API list, settings, database commands and measured speed are in the [backend README](apps/backend/README.md).
@@ -132,7 +132,8 @@ Also good to know:
 
 -   The AI checks are limited safeguards, not a proof that a draft is true. Every AI draft is labelled
     **AI draft · review before use**.
--   The model list is cached for 30 minutes. If OpenRouter cannot be reached, the last saved list is shown.
+-   The model list is cached in memory for 1 day. If OpenRouter cannot be reached, Settings says so and the saved model
+    keeps working.
 -   A database set up before migration names lost their `.ts` ending needs a one-time rename of its `migrations` and
     `seeders` rows. A fresh clone does not.
 

@@ -9,7 +9,7 @@ const sequelize = newSequelize();
 const migrator = newMigrator(sequelize);
 const seeder = newSeeder(sequelize);
 
-const APP_TABLES = ["ai_insights", "ai_models", "import_records", "imports", "llm_calls", "settings", "stages"];
+const APP_TABLES = ["ai_insights", "import_records", "imports", "llm_calls", "settings", "stages"];
 const HISTORY_TABLES = ["migrations", "seeders"];
 const ALL_TABLES = [...APP_TABLES, ...HISTORY_TABLES];
 
@@ -118,8 +118,7 @@ describe("database migrations", () => {
              FROM information_schema.columns
              WHERE table_schema = DATABASE()
                AND CONCAT(table_name, '.', column_name) IN ('stages.name', 'llm_calls.error_code', 'ai_insights.prompt_version',
-                 'imports.file_hash', 'ai_insights.cache_key', 'llm_calls.cache_key', 'settings.ai_model',
-                 'ai_models.model_id', 'ai_models.name')`,
+                 'imports.file_hash', 'ai_insights.cache_key', 'llm_calls.cache_key', 'settings.ai_model')`,
             { type: QueryTypes.SELECT }
         );
 
@@ -131,8 +130,6 @@ describe("database migrations", () => {
             "ai_insights.cache_key": "varchar(130)",
             "llm_calls.cache_key": "varchar(130)",
             "settings.ai_model": "varchar(100)",
-            "ai_models.model_id": "varchar(100)",
-            "ai_models.name": "varchar(100)",
         });
     });
 
@@ -172,11 +169,11 @@ describe("database migrations", () => {
 
         const settings = await sequelize.query<{
             id: number;
-            use_ai_drafts: number;
+            status: number;
             ai_model: string;
             stages_version: number;
-        }>("SELECT id, use_ai_drafts, ai_model, stages_version FROM settings", { type: QueryTypes.SELECT });
-        expect(settings).toEqual([{ id: 1, use_ai_drafts: 1, ai_model: DEFAULT_AI_MODEL, stages_version: 1 }]);
+        }>("SELECT id, status, ai_model, stages_version FROM settings", { type: QueryTypes.SELECT });
+        expect(settings).toEqual([{ id: 1, status: 1, ai_model: DEFAULT_AI_MODEL, stages_version: 1 }]);
     });
 
     it("does not seed twice", async () => {

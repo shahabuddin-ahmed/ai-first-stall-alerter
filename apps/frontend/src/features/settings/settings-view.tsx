@@ -24,7 +24,7 @@ export function SettingsView() {
 
   return (
     <>
-      <AiSettingsCard initial={settings.data} models={models.data ?? []} />
+      <AiSettingsCard initial={settings.data} models={models.data ?? []} modelsError={models.error} />
       <AiRulesCard />
       <StoredImports initial={imports.data.data} />
       <AiPrivacyCard />

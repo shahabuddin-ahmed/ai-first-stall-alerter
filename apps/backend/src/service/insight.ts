@@ -1,3 +1,4 @@
+import { SettingStatus } from "../constant/setting";
 import {
     AiErrorCode,
     AiNoteStatus,
@@ -90,7 +91,7 @@ export class InsightService implements InsightServiceInterface {
 
     async getInsights(importId: number, referenceDate?: string, retry = false): Promise<InsightsView> {
         const { analysis } = await this.importService.analyse(importId, referenceDate);
-        const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
+        const { status, stagesVersion, aiModel } = this.configService.getSnapshot();
         const model = this.aiService.isConfigured() ? aiModel : null;
         const templates = (aiStatus: AiStatus, errorCode: AiErrorCode | null = null) =>
             this.templateView(importId, analysis, model, aiStatus, errorCode);
@@ -101,7 +102,7 @@ export class InsightService implements InsightServiceInterface {
         if (!this.aiService.isConfigured()) {
             return templates(AiStatus.NOT_CONFIGURED);
         }
-        if (!useAiDrafts) {
+        if (status !== SettingStatus.ACTIVE) {
             return templates(AiStatus.DISABLED);
         }
 
@@ -115,11 +116,11 @@ export class InsightService implements InsightServiceInterface {
     }
 
     async getSavedDrafts(importId: number, analysis: PipelineAnalysis): Promise<SavedDrafts> {
-        const { useAiDrafts, stagesVersion, aiModel } = this.configService.getSnapshot();
+        const { status, stagesVersion, aiModel } = this.configService.getSnapshot();
         if (!this.aiService.isConfigured()) {
             return this.savedDrafts(AiNoteStatus.UNAVAILABLE);
         }
-        if (!useAiDrafts) {
+        if (status !== SettingStatus.ACTIVE) {
             return this.savedDrafts(AiNoteStatus.DISABLED);
         }
 

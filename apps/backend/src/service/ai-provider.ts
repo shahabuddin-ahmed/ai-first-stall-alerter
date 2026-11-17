@@ -2,9 +2,17 @@ import type { AiConfig } from "../config/config";
 import { AI_MODEL_LIST, AI_REQUEST, AiErrorCode, ChatRole, FinishReason, ReasoningEffort } from "../constant/ai";
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "../constant/ai-prompt";
 import { HttpStatus } from "../constant/http";
-import { AiModelInterface } from "../model/ai-model";
 import { httpRequest } from "../utils/http";
 import { InsightFacts } from "./pipeline-messages";
+
+export interface AiModel {
+    modelId: string;
+    name: string;
+    contextLength: number | null;
+    // USD per 1M tokens; null when the provider gives no fixed price
+    inputPrice: number | null;
+    outputPrice: number | null;
+}
 
 export interface AiUsage {
     servedModel: string | null;
@@ -19,7 +27,7 @@ export interface CompletionResult extends AiUsage {
 
 export interface AiProviderInterface {
     createCompletion(facts: InsightFacts, model: string): Promise<CompletionResult>;
-    fetchModels(): Promise<AiModelInterface[]>;
+    fetchModels(): Promise<AiModel[]>;
 }
 
 export class AiError extends Error {
@@ -43,6 +51,7 @@ interface OpenRouterModel {
     name: string;
     context_length?: number | null;
     supported_parameters?: string[];
+    pricing?: { prompt?: string; completion?: string };
 }
 
 export interface OpenRouterOptions {
@@ -66,6 +75,15 @@ const parseJson = (content: string): unknown => {
     } catch {
         throw new AiError(AiErrorCode.INVALID_JSON);
     }
+};
+
+// OpenRouter sends USD per token as text; a negative or missing value means no fixed price
+const pricePerMillion = (perToken?: string): number | null => {
+    const value = Number(perToken);
+    if (perToken === undefined || !Number.isFinite(value) || value < 0) {
+        return null;
+    }
+    return Number((value * AI_MODEL_LIST.PRICE_PER_TOKENS).toFixed(AI_MODEL_LIST.PRICE_DECIMALS));
 };
 
 const supportsJsonOutput = (model: OpenRouterModel): boolean =>
@@ -109,7 +127,7 @@ export class OpenRouterProvider implements AiProviderInterface {
         };
     }
 
-    async fetchModels(): Promise<AiModelInterface[]> {
+    async fetchModels(): Promise<AiModel[]> {
         const response = await httpRequest<{ data?: OpenRouterModel[] }>({
             url: `${this.options.baseUrl}${AI_MODEL_LIST.PATH}`,
             timeoutMs: AI_MODEL_LIST.TIMEOUT_MS,
@@ -123,6 +141,8 @@ export class OpenRouterProvider implements AiProviderInterface {
             modelId: model.id,
             name: model.name,
             contextLength: model.context_length ?? null,
+            inputPrice: pricePerMillion(model.pricing?.prompt),
+            outputPrice: pricePerMillion(model.pricing?.completion),
         }));
     }
 

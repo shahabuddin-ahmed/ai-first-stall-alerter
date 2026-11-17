@@ -12,10 +12,10 @@ import {
 } from "../constant/ai";
 import { ActionCode, RecipientType } from "../constant/stage";
 import logger from "../infra/logger";
-import { AiModelInterface } from "../model/ai-model";
-import { AiModelRepoInterface } from "../repo/ai-model";
 import { isTimeoutError } from "../utils/http";
-import { AiError, AiProviderInterface, AiUsage, CompletionResult, newAiProvider } from "./ai-provider";
+import { ERROR_CODES } from "../constant/error";
+import { ServiceUnavailableException } from "../web/exception/service-unavailable-exception";
+import { AiError, AiModel, AiProviderInterface, AiUsage, CompletionResult, newAiProvider } from "./ai-provider";
 import { ACTIONS, actionsOf, InsightFacts } from "./pipeline-messages";
 
 export interface ActionDraft {
@@ -39,7 +39,7 @@ export interface AiAttempt {
 export interface AiServiceInterface {
     isConfigured(): boolean;
     generateText(facts: InsightFacts, model: string): Promise<AiAttempt>;
-    listModels(): Promise<AiModelInterface[]>;
+    listModels(): Promise<AiModel[]>;
     isModelAvailable(modelId: string): Promise<boolean>;
 }
 
@@ -171,11 +171,10 @@ const answerProblems = (answer: AiOutput, facts: InsightFacts): string[] => {
 };
 
 export class AiService implements AiServiceInterface {
-    private models: AiModelInterface[] = [];
+    private models: AiModel[] = [];
     private modelsExpireAt = 0;
 
     constructor(
-        private aiModelRepo: AiModelRepoInterface,
         private provider: AiProviderInterface,
         private configured: boolean
     ) {}
@@ -202,7 +201,7 @@ export class AiService implements AiServiceInterface {
         return { output: this.sortDrafts(answer, facts), errorCode: null, problems: [], usage: generated };
     }
 
-    async listModels(): Promise<AiModelInterface[]> {
+    async listModels(): Promise<AiModel[]> {
         if (Date.now() < this.modelsExpireAt) {
             return this.models;
         }
@@ -222,17 +221,18 @@ export class AiService implements AiServiceInterface {
         return { ...answer, drafts };
     }
 
-    private async loadModels(): Promise<AiModelInterface[]> {
+    private async loadModels(): Promise<AiModel[]> {
         try {
-            const models = await this.provider.fetchModels();
-            await this.aiModelRepo.replaceAll(models);
-            return models;
+            return await this.provider.fetchModels();
         } catch {
-            return this.aiModelRepo.list();
+            throw new ServiceUnavailableException(
+                ERROR_CODES.E_SERVICE_UNAVAILABLE,
+                "The AI model list could not be loaded from OpenRouter. Try again later."
+            );
         }
     }
 }
 
-export const newAiService = async (ai: AiConfig, aiModelRepo: AiModelRepoInterface): Promise<AiService> => {
-    return new AiService(aiModelRepo, await newAiProvider(ai), ai.AI_API_KEY !== "");
+export const newAiService = async (ai: AiConfig): Promise<AiService> => {
+    return new AiService(await newAiProvider(ai), ai.AI_API_KEY !== "");
 };
